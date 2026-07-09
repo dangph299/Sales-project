@@ -166,6 +166,7 @@
         <button (click)="replaceLines()" [disabled]="busy() || !currentOrder()">Update lines</button>
         <button (click)="confirmOrder()" [disabled]="busy() || !currentOrder()">Confirm / PendingInventory</button>
         <button class="danger" (click)="cancelOrder()" [disabled]="busy() || !currentOrder()">Cancel</button>
+        <button class="secondary" (click)="undoConfirmOrder()" [disabled]="busy() || !currentOrder()">Undo confirm</button>
         <button class="secondary" (click)="testConcurrency()" [disabled]="busy() || !currentOrder()">Test same ETag</button>
         <button class="secondary" (click)="testConfirmConcurrency()" [disabled]="busy() || !currentOrder()">Test same ETag (Confirm)</button>
         <button class="secondary" (click)="reloadOrder()" [disabled]="busy() || !currentOrder()">Reload</button>

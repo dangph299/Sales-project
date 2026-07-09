@@ -237,6 +237,15 @@ export class AppComponent {
     });
   }
 
+  undoConfirmOrder(): Promise<void> {
+    return this.run('Undo confirm order / update status', async () => {
+      const order = this.requireOrder();
+      const response = await this.api.undoConfirmOrder(order.id, this.currentOrderEtag());
+      this.setCurrentOrder(response.body, response.etag);
+      await this.searchOrders();
+    });
+  }
+
   adjustInventory(): Promise<void> {
     return this.run('Adjust inventory', async () => {
       const product = this.requireProduct();

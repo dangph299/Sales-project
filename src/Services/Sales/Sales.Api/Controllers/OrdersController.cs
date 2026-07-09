@@ -167,4 +167,24 @@ public sealed class OrdersController : ControllerBase
         Response.SetEtag(order);
         return Ok(order);
     }
+
+     /// <summary>
+    /// Undoes the confirmation of an order.
+    /// </summary>
+    /// <param name="id">
+    /// The unique identifier of the order to undo confirmation for, from the route.
+    /// </param>
+    /// <param name="ct">
+    /// A token to observe while waiting for the operation to complete.
+    /// </param>
+    /// <returns>
+    /// <c>200 OK</c> with the updated order, and an <c>ETag</c> response header set to its new version.
+    /// </returns>
+    [HttpPost("{id:guid}/undo-confirm")]
+    public async Task<IActionResult> UndoConfirm(Guid id, CancellationToken ct)
+    {
+        var order = await _sender.Send(new UndoConfirmOrder(id, Request.RequireVersion()), ct);
+        Response.SetEtag(order);
+        return Ok(order);
+    }
 }
