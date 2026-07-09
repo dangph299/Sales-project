@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><RootNamespace>Inventory.Application</RootNamespace></PropertyGroup>
+  <ItemGroup><ProjectReference Include="..\Inventory.Domain\Inventory.Domain.csproj" /></ItemGroup>
+</Project>

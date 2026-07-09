@@ -1,0 +1,18 @@
+{
+  "/sales-api": {
+    "target": "http://localhost:5000",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/sales-api": ""
+    }
+  },
+  "/inventory-api": {
+    "target": "http://localhost:5001",
+    "secure": false,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/inventory-api": ""
+    }
+  }
+}

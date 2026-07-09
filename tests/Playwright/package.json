@@ -1,0 +1,15 @@
+{
+  "name": "sales-management-playwright-tests",
+  "private": true,
+  "scripts": {
+    "test": "playwright test",
+    "test:smoke": "playwright test specs/sales-api.spec.ts",
+    "test:kafka": "playwright test specs/kafka-flow.spec.ts",
+    "test:audit": "playwright test specs/audit-update.spec.ts",
+    "test:infra": "playwright test specs/sales-api.spec.ts specs/audit-update.spec.ts specs/kafka-flow.spec.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.55.0",
+    "typescript": "^5.9.2"
+  }
+}

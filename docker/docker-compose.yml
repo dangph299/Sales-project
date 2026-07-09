@@ -1,0 +1,151 @@
+name: sales-management
+services:
+  postgres:
+    image: postgres:17-alpine
+    mem_limit: 768m
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports: ["5432:5432"]
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./seed/postgres-init.sql:/docker-entrypoint-initdb.d/01-databases.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:8-alpine
+    mem_limit: 256m
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mongo:
+    image: mongo:8
+    mem_limit: 768m
+    restart: unless-stopped
+    ports: ["27017:27017"]
+    volumes: ["mongo-data:/data/db"]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:4.1.1
+    ports: ["9094:9094"]
+    mem_limit: 768m
+    environment:
+      KAFKA_HEAP_OPTS: "-Xms256m -Xmx512m"
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: CONTROLLER://:9093,PLAINTEXT://:9092,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  seq:
+    image: datalust/seq:2025.2
+    mem_limit: 512m
+    environment:
+      ACCEPT_EULA: Y
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
+    ports: ["5341:5341", "8081:80"]
+    volumes: ["seq-data:/data"]
+
+  elasticsearch:
+    mem_limit: 1g
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.1.0
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports: ["9200:9200"]
+    volumes: ["elastic-data:/usr/share/elasticsearch/data"]
+
+  kibana:
+    mem_limit: 2g
+    image: docker.elastic.co/kibana/kibana:9.1.0
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports: ["5601:5601"]
+    depends_on: [elasticsearch]
+
+  apm-server:
+    mem_limit: 512m
+    image: docker.elastic.co/apm/apm-server:9.1.0
+    command: ["--strict.perms=false", "-e", "-c", "/usr/share/apm-server/apm-server.yml"]
+    volumes: ["./apm-server.yml:/usr/share/apm-server/apm-server.yml:ro"]
+    ports: ["8200:8200"]
+    depends_on: [elasticsearch, kibana]
+
+  otel-collector:
+    mem_limit: 256m
+    image: otel/opentelemetry-collector-contrib:0.135.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes: ["./otel-collector-config.yaml:/etc/otelcol/config.yaml:ro"]
+    ports: ["4317:4317", "4318:4318"]
+    depends_on: [apm-server]
+
+  sales-api:
+    mem_limit: 512m
+    build:
+      context: ..
+      dockerfile: src/Services/Sales/Sales.Api/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: sales-api
+    ports: ["5000:8080"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      kafka: { condition: service_started }
+
+  inventory-api:
+    mem_limit: 512m
+    build:
+      context: ..
+      dockerfile: src/Services/Inventory/Inventory.Api/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Development
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: inventory-api
+    ports: ["5001:8080"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      kafka: { condition: service_started }
+
+  audit-worker:
+    mem_limit: 512m
+    build:
+      context: ..
+      dockerfile: src/Services/AuditLog/AuditLog.Worker/Dockerfile
+    environment:
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: audit-worker
+    restart: unless-stopped
+    depends_on:
+      mongo: { condition: service_healthy }
+      kafka: { condition: service_started }
+
+volumes:
+  postgres-data:
+  mongo-data:
+  seq-data:
+  elastic-data:

@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><RootNamespace>Inventory.Infrastructure</RootNamespace></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Inventory.Domain\Inventory.Domain.csproj" />
+    <ProjectReference Include="..\Inventory.Application\Inventory.Application.csproj" />
+    <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9"><PrivateAssets>all</PrivateAssets></PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageReference Include="KafkaFlow" Version="4.2.0" />
+    <PackageReference Include="KafkaFlow.LogHandler.Microsoft" Version="4.2.0" />
+    <PackageReference Include="KafkaFlow.Microsoft.DependencyInjection" Version="4.2.0" />
+    <PackageReference Include="KafkaFlow.Serializer.JsonCore" Version="4.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+  </ItemGroup>
+</Project>

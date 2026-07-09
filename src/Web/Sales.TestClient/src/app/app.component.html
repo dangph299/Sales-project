@@ -1,0 +1,248 @@
+<main class="shell">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">DDD Sales Management</p>
+      <h1>Business Test Client</h1>
+      <p class="muted">Test CRUD/search, edit, order status, ETag concurrency và inventory flow.</p>
+    </div>
+
+    <section class="auth-bar">
+      <div class="status" [class.ok]="canCallApi()">{{ canCallApi() ? 'Authenticated' : 'No token' }}</div>
+      <input class="mini" [ngModel]="userName()" (ngModelChange)="userName.set($event)" placeholder="user">
+      <input class="mini" type="password" [ngModel]="password()" (ngModelChange)="password.set($event)" placeholder="password">
+      <button (click)="login()" [disabled]="busy()">Login</button>
+      <button class="secondary" (click)="logout()">Logout</button>
+      <button class="secondary" (click)="health()" [disabled]="busy()">Health</button>
+    </section>
+  </header>
+
+  <section class="grid two">
+    <article class="card">
+      <div class="card-title">
+        <div>
+          <h2>Products</h2>
+          <p class="hint">Create, edit/update, search tên sản phẩm.</p>
+        </div>
+        <span class="badge" *ngIf="selectedProduct()">Editing</span>
+      </div>
+
+      <div class="row">
+        <label>SKU
+          <input [disabled]="!!selectedProduct()" [ngModel]="productForm().sku" (ngModelChange)="patchProductForm({ sku: $event })">
+        </label>
+        <label>Price
+          <input type="number" [ngModel]="productForm().price" (ngModelChange)="patchProductForm({ price: +$event })">
+        </label>
+      </div>
+      <label>Name</label>
+      <input [ngModel]="productForm().name" (ngModelChange)="patchProductForm({ name: $event })">
+      <label class="checkbox">
+        <input type="checkbox" [ngModel]="productForm().isActive" (ngModelChange)="patchProductForm({ isActive: $event })">
+        Active
+      </label>
+      <div class="actions wrap">
+        <button (click)="createProduct()" [disabled]="busy() || !canCallApi() || !!selectedProduct()">Create</button>
+        <button (click)="updateProduct()" [disabled]="busy() || !selectedProduct()">Update</button>
+        <button class="secondary" (click)="resetProductForm()">New form</button>
+      </div>
+
+      <div class="search-line">
+        <input [ngModel]="productSearch()" (ngModelChange)="productSearch.set($event)" (keyup.enter)="searchProducts()" placeholder="Search product name">
+        <button class="secondary" (click)="searchProducts()" [disabled]="busy() || !canCallApi()">Search</button>
+      </div>
+
+      <div class="list">
+        <button *ngFor="let product of products()" (click)="selectProduct(product)" [class.selected]="selectedProduct()?.id === product.id">
+          <span><b>{{ product.sku }}</b> — {{ product.name }}</span>
+          <span>{{ product.price | number }} · {{ product.isActive ? 'active' : 'inactive' }} · v{{ product.version }}</span>
+        </button>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-title">
+        <div>
+          <h2>Customers</h2>
+          <p class="hint">Create, edit/update, search tên và phone prefix/suffix.</p>
+        </div>
+        <span class="badge" *ngIf="selectedCustomer()">Editing</span>
+      </div>
+
+      <label>Name</label>
+      <input [ngModel]="customerForm().name" (ngModelChange)="patchCustomerForm({ name: $event })">
+      <label>Phone</label>
+      <input [ngModel]="customerForm().phone" (ngModelChange)="patchCustomerForm({ phone: $event })">
+      <div class="actions wrap">
+        <button (click)="createCustomer()" [disabled]="busy() || !canCallApi() || !!selectedCustomer()">Create</button>
+        <button (click)="updateCustomer()" [disabled]="busy() || !selectedCustomer()">Update</button>
+        <button class="secondary" (click)="resetCustomerForm()">New form</button>
+      </div>
+
+      <div class="row">
+        <label>Name search
+          <input [ngModel]="customerSearch().name" (ngModelChange)="patchCustomerSearch({ name: $event })">
+        </label>
+        <label>Phone search
+          <input [ngModel]="customerSearch().phone" (ngModelChange)="patchCustomerSearch({ phone: $event })">
+        </label>
+      </div>
+      <div class="search-line">
+        <select [ngModel]="customerSearch().phoneMatch" (ngModelChange)="patchCustomerSearch({ phoneMatch: +$event })">
+          <option [value]="1">phone prefix</option>
+          <option [value]="2">phone suffix</option>
+        </select>
+        <button class="secondary" (click)="searchCustomers()" [disabled]="busy() || !canCallApi()">Search</button>
+      </div>
+
+      <div class="list">
+        <button *ngFor="let customer of customers()" (click)="selectCustomer(customer)" [class.selected]="selectedCustomer()?.id === customer.id">
+          <span><b>{{ customer.name }}</b> — {{ customer.phone }}</span>
+          <span>v{{ customer.version }}</span>
+        </button>
+      </div>
+    </article>
+  </section>
+
+  <section class="grid order-grid">
+    <article class="card">
+      <div class="card-title">
+        <div>
+          <h2>Orders search</h2>
+          <p class="hint">Search theo ngày tạo UTC, tên hoặc SĐT khách hàng.</p>
+        </div>
+      </div>
+
+      <div class="row">
+        <label>From UTC
+          <input type="datetime-local" [ngModel]="orderSearch().from" (ngModelChange)="patchOrderSearch({ from: $event })">
+        </label>
+        <label>To UTC
+          <input type="datetime-local" [ngModel]="orderSearch().to" (ngModelChange)="patchOrderSearch({ to: $event })">
+        </label>
+      </div>
+      <div class="search-line">
+        <input [ngModel]="orderSearch().customer" (ngModelChange)="patchOrderSearch({ customer: $event })" placeholder="Customer name or phone">
+        <button class="secondary" (click)="searchOrders()" [disabled]="busy() || !canCallApi()">Search orders</button>
+      </div>
+
+      <div class="list orders-list">
+        <button *ngFor="let order of orders()" (click)="selectOrder(order)" [class.selected]="currentOrder()?.id === order.id">
+          <span>
+            <b>{{ order.customerName }}</b> — {{ order.customerPhone }}
+            <small>{{ order.createdAt | date:'short' }}</small>
+          </span>
+          <span>
+            <span [class]="statusClass(order.status)">{{ order.status }}</span>
+            {{ order.totalQuantity }} items · {{ order.total | number }}
+          </span>
+        </button>
+      </div>
+    </article>
+
+    <article class="card">
+      <div class="card-title">
+        <div>
+          <h2>Order create/edit/status</h2>
+          <p class="hint">Dùng selected customer/product, cập nhật dòng hàng và status bằng ETag.</p>
+        </div>
+      </div>
+
+      <div class="context">
+        <p><b>Customer:</b> {{ selectedCustomerLabel() }}</p>
+        <p><b>Product:</b> {{ selectedProductLabel() }}</p>
+      </div>
+
+      <div class="row">
+        <label>Quantity
+          <input type="number" [ngModel]="orderQuantity()" (ngModelChange)="orderQuantity.set(+$event)">
+        </label>
+        <label>Discount %
+          <input type="number" [ngModel]="orderDiscount()" (ngModelChange)="orderDiscount.set(+$event)">
+        </label>
+      </div>
+
+      <div class="actions wrap">
+        <button (click)="createOrder()" [disabled]="busy() || !canCallApi()">Create draft</button>
+        <button (click)="replaceLines()" [disabled]="busy() || !currentOrder()">Update lines</button>
+        <button (click)="confirmOrder()" [disabled]="busy() || !currentOrder()">Confirm / PendingInventory</button>
+        <button class="danger" (click)="cancelOrder()" [disabled]="busy() || !currentOrder()">Cancel</button>
+        <button class="secondary" (click)="testConcurrency()" [disabled]="busy() || !currentOrder()">Test same ETag</button>
+        <button class="secondary" (click)="testConfirmConcurrency()" [disabled]="busy() || !currentOrder()">Test same ETag (Confirm)</button>
+        <button class="secondary" (click)="reloadOrder()" [disabled]="busy() || !currentOrder()">Reload</button>
+      </div>
+
+      <section class="detail" *ngIf="currentOrder() as order; else emptyOrder">
+        <div class="detail-head">
+          <div>
+            <small>Order ID</small>
+            <p>{{ order.id }}</p>
+          </div>
+          <span [class]="statusClass(order.status)">{{ order.status }}</span>
+        </div>
+
+        <div class="stats">
+          <div><small>Version</small><b>{{ order.version }}</b></div>
+          <div><small>ETag</small><b>{{ currentOrderEtag() }}</b></div>
+          <div><small>Total quantity</small><b>{{ order.totalQuantity }}</b></div>
+          <div><small>Total amount</small><b>{{ order.total | number }}</b></div>
+        </div>
+
+        <div class="info-grid">
+          <p><small>Customer snapshot</small><br>{{ order.customerName }} · {{ order.customerPhone }}</p>
+          <p><small>Created UTC</small><br>{{ order.createdAt | date:'medium' }}</p>
+          <p *ngIf="order.rejectionReason"><small>Reject reason</small><br>{{ order.rejectionReason }}</p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>Product snapshot</th>
+              <th>Qty</th>
+              <th>Unit price</th>
+              <th>Discount</th>
+              <th>Line total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let line of order.lines">
+              <td>{{ line.sku }}</td>
+              <td>{{ line.productName }}</td>
+              <td>{{ line.quantity }}</td>
+              <td>{{ line.unitPrice | number }}</td>
+              <td>{{ line.discountPercent }}%</td>
+              <td>{{ line.lineTotal | number }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <ng-template #emptyOrder>
+        <div class="empty">Chưa có order được chọn. Hãy create draft hoặc chọn order từ danh sách search.</div>
+      </ng-template>
+
+      <pre *ngIf="concurrencyResult()">{{ concurrencyResult() }}</pre>
+    </article>
+  </section>
+
+  <section class="grid two">
+    <article class="card">
+      <h2>Inventory</h2>
+      <p class="summary">Selected product: <b>{{ selectedProductLabel() }}</b></p>
+      <label>Quantity delta</label>
+      <input type="number" [ngModel]="inventoryDelta()" (ngModelChange)="inventoryDelta.set(+$event)">
+      <div class="actions">
+        <button (click)="adjustInventory()" [disabled]="busy() || !selectedProduct()">Adjust stock</button>
+        <button class="secondary" (click)="getInventory()" [disabled]="busy() || !selectedProduct()">Get stock</button>
+      </div>
+      <pre *ngIf="inventoryText()">{{ inventoryText() }}</pre>
+    </article>
+
+    <article class="card">
+      <h2>Run log</h2>
+      <div class="log">
+        <pre *ngFor="let item of log()">{{ item }}</pre>
+      </div>
+    </article>
+  </section>
+</main>

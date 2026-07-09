@@ -1,0 +1,19 @@
+@Sales.Api_HostAddress = http://localhost:5000
+
+POST {{Sales.Api_HostAddress}}/api/auth/login
+Content-Type: application/json
+
+{
+  "userName": "admin",
+  "password": "Admin123!"
+}
+
+###
+
+@accessToken = paste-access-token-here
+
+GET {{Sales.Api_HostAddress}}/api/products
+Authorization: Bearer {{accessToken}}
+Accept: application/json
+
+###

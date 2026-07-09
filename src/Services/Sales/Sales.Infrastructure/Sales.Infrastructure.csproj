@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /></ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Sales.Application\Sales.Application.csproj" />
+    <ProjectReference Include="..\Sales.Domain\Sales.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.9">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="10.0.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.9.32" />
+    <PackageReference Include="Serilog" Version="4.3.0" />
+    <PackageReference Include="KafkaFlow" Version="4.2.0" />
+    <PackageReference Include="KafkaFlow.Microsoft.DependencyInjection" Version="4.2.0" />
+    <PackageReference Include="KafkaFlow.Serializer.JsonCore" Version="4.2.0" />
+    <PackageReference Include="KafkaFlow.LogHandler.Microsoft" Version="4.2.0" />
+  </ItemGroup>
+
+</Project>
