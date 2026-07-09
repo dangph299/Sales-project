@@ -36,7 +36,7 @@ public static class DependencyInjection
         if (brokers.Length == 0) brokers = ["kafka:9092"];
         services.AddKafka(kafka => kafka.UseMicrosoftLog().AddCluster(cluster => cluster.WithBrokers(brokers)
             .AddProducer("inventory-outbox", p => p.AddMiddlewares(x => x.AddSerializer<JsonCoreSerializer>()))
-            .AddConsumer(c => c.Topics([KafkaTopics.OrderConfirmationRequested, KafkaTopics.OrderCancellationRequested])
+            .AddConsumer(c => c.Topics([KafkaTopics.OrderConfirmationRequested, KafkaTopics.OrderUndoConfirmationRequested])
                 .WithGroupId(KafkaConsumerGroups.InventoryOrders).WithAutoOffsetReset(AutoOffsetReset.Earliest).WithBufferSize(100).WithWorkersCount(4)
                 .AddMiddlewares(x => x.AddDeserializer<JsonCoreDeserializer>().AddTypedHandlers(h => h.AddHandler<InventoryEventHandler>())))));
         return services;

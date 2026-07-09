@@ -15,8 +15,8 @@ public static class KafkaTopics
     /// <summary>Topic Sales publishes <see cref="OrderConfirmationRequested"/> events to.</summary>
     public const string OrderConfirmationRequested = "sales.order-confirmation-requested.v1";
 
-    /// <summary>Topic Sales publishes <see cref="OrderCancellationRequested"/> events to.</summary>
-    public const string OrderCancellationRequested = "sales.order-cancellation-requested.v1";
+    /// <summary>Topic Sales publishes <see cref="OrderUndoConfirmationRequested"/> events to.</summary>
+    public const string OrderUndoConfirmationRequested = "sales.order-undo-confirmation-requested.v1";
 
     /// <summary>Topic Inventory publishes <see cref="StockReserved"/> events to.</summary>
     public const string StockReserved = "inventory.stock-reserved.v1";

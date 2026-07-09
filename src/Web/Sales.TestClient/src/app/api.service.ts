@@ -124,6 +124,14 @@ export class ApiService {
     )));
   }
 
+  async undoConfirmOrder(id: string, etag: string): Promise<ApiResult<OrderDto>> {
+    return this.withEtag(firstValueFrom(this.http.post<OrderDto>(
+      `${this.salesBase()}/api/orders/${id}/undo-confirm`,
+      {},
+      { headers: this.authHeaders().set('If-Match', etag), observe: 'response' }
+    )));
+  }
+
   async adjustInventory(productId: string, sku: string, quantityDelta: number): Promise<InventoryDto> {
     return firstValueFrom(this.http.post<InventoryDto>(
       `${this.inventoryBase()}/api/inventory/${productId}/adjust`,

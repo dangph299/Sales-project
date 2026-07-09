@@ -178,7 +178,7 @@ public sealed class Order : AggregateRoot
     }
 
     /// <summary>
-    /// Moves the order to <see cref="OrderStatus.Cancelled"/> and raises <see cref="OrderCancelledDomainEvent"/>
+    /// Moves the order to <see cref="OrderStatus.Cancelled"/> and raises <see cref="OrderUndoComfirmedDomainEvent"/>
     /// so Inventory can release any reserved stock.
     /// </summary>
     /// <exception cref="DomainException">
@@ -189,7 +189,14 @@ public sealed class Order : AggregateRoot
         if (Status == OrderStatus.Confirmed || Status == OrderStatus.PendingInventory) throw new DomainException("Confirmed or pending inventory orders cannot be cancelled.");
         Status = OrderStatus.Cancelled;
         Touch();
-        Raise(new OrderCancelledDomainEvent(Id));
+    }
+
+    public void UndoConfirmed()
+    {
+        if (Status != OrderStatus.Confirmed) throw new DomainException("Only confirmed orders can be undone.");
+        Status = OrderStatus.Draft;
+        Touch();
+        Raise(new OrderUndoComfirmedDomainEvent(Id));
     }
 
     private void EnsureDraft()

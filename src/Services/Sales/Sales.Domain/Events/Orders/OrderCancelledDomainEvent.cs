@@ -7,4 +7,4 @@ namespace Sales.Domain;
 /// <param name="OrderId">
 /// The unique identifier of the order that was cancelled.
 /// </param>
-public sealed record OrderCancelledDomainEvent(Guid OrderId) : DomainEvent;
+public sealed record OrderUndoComfirmedDomainEvent(Guid OrderId) : DomainEvent;

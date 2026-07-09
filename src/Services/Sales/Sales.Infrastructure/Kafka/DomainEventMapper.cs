@@ -41,7 +41,7 @@ internal static class DomainEventMapper
         OrderCreatedDomainEvent e => MapOrderCreated(e),
         OrderLinesReplacedDomainEvent e => MapOrderLinesReplaced(e),
         OrderConfirmationRequestedDomainEvent e => MapOrderConfirmationRequested(e),
-        OrderCancelledDomainEvent e => MapOrderCancelled(e),
+        OrderUndoComfirmedDomainEvent e => MapOrderUndoConfirmed(e),
         OrderConfirmedDomainEvent e => MapOrderConfirmed(e),
         OrderInventoryRejectedDomainEvent e => MapOrderInventoryRejected(e),
         _ => throw new InvalidOperationException($"No integration mapping exists for {domainEvent.GetType().Name}.")
@@ -111,10 +111,10 @@ internal static class DomainEventMapper
     }
 
     /// <summary>Order cancelled by Sales -&gt; integration event asking Inventory to release any reserved stock (not an audit event).</summary>
-    private static (string Topic, object Payload) MapOrderCancelled(OrderCancelledDomainEvent e)
+    private static (string Topic, object Payload) MapOrderUndoConfirmed(OrderUndoComfirmedDomainEvent e)
     {
         var integrationEvent = new OrderCancellationRequested(e.OrderId);
-        return (KafkaTopics.OrderCancellationRequested, integrationEvent);
+        return (KafkaTopics.OrderUndoConfirmationRequested, integrationEvent);
     }
 
     /// <summary>Inventory confirmed the reservation -&gt; SalesAudit "Confirmed", recording the order's status transition.</summary>

@@ -36,7 +36,7 @@ public static class DependencyInjection
                     KafkaTopics.SalesAudit,
                     KafkaTopics.InventoryAudit,
                     KafkaTopics.OrderConfirmationRequested,
-                    KafkaTopics.OrderCancellationRequested,
+                    KafkaTopics.OrderUndoConfirmationRequested,
                     KafkaTopics.StockReserved,
                     KafkaTopics.StockRejected,
                     KafkaTopics.StockReleased])
