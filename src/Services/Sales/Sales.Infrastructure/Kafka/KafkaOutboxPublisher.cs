@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using BuildingBlocks.Infrastructure;
 using KafkaFlow;
 using KafkaFlow.Producers;
 using Microsoft.Extensions.Logging;

@@ -1,5 +1,5 @@
-using System.Text.Json;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -57,13 +57,7 @@ public sealed class SalesDbContext(DbContextOptions<SalesDbContext> options, IEx
             foreach (var domainEvent in aggregate.GetDomainEvents())
             {
                 var (topic, envelope) = DomainEventMapper.Map(aggregate, domainEvent, executionContext);
-                OutboxMessages.Add(new OutboxMessage
-                {
-                    Id = envelope.EventId,
-                    Topic = topic,
-                    Payload = JsonSerializer.Serialize(envelope),
-                    OccurredAt = envelope.OccurredAt
-                });
+                OutboxMessages.Add(OutboxMessage.From(envelope, topic));
             }
         }
 

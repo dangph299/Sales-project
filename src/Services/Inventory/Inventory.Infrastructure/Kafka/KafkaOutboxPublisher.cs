@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using BuildingBlocks.Infrastructure;
 using KafkaFlow;
 using KafkaFlow.Producers;
 using Microsoft.Extensions.Logging;
@@ -16,7 +17,7 @@ namespace Inventory.Infrastructure;
 public sealed class KafkaOutboxPublisher(IProducerAccessor producers, ILogger<KafkaOutboxPublisher> logger) : IOutboxPublisher
 {
     /// <inheritdoc/>
-    public async Task PublishAsync(OutboxRow message, CancellationToken cancellationToken = default)
+    public async Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken = default)
     {
         var envelope = JsonSerializer.Deserialize<EventEnvelope>(message.Payload)!;
 

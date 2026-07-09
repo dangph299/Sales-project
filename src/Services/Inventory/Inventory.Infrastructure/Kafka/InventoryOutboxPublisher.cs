@@ -1,3 +1,4 @@
+using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -83,14 +84,14 @@ public sealed class InventoryOutboxPublisher(IServiceScopeFactory scopes, IOutbo
         }
     }
 
-    private static void MarkFailed(OutboxRow row, Exception ex)
+    private static void MarkFailed(OutboxMessage row, Exception ex)
     {
         row.Attempts++;
         row.LastError = ex.Message[..Math.Min(2000, ex.Message.Length)];
         row.LockId = null;
         row.LockedUntil = null;
 
-        if (row.Attempts >= OutboxRow.MaxAttempts)
+        if (row.Attempts >= OutboxMessage.MaxAttempts)
         {
             row.DeadLetteredAt = DateTimeOffset.UtcNow;
             row.NextAttemptAt = null;

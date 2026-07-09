@@ -1,3 +1,4 @@
+using BuildingBlocks.Infrastructure;
 using Inventory.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,13 +19,13 @@ public sealed class InventoryPostgresReliabilityTests
         await db.Database.MigrateAsync();
         await db.Outbox.ExecuteDeleteAsync();
 
-        var row = new OutboxRow
+        var row = new OutboxMessage
         {
             Id = Guid.NewGuid(),
             Topic = "inventory.audit.v1",
             Payload = "{}",
             OccurredAt = DateTimeOffset.UtcNow,
-            Attempts = OutboxRow.MaxAttempts,
+            Attempts = OutboxMessage.MaxAttempts,
             DeadLetteredAt = DateTimeOffset.UtcNow,
             NextAttemptAt = null,
             LockId = Guid.NewGuid(),

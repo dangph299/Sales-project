@@ -1,10 +1,14 @@
-namespace Inventory.Infrastructure;
+using System.Text.Json;
+using BuildingBlocks.Contracts;
+
+namespace BuildingBlocks.Infrastructure;
 
 /// <summary>
-/// Persistence record for an event pending (or having attempted) publication to Kafka,
-/// implementing the transactional outbox pattern.
+/// Persistence record for a domain event pending (or having attempted) publication to Kafka,
+/// implementing the transactional outbox pattern. Shared by every service's <c>outbox_messages</c>
+/// table; each service owns its own <c>IEntityTypeConfiguration&lt;OutboxMessage&gt;</c> mapping.
 /// </summary>
-public sealed class OutboxRow
+public sealed class OutboxMessage
 {
     /// <summary>
     /// The maximum number of publish attempts before a message is dead-lettered.
@@ -12,7 +16,7 @@ public sealed class OutboxRow
     public const int MaxAttempts = 10;
 
     /// <summary>
-    /// Gets or sets the unique identifier of this row, matching the wrapped event's <c>EventId</c>.
+    /// Gets or sets the unique identifier of this message, matching the wrapped event's <c>EventId</c>.
     /// </summary>
     public Guid Id { get; set; }
 
@@ -48,7 +52,7 @@ public sealed class OutboxRow
     public DateTimeOffset? DeadLetteredAt { get; set; }
 
     /// <summary>
-    /// Gets or sets the UTC instant until which this row is locked by a publisher instance, or
+    /// Gets or sets the UTC instant until which this message is locked by a publisher instance, or
     /// <see langword="null"/> if it is not currently locked.
     /// </summary>
     public DateTimeOffset? LockedUntil { get; set; }
@@ -67,4 +71,24 @@ public sealed class OutboxRow
     /// Gets or sets the error message from the most recent failed publish attempt, or <see langword="null"/>.
     /// </summary>
     public string? LastError { get; set; }
+
+    /// <summary>
+    /// Creates a new, unpublished <see cref="OutboxMessage"/> wrapping the given event envelope.
+    /// </summary>
+    /// <param name="envelope">
+    /// The event envelope to persist as the message payload.
+    /// </param>
+    /// <param name="topic">
+    /// The Kafka topic the message must be published to.
+    /// </param>
+    /// <returns>
+    /// A new <see cref="OutboxMessage"/> ready to be added to the outbox table.
+    /// </returns>
+    public static OutboxMessage From(EventEnvelope envelope, string topic) => new()
+    {
+        Id = envelope.EventId,
+        Topic = topic,
+        Payload = JsonSerializer.Serialize(envelope),
+        OccurredAt = envelope.OccurredAt
+    };
 }
