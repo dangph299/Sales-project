@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Text.Json;
-using BuildingBlocks.Infrastructure;
 using KafkaFlow;
 using KafkaFlow.Producers;
 using Microsoft.Extensions.Logging;
@@ -8,20 +7,37 @@ using ContractHeaders = BuildingBlocks.Contracts.MessageHeaders;
 using EventEnvelope = BuildingBlocks.Contracts.EventEnvelope;
 using KafkaHeaders = KafkaFlow.MessageHeaders;
 
-namespace Inventory.Infrastructure;
+namespace BuildingBlocks.Infrastructure;
 
 /// <summary>
-/// Publishes a single outbox row to Kafka, opening a tracing span and propagating the W3C
+/// Publishes a single outbox message to Kafka, opening a tracing span and propagating the W3C
 /// <c>traceparent</c>/<c>tracestate</c> headers so the consumer can continue the same distributed trace.
 /// </summary>
-public sealed class KafkaOutboxPublisher(IProducerAccessor producers, ILogger<KafkaOutboxPublisher> logger) : IOutboxPublisher
+/// <param name="producers">
+/// The KafkaFlow producer accessor used to resolve the named producer to publish through.
+/// </param>
+/// <param name="logger">
+/// The logger used to record a structured entry after each successful publish.
+/// </param>
+/// <param name="activitySource">
+/// The <see cref="System.Diagnostics.ActivitySource"/> the calling service uses to trace its Kafka
+/// publish/consume operations.
+/// </param>
+/// <param name="producerName">
+/// The name of the KafkaFlow producer, as registered with <c>AddProducer</c>, to publish through.
+/// </param>
+public sealed class KafkaOutboxPublisher(
+    IProducerAccessor producers,
+    ILogger<KafkaOutboxPublisher> logger,
+    ActivitySource activitySource,
+    string producerName) : IOutboxPublisher
 {
     /// <inheritdoc/>
     public async Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken = default)
     {
         var envelope = JsonSerializer.Deserialize<EventEnvelope>(message.Payload)!;
 
-        using var activity = InventoryActivitySource.Instance.StartActivity($"kafka.publish {message.Topic}", ActivityKind.Producer);
+        using var activity = activitySource.StartActivity($"kafka.publish {message.Topic}", ActivityKind.Producer);
         activity?.SetTag("messaging.system", "kafka");
         activity?.SetTag("messaging.destination.name", message.Topic);
 
@@ -32,7 +48,7 @@ public sealed class KafkaOutboxPublisher(IProducerAccessor producers, ILogger<Ka
         if (!string.IsNullOrEmpty(traceState)) headers.SetString(ContractHeaders.TraceState, traceState);
 
         var sw = Stopwatch.StartNew();
-        var producer = producers.GetProducer("inventory-outbox");
+        var producer = producers.GetProducer(producerName);
         var report = await producer.ProduceAsync(message.Topic, envelope.AggregateId.ToString(), envelope, headers);
 
         logger.LogInformation(
