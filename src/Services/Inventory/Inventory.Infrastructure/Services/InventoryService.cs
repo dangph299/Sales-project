@@ -6,8 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Inventory.Infrastructure;
 
 /// <summary>
-/// EF Core-backed implementation of <see cref="IInventoryService"/>, called directly from
-/// Inventory's Minimal API endpoints.
+/// EF Core-backed implementation of <see cref="IInventoryService"/>.
 /// </summary>
 public sealed class InventoryService(InventoryDbContext db) : IInventoryService
 {

@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Sales.Application;
 using Sales.Domain;
 
+namespace Sales.Api.Middleware;
+
 /// <summary>
 /// Converts unhandled exceptions into RFC 7807 <see cref="ProblemDetails"/> responses with the
 /// appropriate HTTP status code. Does not log — <c>RequestLoggingMiddleware</c> already logs the

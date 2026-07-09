@@ -55,4 +55,11 @@ public sealed class ReservationLine
             Quantity = line.Quantity
         };
     }
+
+    internal void ReplaceWith(ReservationRequestLine line)
+    {
+        if (line.ProductId != ProductId) throw new InvalidOperationException("Reservation line product cannot be changed.");
+        Sku = line.Sku.Trim().ToUpperInvariant();
+        Quantity = line.Quantity;
+    }
 }

@@ -29,4 +29,20 @@ public sealed class InventoryItemTests
         Assert.Throws<InvalidOperationException>(reservation.Release);
         Assert.Equal(ReservationStatus.Released, reservation.Status);
     }
+
+    [Fact]
+    public void Released_reservation_can_be_reactivated_for_repeat_confirmation()
+    {
+        var firstProductId = Guid.NewGuid();
+        var secondProductId = Guid.NewGuid();
+        var reservation = Reservation.Create(Guid.NewGuid(), [new ReservationRequestLine(firstProductId, "sku-1", 1)]);
+
+        reservation.Release();
+        reservation.Reactivate([new ReservationRequestLine(secondProductId, "sku-2", 2)]);
+
+        Assert.Equal(ReservationStatus.Active, reservation.Status);
+        var line = Assert.Single(reservation.Lines);
+        Assert.Equal(secondProductId, line.ProductId);
+        Assert.Equal(2, line.Quantity);
+    }
 }

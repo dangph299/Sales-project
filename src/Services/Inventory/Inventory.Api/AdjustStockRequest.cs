@@ -1,5 +1,7 @@
+namespace Inventory.Api.Models.Requests;
+
 /// <summary>
-/// HTTP request body for the stock adjustment Minimal API endpoint.
+/// HTTP request body for the stock adjustment endpoint.
 /// </summary>
 /// <param name="Sku">
 /// The product's SKU, used if a new inventory item needs to be created.

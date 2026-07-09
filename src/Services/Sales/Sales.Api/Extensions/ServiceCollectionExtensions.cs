@@ -1,0 +1,79 @@
+using System.Text.Json.Serialization;
+using BuildingBlocks.Observability;
+using BuildingBlocks.Web.Authentication;
+using BuildingBlocks.Web.Observability;
+using BuildingBlocks.Web.OpenApi;
+using Hangfire;
+using Hangfire.PostgreSql;
+using MediatR;
+using Microsoft.AspNetCore.Identity;
+using Sales.Api.Middleware;
+using Sales.Application;
+using Sales.Domain;
+using Sales.Infrastructure;
+using Serilog;
+
+namespace Sales.Api.Extensions;
+
+/// <summary>
+/// Composition extensions for the Sales API host.
+/// </summary>
+public static class ServiceCollectionExtensions
+{
+    /// <summary>
+    /// Registers all services required by the Sales API host.
+    /// </summary>
+    /// <param name="builder">
+    /// The Sales API web application builder.
+    /// </param>
+    /// <returns>
+    /// The same builder, to allow chaining.
+    /// </returns>
+    public static WebApplicationBuilder AddApplicationServices(this WebApplicationBuilder builder)
+    {
+        builder.Host.UseSerilog((context, config) =>
+            config.ConfigureSharedSinks(context.Configuration, "sales-api"));
+
+        builder.Services.AddProblemDetails();
+        builder.Services.AddExceptionHandler<ExceptionHandlingMiddleware>();
+        builder.Services.AddControllers()
+            .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+        builder.Services.AddApiDocumentation(
+            "Sales API",
+            "Sales service API for authentication, products, customers, and orders.");
+        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<CreateProduct>());
+        builder.Services.AddSalesApplication();
+        builder.Services.AddSalesInfrastructure(builder.Configuration);
+        builder.Services.AddSalesBackgroundJobs(builder.Configuration);
+        builder.Services.AddSalesIdentity();
+        builder.Services.AddJwtAuthentication(builder.Configuration, TimeSpan.FromSeconds(30));
+        builder.Services.AddAuthorization();
+        builder.Services.AddApplicationObservability(
+            builder.Configuration,
+            "Sales.Infrastructure.Kafka",
+            "Sales.Infrastructure");
+
+        return builder;
+    }
+
+    private static IServiceCollection AddSalesBackgroundJobs(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.AddHangfire(config => config.UsePostgreSqlStorage(options =>
+            options.UseNpgsqlConnection(configuration.GetConnectionString("Hangfire"))));
+        services.AddHangfireServer(options => options.Queues = ["critical", "default", "maintenance"]);
+        return services;
+    }
+
+    private static IServiceCollection AddSalesIdentity(this IServiceCollection services)
+    {
+        services.AddIdentityCore<ApplicationUser>(options =>
+            {
+                options.Password.RequiredLength = 8;
+                options.User.RequireUniqueEmail = true;
+            })
+            .AddRoles<IdentityRole<Guid>>()
+            .AddEntityFrameworkStores<SalesDbContext>();
+
+        return services;
+    }
+}

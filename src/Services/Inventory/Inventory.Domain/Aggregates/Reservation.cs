@@ -53,11 +53,25 @@ public sealed class Reservation
     public static Reservation Create(Guid orderId, IEnumerable<ReservationRequestLine> lines)
     {
         var reservation = new Reservation { Id = Guid.NewGuid(), OrderId = orderId, CreatedAt = DateTimeOffset.UtcNow };
-        var materialized = lines.ToArray();
-        if (materialized.Length == 0) throw new InvalidOperationException("Reservation needs at least one line.");
-        if (materialized.Any(x => x.Quantity <= 0)) throw new InvalidOperationException("Reservation quantity must be positive.");
-        reservation._lines.AddRange(materialized.Select(x => ReservationLine.Create(reservation.Id, x)));
+        reservation.SetLines(lines);
         return reservation;
+    }
+
+    /// <summary>
+    /// Reactivates a previously released reservation with the current requested order lines.
+    /// </summary>
+    /// <param name="lines">
+    /// The product/quantity lines to reserve. Must contain at least one line, all with positive quantities.
+    /// </param>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when the reservation is not released, or when <paramref name="lines"/> is invalid.
+    /// </exception>
+    public void Reactivate(IEnumerable<ReservationRequestLine> lines)
+    {
+        if (Status != ReservationStatus.Released) throw new InvalidOperationException("Only released reservations can be reactivated.");
+        Status = ReservationStatus.Active;
+        CreatedAt = DateTimeOffset.UtcNow;
+        SetLines(lines);
     }
 
     /// <summary>
@@ -70,5 +84,26 @@ public sealed class Reservation
     {
         if (Status != ReservationStatus.Active) throw new InvalidOperationException("Reservation is already released.");
         Status = ReservationStatus.Released;
+    }
+
+    private void SetLines(IEnumerable<ReservationRequestLine> lines)
+    {
+        var materialized = lines.ToArray();
+        if (materialized.Length == 0) throw new InvalidOperationException("Reservation needs at least one line.");
+        if (materialized.Any(x => x.Quantity <= 0)) throw new InvalidOperationException("Reservation quantity must be positive.");
+        if (materialized.Select(x => x.ProductId).Distinct().Count() != materialized.Length)
+            throw new InvalidOperationException("A product can occur only once in a reservation.");
+
+        foreach (var existing in _lines.Where(existing => materialized.All(x => x.ProductId != existing.ProductId)).ToArray())
+        {
+            _lines.Remove(existing);
+        }
+
+        foreach (var line in materialized)
+        {
+            var existing = _lines.SingleOrDefault(x => x.ProductId == line.ProductId);
+            if (existing is null) _lines.Add(ReservationLine.Create(Id, line));
+            else existing.ReplaceWith(line);
+        }
     }
 }

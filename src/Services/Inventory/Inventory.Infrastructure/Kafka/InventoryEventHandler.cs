@@ -104,7 +104,12 @@ public sealed class InventoryEventHandler(IServiceScopeFactory scopes, ILogger<I
 
     private static async Task<string> Reserve(InventoryDbContext db, EventEnvelope envelope)
     {
-        if (await db.Reservations.AnyAsync(x => x.OrderId == envelope.AggregateId)) return "AlreadyReserved";
+        var existingReservation = await db.Reservations
+            .Include(x => x.Lines)
+            .SingleOrDefaultAsync(x => x.OrderId == envelope.AggregateId);
+
+        if (existingReservation?.Status == ReservationStatus.Active) return "AlreadyReserved";
+
         var request = envelope.Data.Deserialize<OrderConfirmationRequested>()!;
         var ids = request.Lines.Select(x => x.ProductId).Order().ToArray();
         var items = await db.Items.Where(x => ids.Contains(x.ProductId)).OrderBy(x => x.ProductId).ToListAsync();
@@ -118,8 +123,16 @@ public sealed class InventoryEventHandler(IServiceScopeFactory scopes, ILogger<I
             return "Rejected";
         }
         foreach (var line in request.Lines) items.Single(x => x.ProductId == line.ProductId).Reserve(line.Quantity);
-        db.Reservations.Add(Reservation.Create(request.OrderId,
-            request.Lines.Select(x => new ReservationRequestLine(x.ProductId, x.Sku, x.Quantity))));
+        var reservationLines = request.Lines.Select(x => new ReservationRequestLine(x.ProductId, x.Sku, x.Quantity));
+        if (existingReservation is null)
+        {
+            db.Reservations.Add(Reservation.Create(request.OrderId, reservationLines));
+        }
+        else
+        {
+            existingReservation.Reactivate(reservationLines);
+        }
+
         db.Enqueue(EventEnvelopeFactory.Create(request.OrderId, envelope.Version, new StockReserved(request.OrderId), "inventory", envelope.CorrelationId, envelope.EventId), KafkaTopics.StockReserved);
         InventoryMetrics.ReservationReserved.Add(1);
         return "Reserved";

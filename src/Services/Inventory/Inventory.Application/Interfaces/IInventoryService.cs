@@ -1,8 +1,7 @@
 namespace Inventory.Application;
 
 /// <summary>
-/// Application-facing port for Inventory use cases, called directly from Minimal API endpoints
-/// (Inventory does not use MediatR/CQRS).
+/// Application-facing port for Inventory use cases, called by the Inventory API controllers.
 /// </summary>
 public interface IInventoryService
 {
