@@ -19,7 +19,19 @@ namespace Inventory.Infrastructure;
 /// <c>OrderCancellationRequested</c>), reserving or releasing stock accordingly with Inbox-based
 /// idempotency and a Serializable transaction to guard the stock invariant under concurrency.
 /// </summary>
-public sealed class InventoryEventHandler(IServiceScopeFactory scopes, ILogger<InventoryEventHandler> logger) : IMessageHandler<EventEnvelope>
+/// <param name="scopes">
+/// The scope factory used to resolve per-message scoped dependencies such as the database context.
+/// </param>
+/// <param name="logger">
+/// The logger used to record structured entries for each consumed message.
+/// </param>
+/// <param name="activitySource">
+/// The <see cref="ActivitySource"/> used to start the tracing span for each consumed message.
+/// </param>
+public sealed class InventoryEventHandler(
+    IServiceScopeFactory scopes,
+    ILogger<InventoryEventHandler> logger,
+    ActivitySource activitySource) : IMessageHandler<EventEnvelope>
 {
     /// <summary>
     /// Handles a single consumed message: opens a tracing span linked to the producer's trace,
@@ -37,7 +49,7 @@ public sealed class InventoryEventHandler(IServiceScopeFactory scopes, ILogger<I
     public async Task Handle(IMessageContext context, EventEnvelope envelope)
     {
         var parentContext = TraceContextParser.Parse(context.Headers.GetString(ContractHeaders.TraceParent), context.Headers.GetString(ContractHeaders.TraceState));
-        using var activity = InventoryActivitySource.Instance.StartActivity(
+        using var activity = activitySource.StartActivity(
             $"kafka.consume {context.ConsumerContext.Topic}", ActivityKind.Consumer, parentContext);
         activity?.SetTag("messaging.system", "kafka");
         activity?.SetTag("messaging.destination.name", context.ConsumerContext.Topic);

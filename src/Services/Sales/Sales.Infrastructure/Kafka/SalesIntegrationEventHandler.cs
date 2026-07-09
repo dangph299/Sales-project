@@ -16,7 +16,19 @@ namespace Sales.Infrastructure;
 /// <c>StockRejected</c>, <c>StockReleased</c>), applying the corresponding status transition to the
 /// matching <see cref="Sales.Domain.Order"/> with Inbox-based idempotency.
 /// </summary>
-public sealed class SalesIntegrationEventHandler(IServiceScopeFactory scopes, ILogger<SalesIntegrationEventHandler> logger) : IMessageHandler<EventEnvelope>
+/// <param name="scopes">
+/// The scope factory used to resolve per-message scoped dependencies such as the database context.
+/// </param>
+/// <param name="logger">
+/// The logger used to record structured entries for each consumed message.
+/// </param>
+/// <param name="activitySource">
+/// The <see cref="ActivitySource"/> used to start the tracing span for each consumed message.
+/// </param>
+public sealed class SalesIntegrationEventHandler(
+    IServiceScopeFactory scopes,
+    ILogger<SalesIntegrationEventHandler> logger,
+    ActivitySource activitySource) : IMessageHandler<EventEnvelope>
 {
     /// <summary>
     /// Handles a single consumed message: opens a tracing span linked to the producer's trace,
@@ -34,7 +46,7 @@ public sealed class SalesIntegrationEventHandler(IServiceScopeFactory scopes, IL
     public async Task Handle(IMessageContext context, EventEnvelope envelope)
     {
         var parentContext = TraceContextParser.Parse(context.Headers.GetString(ContractHeaders.TraceParent), context.Headers.GetString(ContractHeaders.TraceState));
-        using var activity = SalesActivitySource.Instance.StartActivity(
+        using var activity = activitySource.StartActivity(
             $"kafka.consume {context.ConsumerContext.Topic}", ActivityKind.Consumer, parentContext);
         activity?.SetTag("messaging.system", "kafka");
         activity?.SetTag("messaging.destination.name", context.ConsumerContext.Topic);

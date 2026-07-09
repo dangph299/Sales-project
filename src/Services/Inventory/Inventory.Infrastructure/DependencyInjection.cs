@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
+using BuildingBlocks.Observability;
 using Inventory.Application;
 using KafkaFlow;
 using KafkaFlow.Producers;
@@ -33,9 +35,10 @@ public static class DependencyInjection
     {
         services.AddDbContext<InventoryDbContext>(x => x.UseNpgsql(configuration.GetConnectionString("Inventory")));
         services.AddScoped<IInventoryService, InventoryService>();
+        services.AddSingleton(new ActivitySource(ObservabilityNames.InventoryKafka));
         services.AddSingleton<IOutboxPublisher>(sp => new KafkaOutboxPublisher(
             sp.GetRequiredService<IProducerAccessor>(), sp.GetRequiredService<ILogger<KafkaOutboxPublisher>>(),
-            InventoryActivitySource.Instance, "inventory-outbox"));
+            sp.GetRequiredService<ActivitySource>(), "inventory-outbox"));
         services.AddHostedService<InventoryOutboxPublisher>();
         var brokers = configuration.GetSection("Kafka:Brokers").GetChildren().Select(x => x.Value!).Where(x => x is not null).ToArray();
         if (brokers.Length == 0) brokers = ["kafka:9092"];

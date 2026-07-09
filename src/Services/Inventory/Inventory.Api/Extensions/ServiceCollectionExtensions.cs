@@ -36,7 +36,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddAuthorization();
         builder.Services.AddApplicationObservability(
             builder.Configuration,
-            "Inventory.Infrastructure.Kafka",
+            ObservabilityNames.InventoryKafka,
             "Inventory.Infrastructure");
 
         return builder;
