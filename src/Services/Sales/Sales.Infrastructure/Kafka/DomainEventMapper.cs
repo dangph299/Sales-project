@@ -1,4 +1,5 @@
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using Sales.Application;
 using Sales.Domain;
 

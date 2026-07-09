@@ -1,4 +1,5 @@
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using Inventory.Application;
 using Inventory.Domain;
 using Microsoft.EntityFrameworkCore;

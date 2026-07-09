@@ -2,6 +2,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Text.Json;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using Inventory.Domain;
 using KafkaFlow;
 using Microsoft.EntityFrameworkCore;

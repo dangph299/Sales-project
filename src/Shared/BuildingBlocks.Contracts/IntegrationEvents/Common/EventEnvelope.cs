@@ -4,7 +4,7 @@ namespace BuildingBlocks.Contracts;
 
 /// <summary>
 /// The transport envelope wrapping every event published to Kafka: pure transport data, not a
-/// payload itself. See <c>EventEnvelopeFactory</c> in each service's Infrastructure project for
+/// payload itself. See <c>EventEnvelopeFactory</c> in <c>BuildingBlocks.Infrastructure</c> for
 /// how instances are constructed.
 /// </summary>
 /// <param name="EventId">
