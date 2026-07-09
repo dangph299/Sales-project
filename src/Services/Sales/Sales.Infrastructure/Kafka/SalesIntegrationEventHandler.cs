@@ -1,13 +1,12 @@
 using System.Diagnostics;
 using System.Text.Json;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using KafkaFlow;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Npgsql;
 using Serilog.Context;
-using ContractHeaders = BuildingBlocks.Contracts.MessageHeaders;
 
 namespace Sales.Infrastructure;
 
@@ -45,12 +44,7 @@ public sealed class SalesIntegrationEventHandler(
     /// </returns>
     public async Task Handle(IMessageContext context, EventEnvelope envelope)
     {
-        var parentContext = TraceContextParser.Parse(context.Headers.GetString(ContractHeaders.TraceParent), context.Headers.GetString(ContractHeaders.TraceState));
-        using var activity = activitySource.StartActivity(
-            $"kafka.consume {context.ConsumerContext.Topic}", ActivityKind.Consumer, parentContext);
-        activity?.SetTag("messaging.system", "kafka");
-        activity?.SetTag("messaging.destination.name", context.ConsumerContext.Topic);
-        activity?.SetTag("messaging.kafka.consumer.group", context.ConsumerContext.GroupId);
+        using var activity = KafkaConsumerActivity.Start(activitySource, context);
 
         using (LogContext.PushProperty("EventId", envelope.EventId))
         using (LogContext.PushProperty("EventType", envelope.EventType))
@@ -89,7 +83,7 @@ public sealed class SalesIntegrationEventHandler(
             db.InboxMessages.Add(new InboxMessage { EventId = envelope.EventId, ProcessedAt = DateTimeOffset.UtcNow, Consumer = "sales-v1" });
             await db.SaveChangesAsync();
         }
-        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        catch (DbUpdateException ex) when (PostgresExceptions.IsUniqueViolation(ex))
         {
             SalesMetrics.InboxDuplicate.Add(1);
             await transaction.RollbackAsync();
@@ -127,10 +121,5 @@ public sealed class SalesIntegrationEventHandler(
         await transaction.CommitAsync();
         SalesMetrics.InboxProcessed.Add(1);
         return result;
-    }
-
-    private static bool IsUniqueViolation(DbUpdateException ex)
-    {
-        return ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
     }
 }

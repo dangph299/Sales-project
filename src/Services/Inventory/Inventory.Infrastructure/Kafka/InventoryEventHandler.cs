@@ -8,9 +8,7 @@ using KafkaFlow;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Npgsql;
 using Serilog.Context;
-using ContractHeaders = BuildingBlocks.Contracts.MessageHeaders;
 
 namespace Inventory.Infrastructure;
 
@@ -48,12 +46,7 @@ public sealed class InventoryEventHandler(
     /// </returns>
     public async Task Handle(IMessageContext context, EventEnvelope envelope)
     {
-        var parentContext = TraceContextParser.Parse(context.Headers.GetString(ContractHeaders.TraceParent), context.Headers.GetString(ContractHeaders.TraceState));
-        using var activity = activitySource.StartActivity(
-            $"kafka.consume {context.ConsumerContext.Topic}", ActivityKind.Consumer, parentContext);
-        activity?.SetTag("messaging.system", "kafka");
-        activity?.SetTag("messaging.destination.name", context.ConsumerContext.Topic);
-        activity?.SetTag("messaging.kafka.consumer.group", context.ConsumerContext.GroupId);
+        using var activity = KafkaConsumerActivity.Start(activitySource, context);
 
         using (LogContext.PushProperty("EventId", envelope.EventId))
         using (LogContext.PushProperty("EventType", envelope.EventType))
@@ -92,7 +85,7 @@ public sealed class InventoryEventHandler(
             db.Inbox.Add(new InboxRow { EventId = envelope.EventId, ProcessedAt = DateTimeOffset.UtcNow });
             await db.SaveChangesAsync();
         }
-        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        catch (DbUpdateException ex) when (PostgresExceptions.IsUniqueViolation(ex))
         {
             InventoryMetrics.InboxDuplicate.Add(1);
             await transaction.RollbackAsync();
@@ -161,10 +154,5 @@ public sealed class InventoryEventHandler(
         reservation.Release();
         db.Enqueue(EventEnvelopeFactory.Create(envelope.AggregateId, envelope.Version, new StockReleased(envelope.AggregateId), "inventory", envelope.CorrelationId, envelope.EventId), KafkaTopics.StockReleased);
         return "Released";
-    }
-
-    private static bool IsUniqueViolation(DbUpdateException ex)
-    {
-        return ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
     }
 }
