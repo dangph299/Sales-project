@@ -1,38 +1,33 @@
 using System.Diagnostics.Metrics;
+using BuildingBlocks.Observability;
 
 namespace Sales.Infrastructure;
 
 /// <summary>
 /// Custom OpenTelemetry metrics for Sales' outbox/inbox pipeline. Registered into the metrics
-/// provider via <c>AddMeter("Sales.Infrastructure")</c>.
+/// provider via <c>AddMeter("Sales.Infrastructure")</c>. Forwards to the shared
+/// <see cref="BuildingBlocks.Observability.OutboxMetrics"/>/<see cref="BuildingBlocks.Observability.InboxMetrics"/>
+/// instruments so the metric names and call sites are unchanged.
 /// </summary>
 internal static class SalesMetrics
 {
-    private static readonly Meter Meter = new("Sales.Infrastructure");
+    private static readonly OutboxMetrics Outbox = new("Sales.Infrastructure", "sales");
+    private static readonly InboxMetrics Inbox = new("Sales.Infrastructure", "sales");
 
     /// <summary>Counts outbox rows successfully published to Kafka.</summary>
-    public static readonly Counter<long> OutboxPublished = Meter.CreateCounter<long>("sales.outbox.published");
+    public static Counter<long> OutboxPublished => Outbox.Published;
 
     /// <summary>Counts outbox publish attempts that failed.</summary>
-    public static readonly Counter<long> OutboxFailed = Meter.CreateCounter<long>("sales.outbox.failed");
+    public static Counter<long> OutboxFailed => Outbox.Failed;
 
     /// <summary>Counts outbox rows that exceeded their maximum publish attempts and were dead-lettered.</summary>
-    public static readonly Counter<long> OutboxDeadLettered = Meter.CreateCounter<long>("sales.outbox.deadlettered");
+    public static Counter<long> OutboxDeadLettered => Outbox.DeadLettered;
 
     /// <summary>Counts inbound Kafka messages skipped because they were already recorded in the Inbox.</summary>
-    public static readonly Counter<long> InboxDuplicate = Meter.CreateCounter<long>("sales.inbox.duplicate");
+    public static Counter<long> InboxDuplicate => Inbox.Duplicate;
 
     /// <summary>Counts inbound Kafka messages processed successfully for the first time.</summary>
-    public static readonly Counter<long> InboxProcessed = Meter.CreateCounter<long>("sales.inbox.processed");
-
-    private static long _outboxBacklog;
-    private static long _outboxDeadLetters;
-
-    static SalesMetrics()
-    {
-        Meter.CreateObservableGauge("sales.outbox.backlog", () => Interlocked.Read(ref _outboxBacklog));
-        Meter.CreateObservableGauge("sales.outbox.deadletters", () => Interlocked.Read(ref _outboxDeadLetters));
-    }
+    public static Counter<long> InboxProcessed => Inbox.Processed;
 
     /// <summary>
     /// Updates the observable gauges reporting the current outbox backlog and dead-letter counts.
@@ -43,9 +38,5 @@ internal static class SalesMetrics
     /// <param name="deadLetters">
     /// The number of outbox rows currently dead-lettered.
     /// </param>
-    public static void SetOutboxSnapshot(long backlog, long deadLetters)
-    {
-        Interlocked.Exchange(ref _outboxBacklog, backlog);
-        Interlocked.Exchange(ref _outboxDeadLetters, deadLetters);
-    }
+    public static void SetOutboxSnapshot(long backlog, long deadLetters) => Outbox.SetSnapshot(backlog, deadLetters);
 }
