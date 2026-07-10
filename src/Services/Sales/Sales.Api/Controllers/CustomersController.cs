@@ -123,4 +123,23 @@ public sealed class CustomersController : ControllerBase
     {
         return Ok(await _sender.Send(new UpdateCustomer(id, body.Name, body.Phone), ct));
     }
+
+    /// <summary>
+    /// Soft-deletes an existing customer.
+    /// </summary>
+    /// <param name="id">
+    /// The unique identifier of the customer to delete.
+    /// </param>
+    /// <param name="ct">
+    /// A token to observe while waiting for the operation to complete.
+    /// </param>
+    /// <returns>
+    /// <c>204 No Content</c> after the customer has been soft-deleted.
+    /// </returns>
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await _sender.Send(new DeleteCustomer(id), ct);
+        return NoContent();
+    }
 }

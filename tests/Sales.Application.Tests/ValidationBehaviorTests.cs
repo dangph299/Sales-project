@@ -41,6 +41,47 @@ public sealed class ValidationBehaviorTests
         Assert.Equal("Nguyen Van A", dto.Name);
     }
 
+    [Fact]
+    public async Task Missing_order_line_discount_is_rejected()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<CreateOrder>());
+        services.AddSalesApplication();
+        services.AddSingleton<IOrderRepository, FakeOrderRepository>();
+        services.AddSingleton<IRepository<Customer>, FakeCustomerRepository>();
+        services.AddSingleton<IProductRepository, FakeProductRepository>();
+        services.AddSingleton<IUnitOfWork, FakeUnitOfWork>();
+        var mediator = services.BuildServiceProvider().GetRequiredService<IMediator>();
+
+        var ex = await Assert.ThrowsAsync<ValidationException>(() =>
+            mediator.Send(new CreateOrder(Guid.NewGuid(), [new OrderLineInput(Guid.NewGuid(), 1, null)])));
+
+        Assert.Contains(ex.Errors, e => e.PropertyName.EndsWith(nameof(OrderLineInput.DiscountPercent), StringComparison.Ordinal));
+    }
+
+    private sealed class FakeOrderRepository : IOrderRepository
+    {
+        public Task<Order?> GetWithLinesAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Order?>(null);
+        public Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Order?>(null);
+        public Task<IReadOnlyList<Order>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Order>>([]);
+        public Task AddAsync(Order aggregate, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public void Update(Order aggregate) { }
+        public void Delete(Order aggregate) { }
+    }
+
+    private sealed class FakeProductRepository : IProductRepository
+    {
+        public Task<Product?> GetBySkuAsync(string sku, CancellationToken cancellationToken = default) => Task.FromResult<Product?>(null);
+        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Product?>(null);
+        public Task<IReadOnlyList<Product>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<Product>>([]);
+        public Task AddAsync(Product aggregate, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public void Update(Product aggregate) { }
+        public void Delete(Product aggregate) { }
+    }
+
     private sealed class FakeCustomerRepository : IRepository<Customer>
     {
         public Task<Customer?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Customer?>(null);

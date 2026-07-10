@@ -10,5 +10,6 @@ namespace Sales.Infrastructure;
 public sealed class ProductRepository(SalesDbContext db) : Repository<Product>(db), IProductRepository
 {
     /// <inheritdoc/>
-    public Task<Product?> GetBySkuAsync(string sku, CancellationToken ct = default) => Db.Products.SingleOrDefaultAsync(x => x.Sku == sku, ct);
+    public Task<Product?> GetBySkuAsync(string sku, CancellationToken ct = default) =>
+        Db.Products.IgnoreQueryFilters().SingleOrDefaultAsync(x => x.Sku == sku, ct);
 }

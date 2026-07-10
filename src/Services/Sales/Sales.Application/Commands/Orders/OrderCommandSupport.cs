@@ -72,7 +72,10 @@ internal static class OrderCommandSupport
             if (!productsById.TryGetValue(input.ProductId, out var product))
                 throw new NotFoundException(nameof(Product), input.ProductId);
 
-            result.Add(new OrderLineItem(ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, product.IsActive), input.Quantity, input.DiscountPercent));
+            result.Add(new OrderLineItem(
+                ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, product.IsActive),
+                input.Quantity,
+                input.DiscountPercent ?? throw new DomainException("Discount is required.")));
         }
         return result;
     }

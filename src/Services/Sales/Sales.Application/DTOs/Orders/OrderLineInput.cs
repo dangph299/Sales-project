@@ -13,4 +13,4 @@ namespace Sales.Application;
 /// <param name="DiscountPercent">
 /// The requested discount percentage.
 /// </param>
-public sealed record OrderLineInput(Guid ProductId, int Quantity, decimal DiscountPercent);
+public sealed record OrderLineInput(Guid ProductId, int Quantity, decimal? DiscountPercent);

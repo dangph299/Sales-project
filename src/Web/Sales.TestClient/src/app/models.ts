@@ -18,6 +18,10 @@ export interface ProductDto {
   price: number;
   isActive: boolean;
   version: number;
+  updatedAt: string;
+  isDelete: boolean;
+  deleteByUser?: string | null;
+  deletedAt?: string | null;
 }
 
 export interface CustomerDto {
@@ -25,6 +29,10 @@ export interface CustomerDto {
   name: string;
   phone: string;
   version: number;
+  updatedAt: string;
+  isDelete: boolean;
+  deleteByUser?: string | null;
+  deletedAt?: string | null;
 }
 
 export enum PhoneMatch {
@@ -60,6 +68,7 @@ export interface OrderDto {
   totalQuantity: number;
   total: number;
   version: number;
+  updatedAt: string;
   rejectionReason?: string | null;
   lines: OrderLineDto[];
 }

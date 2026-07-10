@@ -15,6 +15,11 @@ public abstract class AggregateRoot : Entity
     public long Version { get; protected set; } = 1;
 
     /// <summary>
+    /// Gets the UTC instant this aggregate was last changed.
+    /// </summary>
+    public DateTimeOffset UpdatedAt { get; protected set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
     /// Gets the domain events raised by this aggregate since it was loaded or created, in the order
     /// they were raised.
     /// </summary>
@@ -41,5 +46,9 @@ public abstract class AggregateRoot : Entity
     /// Increments the aggregate's <see cref="Version"/>. Called by aggregate behavior whenever it
     /// mutates state, so optimistic concurrency checks can detect concurrent writes.
     /// </summary>
-    protected void Touch() => Version++;
+    protected void Touch()
+    {
+        Version++;
+        UpdatedAt = DateTimeOffset.UtcNow;
+    }
 }

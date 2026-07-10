@@ -31,6 +31,12 @@ public sealed class Reservation
     public DateTimeOffset CreatedAt { get; private set; }
 
     /// <summary>
+    /// Gets the latest Sales order version applied to this reservation. Used to ignore delayed
+    /// integration events that arrive out of order across Kafka topics.
+    /// </summary>
+    public long LastOrderVersion { get; private set; }
+
+    /// <summary>
     /// Gets the reservation's lines.
     /// </summary>
     public IReadOnlyCollection<ReservationLine> Lines => _lines.AsReadOnly();
@@ -50,11 +56,30 @@ public sealed class Reservation
     /// <exception cref="InvalidOperationException">
     /// Thrown when <paramref name="lines"/> is empty or contains a non-positive quantity.
     /// </exception>
-    public static Reservation Create(Guid orderId, IEnumerable<ReservationRequestLine> lines)
+    public static Reservation Create(Guid orderId, long orderVersion, IEnumerable<ReservationRequestLine> lines)
     {
-        var reservation = new Reservation { Id = Guid.NewGuid(), OrderId = orderId, CreatedAt = DateTimeOffset.UtcNow };
+        var reservation = new Reservation { Id = Guid.NewGuid(), OrderId = orderId, CreatedAt = DateTimeOffset.UtcNow, LastOrderVersion = orderVersion };
         reservation.SetLines(lines);
         return reservation;
+    }
+
+    /// <summary>
+    /// Records a newer confirmation event while the reservation is already active. This can happen
+    /// when a reconfirm event overtakes a delayed release event from an earlier order version.
+    /// </summary>
+    /// <param name="orderVersion">
+    /// The Sales order version carried by the confirmation event.
+    /// </param>
+    /// <returns>
+    /// <see langword="true"/> when this event advanced the reservation version; otherwise
+    /// <see langword="false"/> because it was duplicate or stale.
+    /// </returns>
+    public bool AcknowledgeActive(long orderVersion)
+    {
+        if (Status != ReservationStatus.Active) throw new InvalidOperationException("Only active reservations can be acknowledged.");
+        if (orderVersion <= LastOrderVersion) return false;
+        LastOrderVersion = orderVersion;
+        return true;
     }
 
     /// <summary>
@@ -66,12 +91,15 @@ public sealed class Reservation
     /// <exception cref="InvalidOperationException">
     /// Thrown when the reservation is not released, or when <paramref name="lines"/> is invalid.
     /// </exception>
-    public void Reactivate(IEnumerable<ReservationRequestLine> lines)
+    public bool Reactivate(long orderVersion, IEnumerable<ReservationRequestLine> lines)
     {
         if (Status != ReservationStatus.Released) throw new InvalidOperationException("Only released reservations can be reactivated.");
+        if (orderVersion <= LastOrderVersion) return false;
         Status = ReservationStatus.Active;
         CreatedAt = DateTimeOffset.UtcNow;
+        LastOrderVersion = orderVersion;
         SetLines(lines);
+        return true;
     }
 
     /// <summary>
@@ -80,10 +108,13 @@ public sealed class Reservation
     /// <exception cref="InvalidOperationException">
     /// Thrown when the reservation is not currently <see cref="ReservationStatus.Active"/>.
     /// </exception>
-    public void Release()
+    public bool Release(long orderVersion)
     {
         if (Status != ReservationStatus.Active) throw new InvalidOperationException("Reservation is already released.");
+        if (orderVersion <= LastOrderVersion) return false;
+        LastOrderVersion = orderVersion;
         Status = ReservationStatus.Released;
+        return true;
     }
 
     private void SetLines(IEnumerable<ReservationRequestLine> lines)

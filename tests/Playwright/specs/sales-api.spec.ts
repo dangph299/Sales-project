@@ -104,6 +104,7 @@ test.describe.serial('Sales API smoke and concurrency', () => {
     expect(detail.ok(), await detail.text()).toBeTruthy();
     const order = await detail.json();
     expect([3, 4]).toContain(order.totalQuantity);
+    expect(order.lines[0].discountPercent).toBe(10);
     expect(order.total).toBe(order.totalQuantity * 112_500);
   });
 

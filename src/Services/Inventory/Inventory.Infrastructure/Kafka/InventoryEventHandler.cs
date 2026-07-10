@@ -114,9 +114,15 @@ public sealed class InventoryEventHandler(
             .Include(x => x.Lines)
             .SingleOrDefaultAsync(x => x.OrderId == envelope.AggregateId);
 
-        if (existingReservation?.Status == ReservationStatus.Active) return "AlreadyReserved";
-
         var request = envelope.Data.Deserialize<OrderConfirmationRequested>()!;
+        if (existingReservation?.Status == ReservationStatus.Active)
+        {
+            if (!existingReservation.AcknowledgeActive(envelope.Version)) return "AlreadyReserved";
+
+            db.Enqueue(EventEnvelopeFactory.Create(request.OrderId, envelope.Version, new StockReserved(request.OrderId), "inventory", envelope.CorrelationId, envelope.EventId), KafkaTopics.StockReserved);
+            return "ReservedAcknowledged";
+        }
+
         var ids = request.Lines.Select(x => x.ProductId).Order().ToArray();
         var items = await db.Items.Where(x => ids.Contains(x.ProductId)).OrderBy(x => x.ProductId).ToListAsync();
         var error = request.Lines.FirstOrDefault(line => items.SingleOrDefault(x => x.ProductId == line.ProductId)?.Available < line.Quantity || items.All(x => x.ProductId != line.ProductId));
@@ -132,11 +138,11 @@ public sealed class InventoryEventHandler(
         var reservationLines = request.Lines.Select(x => new ReservationRequestLine(x.ProductId, x.Sku, x.Quantity));
         if (existingReservation is null)
         {
-            db.Reservations.Add(Reservation.Create(request.OrderId, reservationLines));
+            db.Reservations.Add(Reservation.Create(request.OrderId, envelope.Version, reservationLines));
         }
         else
         {
-            existingReservation.Reactivate(reservationLines);
+            if (!existingReservation.Reactivate(envelope.Version, reservationLines)) return "StaleReservation";
         }
 
         db.Enqueue(EventEnvelopeFactory.Create(request.OrderId, envelope.Version, new StockReserved(request.OrderId), "inventory", envelope.CorrelationId, envelope.EventId), KafkaTopics.StockReserved);
@@ -148,10 +154,11 @@ public sealed class InventoryEventHandler(
     {
         var reservation = await db.Reservations.Include(x => x.Lines).SingleOrDefaultAsync(x => x.OrderId == envelope.AggregateId);
         if (reservation is null || reservation.Status == ReservationStatus.Released) return "AlreadyReleased";
+        if (envelope.Version <= reservation.LastOrderVersion) return "StaleRelease";
         var ids = reservation.Lines.Select(x => x.ProductId).ToArray();
         var items = await db.Items.Where(x => ids.Contains(x.ProductId)).ToListAsync();
         foreach (var line in reservation.Lines) items.Single(x => x.ProductId == line.ProductId).Release(line.Quantity);
-        reservation.Release();
+        reservation.Release(envelope.Version);
         db.Enqueue(EventEnvelopeFactory.Create(envelope.AggregateId, envelope.Version, new StockReleased(envelope.AggregateId), "inventory", envelope.CorrelationId, envelope.EventId), KafkaTopics.StockReleased);
         return "Released";
     }

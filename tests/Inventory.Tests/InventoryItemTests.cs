@@ -24,9 +24,9 @@ public sealed class InventoryItemTests
     [Fact]
     public void Reservation_cannot_be_released_twice()
     {
-        var reservation = Reservation.Create(Guid.NewGuid(), [new ReservationRequestLine(Guid.NewGuid(), "sku", 1)]);
-        reservation.Release();
-        Assert.Throws<InvalidOperationException>(reservation.Release);
+        var reservation = Reservation.Create(Guid.NewGuid(), 1, [new ReservationRequestLine(Guid.NewGuid(), "sku", 1)]);
+        Assert.True(reservation.Release(2));
+        Assert.Throws<InvalidOperationException>(() => reservation.Release(3));
         Assert.Equal(ReservationStatus.Released, reservation.Status);
     }
 
@@ -35,14 +35,26 @@ public sealed class InventoryItemTests
     {
         var firstProductId = Guid.NewGuid();
         var secondProductId = Guid.NewGuid();
-        var reservation = Reservation.Create(Guid.NewGuid(), [new ReservationRequestLine(firstProductId, "sku-1", 1)]);
+        var reservation = Reservation.Create(Guid.NewGuid(), 1, [new ReservationRequestLine(firstProductId, "sku-1", 1)]);
 
-        reservation.Release();
-        reservation.Reactivate([new ReservationRequestLine(secondProductId, "sku-2", 2)]);
+        reservation.Release(2);
+        Assert.True(reservation.Reactivate(3, [new ReservationRequestLine(secondProductId, "sku-2", 2)]));
 
         Assert.Equal(ReservationStatus.Active, reservation.Status);
         var line = Assert.Single(reservation.Lines);
         Assert.Equal(secondProductId, line.ProductId);
         Assert.Equal(2, line.Quantity);
+    }
+
+    [Fact]
+    public void Reservation_ignores_stale_release_after_newer_confirmation()
+    {
+        var reservation = Reservation.Create(Guid.NewGuid(), 7, [new ReservationRequestLine(Guid.NewGuid(), "sku", 1)]);
+
+        Assert.True(reservation.AcknowledgeActive(10));
+
+        Assert.False(reservation.Release(9));
+        Assert.Equal(ReservationStatus.Active, reservation.Status);
+        Assert.Equal(10, reservation.LastOrderVersion);
     }
 }

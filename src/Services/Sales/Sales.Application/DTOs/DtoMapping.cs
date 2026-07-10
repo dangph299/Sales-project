@@ -57,6 +57,7 @@ public static class DtoMapping
             order.TotalQuantity,
             order.Total.Amount,
             order.Version,
+            order.UpdatedAt,
             order.RejectionReason,
             lines);
     }

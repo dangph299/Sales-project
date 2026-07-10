@@ -15,6 +15,6 @@ public sealed class OrderLineInputValidator : AbstractValidator<OrderLineInput>
     {
         RuleFor(x => x.ProductId).ValidAggregateId();
         RuleFor(x => x.Quantity).GreaterThan(0);
-        RuleFor(x => x.DiscountPercent).InclusiveBetween(0, 100);
+        RuleFor(x => x.DiscountPercent).NotNull().InclusiveBetween(0, 100);
     }
 }

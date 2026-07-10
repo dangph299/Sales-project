@@ -30,6 +30,21 @@ public sealed class Customer : AggregateRoot
     public string ReversedPhone { get; private set; } = null!;
 
     /// <summary>
+    /// Gets whether the customer has been soft-deleted.
+    /// </summary>
+    public bool IsDelete { get; private set; }
+
+    /// <summary>
+    /// Gets the user that soft-deleted this customer, or <see langword="null"/> if it is active.
+    /// </summary>
+    public string? DeleteByUser { get; private set; }
+
+    /// <summary>
+    /// Gets the UTC instant this customer was soft-deleted, or <see langword="null"/> if it is active.
+    /// </summary>
+    public DateTimeOffset? DeletedAt { get; private set; }
+
+    /// <summary>
     /// Creates a new <see cref="Customer"/> aggregate and raises <see cref="CustomerCreatedDomainEvent"/>.
     /// </summary>
     /// <param name="name">
@@ -68,12 +83,28 @@ public sealed class Customer : AggregateRoot
     /// </exception>
     public void Update(string name, string phone)
     {
+        EnsureNotDeleted();
         var oldName = Name;
         var oldPhone = Phone;
         SetDetails(name, phone);
         if (oldName == Name && oldPhone == Phone) return;
         Touch();
         Raise(new CustomerUpdatedDomainEvent(Id, oldName, oldPhone, Name, Phone));
+    }
+
+    /// <summary>
+    /// Soft-deletes the customer and records the actor responsible for the deletion.
+    /// </summary>
+    /// <param name="deleteByUser">
+    /// The user identifier responsible for the deletion.
+    /// </param>
+    public void Delete(string deleteByUser)
+    {
+        if (IsDelete) return;
+        IsDelete = true;
+        DeleteByUser = string.IsNullOrWhiteSpace(deleteByUser) ? "system" : deleteByUser.Trim();
+        DeletedAt = DateTimeOffset.UtcNow;
+        Touch();
     }
 
     /// <summary>
@@ -100,5 +131,10 @@ public sealed class Customer : AggregateRoot
         Name = string.IsNullOrWhiteSpace(name) ? throw new DomainException("Customer name is required.") : name.Trim();
         Phone = NormalizePhone(phone);
         ReversedPhone = new string(Phone.Reverse().ToArray());
+    }
+
+    private void EnsureNotDeleted()
+    {
+        if (IsDelete) throw new DomainException("Deleted customers cannot be changed.");
     }
 }

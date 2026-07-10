@@ -30,6 +30,9 @@ namespace Sales.Application;
 /// <param name="Version">
 /// The order's current optimistic concurrency version.
 /// </param>
+/// <param name="UpdatedAt">
+/// The UTC instant the order was last changed.
+/// </param>
 /// <param name="RejectionReason">
 /// The reason Inventory rejected the reservation, or <see langword="null"/> if it was never rejected.
 /// </param>
@@ -37,4 +40,4 @@ namespace Sales.Application;
 /// The order's lines.
 /// </param>
 public sealed record OrderDto(Guid Id, Guid CustomerId, string CustomerName, string CustomerPhone, DateTimeOffset CreatedAt,
-    string Status, int TotalQuantity, decimal Total, long Version, string? RejectionReason, IReadOnlyCollection<OrderLineDto> Lines);
+    string Status, int TotalQuantity, decimal Total, long Version, DateTimeOffset UpdatedAt, string? RejectionReason, IReadOnlyCollection<OrderLineDto> Lines);

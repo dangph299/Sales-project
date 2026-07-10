@@ -11,7 +11,9 @@ public sealed class CustomerReadService(SalesDbContext db) : ICustomerReadServic
 {
     /// <inheritdoc/>
     public Task<CustomerDto?> GetAsync(Guid id, CancellationToken ct = default) => db.Customers.AsNoTracking()
-        .Where(x => x.Id == id).Select(x => new CustomerDto(x.Id, x.Name, x.Phone, x.Version)).SingleOrDefaultAsync(ct);
+        .Where(x => x.Id == id)
+        .Select(x => new CustomerDto(x.Id, x.Name, x.Phone, x.Version, x.UpdatedAt, x.IsDelete, x.DeleteByUser, x.DeletedAt))
+        .SingleOrDefaultAsync(ct);
 
     /// <inheritdoc/>
     public async Task<PagedResult<CustomerDto>> SearchAsync(string? name, string? phone, PhoneMatch phoneMatch, int page, int pageSize, CancellationToken ct = default)
@@ -28,7 +30,8 @@ public sealed class CustomerReadService(SalesDbContext db) : ICustomerReadServic
         }
         var total = await query.LongCountAsync(ct);
         var items = await query.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(x => new CustomerDto(x.Id, x.Name, x.Phone, x.Version)).ToListAsync(ct);
+            .Select(x => new CustomerDto(x.Id, x.Name, x.Phone, x.Version, x.UpdatedAt, x.IsDelete, x.DeleteByUser, x.DeletedAt))
+            .ToListAsync(ct);
         return new(items, page, pageSize, total);
     }
 }

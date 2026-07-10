@@ -114,4 +114,24 @@ public sealed class ProductsController : ControllerBase
     {
         return Ok(await _sender.Send(new UpdateProduct(id, body.Name, body.Price, body.IsActive), ct));
     }
+
+    /// <summary>
+    /// Soft-deletes an existing product.
+    /// </summary>
+    /// <param name="id">
+    /// The unique identifier of the product to delete.
+    /// </param>
+    /// <param name="ct">
+    /// A token to observe while waiting for the operation to complete.
+    /// </param>
+    /// <returns>
+    /// <c>204 No Content</c> after the product has been soft-deleted.
+    /// </returns>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await _sender.Send(new DeleteProduct(id), ct);
+        return NoContent();
+    }
 }

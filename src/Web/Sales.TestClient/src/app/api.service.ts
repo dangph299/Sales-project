@@ -62,6 +62,10 @@ export class ApiService {
     return firstValueFrom(this.http.put<ProductDto>(`${this.salesBase()}/api/products/${id}`, payload, { headers: this.authHeaders() }));
   }
 
+  deleteProduct(id: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.salesBase()}/api/products/${id}`, { headers: this.authHeaders() }));
+  }
+
   searchProducts(name: string, page = 1, pageSize = 20): Promise<PagedResult<ProductDto>> {
     const params = this.params({ name, page, pageSize });
     return firstValueFrom(this.http.get<PagedResult<ProductDto>>(`${this.salesBase()}/api/products/`, { headers: this.authHeaders(), params }));
@@ -73,6 +77,10 @@ export class ApiService {
 
   updateCustomer(id: string, payload: { name: string; phone: string }): Promise<CustomerDto> {
     return firstValueFrom(this.http.put<CustomerDto>(`${this.salesBase()}/api/customers/${id}`, payload, { headers: this.authHeaders() }));
+  }
+
+  deleteCustomer(id: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${this.salesBase()}/api/customers/${id}`, { headers: this.authHeaders() }));
   }
 
   searchCustomers(name: string, phone: string, phoneMatch: PhoneMatch, page = 1, pageSize = 20): Promise<PagedResult<CustomerDto>> {
