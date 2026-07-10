@@ -43,6 +43,7 @@
       <div class="actions wrap">
         <button (click)="createProduct()" [disabled]="busy() || !canCallApi() || !!selectedProduct()">Create</button>
         <button (click)="updateProduct()" [disabled]="busy() || !selectedProduct()">Update</button>
+        <button class="danger" (click)="deleteProduct()" [disabled]="busy() || !selectedProduct()">Delete</button>
         <button class="secondary" (click)="resetProductForm()">New form</button>
       </div>
 
@@ -75,6 +76,7 @@
       <div class="actions wrap">
         <button (click)="createCustomer()" [disabled]="busy() || !canCallApi() || !!selectedCustomer()">Create</button>
         <button (click)="updateCustomer()" [disabled]="busy() || !selectedCustomer()">Update</button>
+        <button class="danger" (click)="deleteCustomer()" [disabled]="busy() || !selectedCustomer()">Delete</button>
         <button class="secondary" (click)="resetCustomerForm()">New form</button>
       </div>
 

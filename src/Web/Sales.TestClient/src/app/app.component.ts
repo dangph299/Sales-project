@@ -101,6 +101,17 @@ export class AppComponent {
     });
   }
 
+  deleteProduct(): Promise<void> {
+    const selected = this.requireProduct();
+    if (!confirm(`Delete product ${selected.sku} - ${selected.name}?`)) return Promise.resolve();
+
+    return this.run('Delete product', async () => {
+      await this.api.deleteProduct(selected.id);
+      this.resetProductForm();
+      await this.searchProducts(this.productSearch());
+    });
+  }
+
   resetProductForm(): void {
     this.selectedProduct.set(null);
     this.productForm.set({ sku: `SKU-${Date.now()}`, name: 'Demo product', price: 120000, isActive: true });
@@ -127,6 +138,17 @@ export class AppComponent {
       const selected = this.requireCustomer();
       const updated = await this.api.updateCustomer(selected.id, this.customerForm());
       this.selectCustomer(updated);
+      await this.searchCustomers(this.customerSearch().phone, this.customerSearch().phoneMatch);
+    });
+  }
+
+  deleteCustomer(): Promise<void> {
+    const selected = this.requireCustomer();
+    if (!confirm(`Delete customer ${selected.name} - ${selected.phone}?`)) return Promise.resolve();
+
+    return this.run('Delete customer', async () => {
+      await this.api.deleteCustomer(selected.id);
+      this.resetCustomerForm();
       await this.searchCustomers(this.customerSearch().phone, this.customerSearch().phoneMatch);
     });
   }
