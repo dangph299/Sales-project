@@ -50,7 +50,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddAuthorization();
         builder.Services.AddApplicationObservability(
             builder.Configuration,
-            "Sales.Infrastructure.Kafka",
+            ObservabilityNames.SalesKafka,
             "Sales.Infrastructure");
 
         return builder;

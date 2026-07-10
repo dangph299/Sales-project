@@ -1,4 +1,4 @@
-namespace Sales.Infrastructure;
+namespace BuildingBlocks.Infrastructure;
 
 /// <summary>
 /// Strategy for publishing a single claimed outbox message to its transport (Kafka).
@@ -9,7 +9,7 @@ public interface IOutboxPublisher
     /// Publishes a single outbox message.
     /// </summary>
     /// <param name="message">
-    /// The outbox row to publish.
+    /// The outbox message to publish.
     /// </param>
     /// <param name="cancellationToken">
     /// A token to observe while waiting for the operation to complete.

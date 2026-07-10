@@ -1,9 +1,14 @@
+using System.Diagnostics;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
+using BuildingBlocks.Observability;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Sales.Application;
 using KafkaFlow;
+using KafkaFlow.Producers;
 using KafkaFlow.Serializer;
 using StackExchange.Redis;
 using Sales.Domain;
@@ -102,7 +107,10 @@ public static class DependencyInjection
     /// <returns></returns>
     private static IServiceCollection AddSalesMessaging(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton<IOutboxPublisher, KafkaOutboxPublisher>();
+        services.AddSingleton(new ActivitySource(ObservabilityNames.SalesKafka));
+        services.AddSingleton<IOutboxPublisher>(sp => new KafkaOutboxPublisher(
+            sp.GetRequiredService<IProducerAccessor>(), sp.GetRequiredService<ILogger<KafkaOutboxPublisher>>(),
+            sp.GetRequiredService<ActivitySource>(), "sales-outbox"));
         var brokers = configuration.GetSection("Kafka:Brokers").GetChildren().Select(x => x.Value!).Where(x => x is not null).ToArray();
         if (brokers.Length == 0) brokers = ["kafka:9092"];
         services.AddKafka(kafka => kafka

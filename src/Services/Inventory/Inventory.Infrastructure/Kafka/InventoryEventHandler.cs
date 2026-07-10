@@ -2,14 +2,13 @@ using System.Data;
 using System.Diagnostics;
 using System.Text.Json;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using Inventory.Domain;
 using KafkaFlow;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Npgsql;
 using Serilog.Context;
-using ContractHeaders = BuildingBlocks.Contracts.MessageHeaders;
 
 namespace Inventory.Infrastructure;
 
@@ -18,7 +17,19 @@ namespace Inventory.Infrastructure;
 /// <c>OrderCancellationRequested</c>), reserving or releasing stock accordingly with Inbox-based
 /// idempotency and a Serializable transaction to guard the stock invariant under concurrency.
 /// </summary>
-public sealed class InventoryEventHandler(IServiceScopeFactory scopes, ILogger<InventoryEventHandler> logger) : IMessageHandler<EventEnvelope>
+/// <param name="scopes">
+/// The scope factory used to resolve per-message scoped dependencies such as the database context.
+/// </param>
+/// <param name="logger">
+/// The logger used to record structured entries for each consumed message.
+/// </param>
+/// <param name="activitySource">
+/// The <see cref="ActivitySource"/> used to start the tracing span for each consumed message.
+/// </param>
+public sealed class InventoryEventHandler(
+    IServiceScopeFactory scopes,
+    ILogger<InventoryEventHandler> logger,
+    ActivitySource activitySource) : IMessageHandler<EventEnvelope>
 {
     /// <summary>
     /// Handles a single consumed message: opens a tracing span linked to the producer's trace,
@@ -35,12 +46,7 @@ public sealed class InventoryEventHandler(IServiceScopeFactory scopes, ILogger<I
     /// </returns>
     public async Task Handle(IMessageContext context, EventEnvelope envelope)
     {
-        var parentContext = TraceContextParser.Parse(context.Headers.GetString(ContractHeaders.TraceParent), context.Headers.GetString(ContractHeaders.TraceState));
-        using var activity = InventoryActivitySource.Instance.StartActivity(
-            $"kafka.consume {context.ConsumerContext.Topic}", ActivityKind.Consumer, parentContext);
-        activity?.SetTag("messaging.system", "kafka");
-        activity?.SetTag("messaging.destination.name", context.ConsumerContext.Topic);
-        activity?.SetTag("messaging.kafka.consumer.group", context.ConsumerContext.GroupId);
+        using var activity = KafkaConsumerActivity.Start(activitySource, context);
 
         using (LogContext.PushProperty("EventId", envelope.EventId))
         using (LogContext.PushProperty("EventType", envelope.EventType))
@@ -79,7 +85,7 @@ public sealed class InventoryEventHandler(IServiceScopeFactory scopes, ILogger<I
             db.Inbox.Add(new InboxRow { EventId = envelope.EventId, ProcessedAt = DateTimeOffset.UtcNow });
             await db.SaveChangesAsync();
         }
-        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        catch (DbUpdateException ex) when (PostgresExceptions.IsUniqueViolation(ex))
         {
             InventoryMetrics.InboxDuplicate.Add(1);
             await transaction.RollbackAsync();
@@ -148,10 +154,5 @@ public sealed class InventoryEventHandler(IServiceScopeFactory scopes, ILogger<I
         reservation.Release();
         db.Enqueue(EventEnvelopeFactory.Create(envelope.AggregateId, envelope.Version, new StockReleased(envelope.AggregateId), "inventory", envelope.CorrelationId, envelope.EventId), KafkaTopics.StockReleased);
         return "Released";
-    }
-
-    private static bool IsUniqueViolation(DbUpdateException ex)
-    {
-        return ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
     }
 }

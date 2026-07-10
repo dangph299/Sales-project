@@ -1,5 +1,5 @@
-using System.Text.Json;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using Inventory.Domain;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +12,7 @@ namespace Inventory.Infrastructure;
 /// </summary>
 public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : DbContext(options)
 {
-    private readonly List<OutboxRow> _pending = [];
+    private readonly List<OutboxMessage> _pending = [];
 
     /// <summary>Gets the inventory items table.</summary>
     public DbSet<InventoryItem> Items => Set<InventoryItem>();
@@ -24,7 +24,7 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
     public DbSet<InboxRow> Inbox => Set<InboxRow>();
 
     /// <summary>Gets the outbox rows table.</summary>
-    public DbSet<OutboxRow> Outbox => Set<OutboxRow>();
+    public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
 
     /// <summary>
     /// Buffers an event to be persisted as an outbox row on the next <see cref="SaveChangesAsync"/>.
@@ -35,10 +35,7 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
     /// <param name="topic">
     /// The Kafka topic the event must be published to.
     /// </param>
-    public void Enqueue(EventEnvelope envelope, string topic) => _pending.Add(new()
-    {
-        Id = envelope.EventId, Topic = topic, Payload = JsonSerializer.Serialize(envelope), OccurredAt = envelope.OccurredAt
-    });
+    public void Enqueue(EventEnvelope envelope, string topic) => _pending.Add(OutboxMessage.From(envelope, topic));
 
     /// <summary>
     /// Flushes any events buffered via <see cref="Enqueue"/> into the Outbox table, then persists

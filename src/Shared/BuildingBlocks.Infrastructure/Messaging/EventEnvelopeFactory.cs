@@ -1,13 +1,13 @@
 using System.Text.Json;
 using BuildingBlocks.Contracts;
 
-namespace Inventory.Infrastructure;
+namespace BuildingBlocks.Infrastructure;
 
 /// <summary>
 /// Builds <see cref="EventEnvelope"/> instances for outgoing Kafka messages, serializing the
 /// payload and filling in transport metadata.
 /// </summary>
-internal static class EventEnvelopeFactory
+public static class EventEnvelopeFactory
 {
     /// <summary>
     /// Creates an <see cref="EventEnvelope"/> wrapping a serialized event payload.

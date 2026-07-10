@@ -1,13 +1,12 @@
 using System.Diagnostics;
 using System.Text.Json;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using KafkaFlow;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Npgsql;
 using Serilog.Context;
-using ContractHeaders = BuildingBlocks.Contracts.MessageHeaders;
 
 namespace Sales.Infrastructure;
 
@@ -16,7 +15,19 @@ namespace Sales.Infrastructure;
 /// <c>StockRejected</c>, <c>StockReleased</c>), applying the corresponding status transition to the
 /// matching <see cref="Sales.Domain.Order"/> with Inbox-based idempotency.
 /// </summary>
-public sealed class SalesIntegrationEventHandler(IServiceScopeFactory scopes, ILogger<SalesIntegrationEventHandler> logger) : IMessageHandler<EventEnvelope>
+/// <param name="scopes">
+/// The scope factory used to resolve per-message scoped dependencies such as the database context.
+/// </param>
+/// <param name="logger">
+/// The logger used to record structured entries for each consumed message.
+/// </param>
+/// <param name="activitySource">
+/// The <see cref="ActivitySource"/> used to start the tracing span for each consumed message.
+/// </param>
+public sealed class SalesIntegrationEventHandler(
+    IServiceScopeFactory scopes,
+    ILogger<SalesIntegrationEventHandler> logger,
+    ActivitySource activitySource) : IMessageHandler<EventEnvelope>
 {
     /// <summary>
     /// Handles a single consumed message: opens a tracing span linked to the producer's trace,
@@ -33,12 +44,7 @@ public sealed class SalesIntegrationEventHandler(IServiceScopeFactory scopes, IL
     /// </returns>
     public async Task Handle(IMessageContext context, EventEnvelope envelope)
     {
-        var parentContext = TraceContextParser.Parse(context.Headers.GetString(ContractHeaders.TraceParent), context.Headers.GetString(ContractHeaders.TraceState));
-        using var activity = SalesActivitySource.Instance.StartActivity(
-            $"kafka.consume {context.ConsumerContext.Topic}", ActivityKind.Consumer, parentContext);
-        activity?.SetTag("messaging.system", "kafka");
-        activity?.SetTag("messaging.destination.name", context.ConsumerContext.Topic);
-        activity?.SetTag("messaging.kafka.consumer.group", context.ConsumerContext.GroupId);
+        using var activity = KafkaConsumerActivity.Start(activitySource, context);
 
         using (LogContext.PushProperty("EventId", envelope.EventId))
         using (LogContext.PushProperty("EventType", envelope.EventType))
@@ -77,7 +83,7 @@ public sealed class SalesIntegrationEventHandler(IServiceScopeFactory scopes, IL
             db.InboxMessages.Add(new InboxMessage { EventId = envelope.EventId, ProcessedAt = DateTimeOffset.UtcNow, Consumer = "sales-v1" });
             await db.SaveChangesAsync();
         }
-        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
+        catch (DbUpdateException ex) when (PostgresExceptions.IsUniqueViolation(ex))
         {
             SalesMetrics.InboxDuplicate.Add(1);
             await transaction.RollbackAsync();
@@ -115,10 +121,5 @@ public sealed class SalesIntegrationEventHandler(IServiceScopeFactory scopes, IL
         await transaction.CommitAsync();
         SalesMetrics.InboxProcessed.Add(1);
         return result;
-    }
-
-    private static bool IsUniqueViolation(DbUpdateException ex)
-    {
-        return ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
     }
 }
