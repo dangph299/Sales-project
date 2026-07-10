@@ -8,8 +8,9 @@ Kafka giữa Sales và Inventory không đáng tin cậy, và muốn tự kiểm
 ## 1. Khi nào dùng guide này
 
 - Confirm order xong, `status` không chuyển từ `PendingInventory` sang
-  `Confirmed`/`InventoryRejected`.
+  `Confirmed`/`InventoryRejected`, hoặc chuyển rất chậm do consumer lag.
 - Nghi ngờ hiện tượng "lúc được lúc không" (đặc biệt ngay sau khi mới start stack).
+- Nghi flow `confirm -> undo confirm -> confirm` hoặc `confirm -> undo confirm -> update quantity > available -> confirm` bị kẹt.
 - Muốn verify một fix liên quan Kafka consumer/outbox có thật sự hết flaky hay không.
 
 ## 2. Chuẩn bị
@@ -47,6 +48,17 @@ Chạy 1 lần:
 cd tests/Playwright
 npm run test:kafka
 ```
+
+Các regression spec mới nên chạy khi sửa Inventory/Sales Kafka handler:
+
+```bash
+cd tests/Playwright
+npx playwright test specs/reconfirm-flow.spec.ts
+npx playwright test specs/over-available-after-undo.spec.ts
+```
+
+- `reconfirm-flow.spec.ts`: `create order -> confirm -> undo confirm -> confirm`, kỳ vọng cuối cùng `Confirmed`.
+- `over-available-after-undo.spec.ts`: `create order -> confirm -> undo confirm -> update quantity > available -> confirm`, kỳ vọng cuối cùng `InventoryRejected`. Spec này dùng timeout dài hơn vì `StockRejected` có thể bị consumer Sales xử lý trễ trong local stack.
 
 Chạy lặp lại nhiều lần để bắt flaky (test đơn lẻ không đủ để kết luận — bug này chỉ lộ
 ra ở vài lần confirm **đầu tiên** sau khi consumer group là mới):
@@ -161,11 +173,16 @@ for o in sorted(stuck, key=lambda x: x['createdAt']):
 "
 ```
 
-Order nào `createdAt` đã cách hiện tại nhiều phút mà vẫn `PendingInventory` là kẹt
-**vĩnh viễn**, không phải do chậm — Outbox tối đa 10 lần retry, backoff tối đa 300s, nên
-nếu là do publish lỗi tạm thời thì trong ~15 phút phải tự phục hồi. Vẫn kẹt sau đó nghĩa
-là event đã mất thật (mất trong lúc consumer chưa join kịp, không phải Outbox chưa
-publish).
+Order nào `createdAt` đã cách hiện tại nhiều phút mà vẫn `PendingInventory` cần đối chiếu
+thêm outbox/inbox trước khi kết luận là kẹt vĩnh viễn. Local stack từng có case Inventory
+publish `StockRejected` rồi Sales consume trễ hơn 30s; sau vài chục giây order vẫn chuyển
+đúng sang `InventoryRejected`. Nếu vẫn kẹt sau nhiều phút, kiểm tra:
+
+- Sales outbox đã publish `sales.order-confirmation-requested.v1` chưa.
+- Inventory inbox đã nhận event confirm chưa.
+- Inventory outbox có `inventory.stock-reserved.v1` hoặc `inventory.stock-rejected.v1` chưa.
+- Sales inbox có nhận event kết quả từ Inventory chưa.
+- Nếu Inventory đã ghi inbox cho confirm version mới nhưng không publish result, kiểm tra case event giữa confirm/undo đến lệch topic; code hiện dùng `Reservation.LastOrderVersion` để chặn release stale.
 
 ## 6. Bước 4 — Đối chiếu với Seq logs
 
@@ -217,6 +234,8 @@ hoặc Bước 4 (curl loop) vài lần liên tiếp:
 [ ] Stack đang chạy (docker compose ps)
 [ ] npm install trong tests/Playwright
 [ ] Chạy loop kafka-flow.spec.ts 10 lần, đếm số fail
+[ ] Chạy reconfirm-flow.spec.ts khi sửa confirm/undo confirm
+[ ] Chạy over-available-after-undo.spec.ts khi sửa reject/stock flow
 [ ] Nếu fail: lấy OrderId từ trace hoặc từ repro.sh
 [ ] GET /api/orders để confirm order đó còn kẹt PendingInventory
 [ ] Query Seq /api/events?filter=@Level='Error' quanh thời điểm đó

@@ -6,13 +6,14 @@ Tài liệu này là **điểm vào duy nhất**: chốt lại yêu cầu bài t
 
 | Yêu cầu | Trạng thái | Vị trí chính |
 |---|---|---|
-| Danh mục sản phẩm, search tên sản phẩm | ✅ Đủ | `ProductsController`, `SearchProducts`, GIN trigram index trên `Name` |
-| Khách hàng, search phone đầu/đuôi + tên | ✅ Đủ | `Customer.cs` (normalize phone), `ReversedPhone` cho search suffix, `CustomerReadService` |
-| Đơn hàng: info khách hàng, tổng SL, tổng tiền, chi tiết (chiết khấu, SL, giá) | ✅ Đủ | Aggregate `Order`/`OrderLine`, VO `Money` (`AwayFromZero` rounding) |
+| Danh mục sản phẩm, search tên sản phẩm, soft delete | ✅ Đủ | `ProductsController`, `Create/Update/DeleteProduct`, `SearchProducts`, GIN trigram index trên `Name`, query filter `!IsDelete` |
+| Khách hàng, search phone đầu/đuôi + tên, soft delete | ✅ Đủ | `Customer.cs` (normalize phone), `ReversedPhone` cho search suffix, `CustomerReadService`, query filter `!IsDelete` |
+| Audit columns | ✅ Đủ | `UpdatedAt` trên Product/Customer/Order; `IsDelete`/`DeleteByUser`/`DeletedAt` trên Product/Customer |
+| Đơn hàng: info khách hàng, tổng SL, tổng tiền, chi tiết (chiết khấu, SL, giá) | ✅ Đủ | Aggregate `Order`/`OrderLine`, VO `Money` (`AwayFromZero` rounding), `discountPercent` bắt buộc để tránh silent default `0` |
 | Search order theo ngày tạo / tên / SĐT khách hàng | ✅ Đủ | `OrderReadService`, index ngày/tên/SĐT trong `SalesDbContext` |
 | Giải quyết 2 người cùng sửa đơn hàng | ✅ Đủ | Optimistic concurrency: `Order.Version` + `ETag`/`If-Match` + 409 Conflict — xem `project-presentation.md` §7, §18 |
 | AuditLog lưu MongoDB, nhận qua Kafka | ✅ Đủ | `AuditLog.Worker` consume Kafka, ghi Mongo unique `EventId`, **giờ log vào Seq** (đã fix, xem mục 4) |
-| Inventory service riêng, bảng riêng, không miss event | ✅ Đủ | `src/Services/Inventory` độc lập, Postgres riêng, Outbox/Inbox transactional |
+| Inventory service riêng, bảng riêng, không miss event | ✅ Đủ | `src/Services/Inventory` độc lập, Postgres riêng, Outbox/Inbox transactional, `Reservation.LastOrderVersion` chống event cũ đến trễ |
 | CQRS (command/query) qua MediatR | ✅ Đủ (Sales) | `Sales.Application/Commands`, `Queries` — Inventory dùng Minimal API + `IInventoryService` trực tiếp (quyết định kiến trúc có chủ đích cho service nhỏ, xem `ARCHITECTURE_CHECKLIST.md`) |
 | Factory Method | ✅ Đủ | `Product.Create`, `Customer.Create`, `Order.Create`, `ProductSnapshot.Create`, `CustomerSnapshot.Create`, `Money.Vnd` — 6 static factory, đều có private constructor giữ invariant |
 | Repository | ✅ Đủ | `IRepository<T>`/`Repository<T>` + `IProductRepository`/`IOrderRepository` cho query đặc thù |
@@ -63,7 +64,7 @@ private static TypeAdapterConfig CreateConfig()
 | [architecture.md](architecture.md) | Dependency rule, vai trò từng folder theo bounded context |
 | [project-presentation.md](project-presentation.md) | Trình bày tổng thể bài thực hành, mapping yêu cầu ↔ implementation, demo flow |
 | [kafka-usage-guide.md](kafka-usage-guide.md) | Kafka: KafkaFlow, topic/group/partition, Outbox/Inbox, cách thêm event mới |
-| [kafka-playwright-debug-guide.md](kafka-playwright-debug-guide.md) | Quy trình debug flow Kafka Sales↔Inventory bằng Playwright + kiểm tra tay (curl/Seq) khi order kẹt `PendingInventory` |
+| [kafka-playwright-debug-guide.md](kafka-playwright-debug-guide.md) | Quy trình debug flow Kafka Sales↔Inventory bằng Playwright + kiểm tra tay (curl/Seq) khi order kẹt/chậm rời `PendingInventory` |
 | [Redis-cache-usage-guide.md](Redis-cache-usage-guide.md) | Redis: cache-aside Product, distributed lock Hangfire job |
 | [Seqlog-usage-guide.md](Seqlog-usage-guide.md) | Serilog/Seq: cấu hình từng service, enricher, gap log AuditLog |
 | [Elastic-usage-guide.md](Elastic-usage-guide.md) | OpenTelemetry → OTel Collector → APM Server → Elasticsearch → Kibana, custom metric, giới hạn tracing qua Kafka |
@@ -83,7 +84,15 @@ private static TypeAdapterConfig CreateConfig()
 
 `Inventory.Api` thiếu `Serilog:MinimumLevel` trong `appsettings.json` vẫn còn (inconsistency nhỏ, không ảnh hưởng chức năng, không nằm trong 5 gap chính được yêu cầu fix).
 
-## 5. Lệnh chạy nhanh tổng hợp
+## 5. Thay đổi nghiệp vụ mới đã phản ánh trong code
+
+1. **Soft delete Product/Customer.** API mới `DELETE /api/products/{id}` và `DELETE /api/customers/{id}` chỉ set `IsDelete = true`, `DeleteByUser`, `DeletedAt`, cập nhật `UpdatedAt`/`Version`; read/search mặc định ẩn record đã xóa bằng EF query filter. Product cache được invalidate khi delete. Angular test client có nút `Delete` cho cả Product và Customer.
+2. **Audit timestamp.** `AggregateRoot.Touch()` cập nhật `UpdatedAt`, vì vậy Product/Customer/Order đều trả `updatedAt` trong DTO. Migration Sales mới: `SoftDeleteAndUpdatedAt`.
+3. **Discount input không được thiếu.** `OrderLineInput.DiscountPercent` là nullable và validator bắt buộc `NotNull().InclusiveBetween(0, 100)`; nếu client gửi nhầm key như `discount` thì bị reject thay vì lưu ngầm `0`.
+4. **Reconfirm/undo confirm bền hơn trước event đến trễ.** Inventory `Reservation` lưu `LastOrderVersion`; release event version cũ bị bỏ qua, confirm mới hơn trên active reservation vẫn publish `StockReserved` để Sales không chờ mãi. Migration Inventory mới: `ReservationOrderVersion`.
+5. **Playwright regression specs.** `reconfirm-flow.spec.ts` kiểm tra `create -> confirm -> undo confirm -> confirm`; `over-available-after-undo.spec.ts` kiểm tra `create -> confirm -> undo confirm -> update quantity > available -> confirm` và chờ kết quả `InventoryRejected`.
+
+## 6. Lệnh chạy nhanh tổng hợp
 
 ```bash
 # Build + test

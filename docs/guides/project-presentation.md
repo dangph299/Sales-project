@@ -8,6 +8,7 @@ Project mô phỏng hệ thống quản lý bán hàng gồm:
 
 - Danh mục sản phẩm: tạo/sửa/xem/tìm sản phẩm theo tên.
 - Khách hàng: tạo/sửa/xem/tìm theo tên, số điện thoại đầu số hoặc đuôi số.
+- Product/Customer hỗ trợ soft delete, lưu người xóa và thời điểm xóa.
 - Đơn hàng: lưu snapshot khách hàng/sản phẩm, tổng số lượng, tổng tiền, chiết khấu từng dòng.
 - Xử lý 2 người cùng sửa đơn hàng bằng optimistic concurrency với `ETag` / `If-Match`.
 - Inventory service riêng để quản lý tồn kho và reservation.
@@ -113,7 +114,7 @@ Ví dụ:
 HTTP PUT /api/orders/{id}/lines
     -> OrdersController
     -> ReplaceOrderLines command
-    -> OrderCommandHandler
+    -> ReplaceOrderLinesHandler
     -> IOrderRepository.GetAsync
     -> Order.ReplaceLines
     -> IUnitOfWork.SaveChangesAsync
@@ -176,12 +177,13 @@ public OrdersController(ISender sender)
 
 | Yêu cầu | Đang dùng gì? | Vị trí |
 |---|---|---|
-| Product tạo/sửa/xem/search tên | Controller + MediatR + Repository + EF query + Redis cache | `ProductsController`, `Products.cs`, `ProductReadService`, `ProductCache` |
-| Customer tạo/sửa/xem/search phone đầu/đuôi/tên | Phone normalize, `Phone`, `ReversedPhone`, EF query | `Customer.cs`, `CustomerReadService` |
+| Product tạo/sửa/xóa mềm/xem/search tên | Controller + MediatR + Repository + EF query filter + Redis cache | `ProductsController`, `Product.cs`, `ProductReadService`, `ProductCache` |
+| Customer tạo/sửa/xóa mềm/xem/search phone đầu/đuôi/tên | Phone normalize, `Phone`, `ReversedPhone`, EF query filter | `Customer.cs`, `CustomerReadService` |
 | Order tổng SL/tổng tiền/chiết khấu | Aggregate `Order`, `OrderLine`, `Money` | `Order.cs`, `Money.cs` |
+| Audit columns | `UpdatedAt` cho Product/Customer/Order; soft-delete metadata cho Product/Customer | `AggregateRoot`, `Product`, `Customer`, migration `SoftDeleteAndUpdatedAt` |
 | Search order theo ngày/tên/SĐT | Query projection `AsNoTracking`, index ngày/tên/SĐT | `OrderReadService`, `SalesDbContext` |
-| 2 người cùng sửa order | Optimistic concurrency bằng `Version`, `ETag`, `If-Match` | `OrdersController`, `ControllerEtagExtensions`, `OrderCommandHandler` |
-| AuditLog MongoDB qua Kafka | Kafka consumer lưu Mongo, unique `eventId` | `AuditConsumer.cs` |
+| 2 người cùng sửa order | Optimistic concurrency bằng `Version`, `ETag`, `If-Match` | `OrdersController`, `ControllerEtagExtensions`, `OrderCommandSupport.LoadAndCheck` |
+| AuditLog MongoDB qua Kafka | Kafka consumer lưu Mongo, unique `eventId` | `AuditEventHandler.cs` |
 | Inventory service riêng | Inventory Domain/Application/Infrastructure/API riêng, Postgres riêng | `src/Services/Inventory` |
 | Không miss event | Transactional Outbox/Inbox, retry, backoff, DLQ, replay | `SalesOutboxPublisher`, `InventoryOutboxPublisher`, `MaintenanceJobs` |
 | CQRS | Command/query tách riêng, MediatR | `Sales.Application/Commands`, `Sales.Application/Queries` |
@@ -202,7 +204,7 @@ Yêu cầu:
 - Lưu SKU, tên, giá, trạng thái active.
 - Tìm theo tên sản phẩm.
 - Cache Redis.
-- Không hard-delete product trong MVP vì product có thể đã xuất hiện trên Order snapshot.
+- Soft delete product để giữ snapshot/order history.
 
 Đang dùng:
 
@@ -210,6 +212,7 @@ Yêu cầu:
 - Command:
   - `CreateProduct`
   - `UpdateProduct`
+  - `DeleteProduct`
 - Query:
   - `GetProduct`
   - `SearchProducts`
@@ -273,6 +276,17 @@ Content-Type: application/json
 }
 ```
 
+Soft delete product, cần role `Admin`:
+
+```http
+DELETE /api/products/{productId}
+Authorization: Bearer <token>
+
+HTTP/1.1 204 No Content
+```
+
+Khi delete, hệ thống set `IsDelete = true`, `DeleteByUser`, `DeletedAt`, cập nhật `UpdatedAt`/`Version`, invalidate Redis cache và ẩn product khỏi GET/search mặc định. Unique SKU vẫn được kiểm tra cả record đã xóa (`IgnoreQueryFilters`) để lỗi nghiệp vụ rõ ràng hơn DB unique violation.
+
 Search:
 
 ```http
@@ -302,11 +316,12 @@ Yêu cầu:
 - Lưu tên khách hàng.
 - Lưu phone đã normalize chỉ còn chữ số.
 - Search theo tên, phone prefix, phone suffix.
-- Không hard-delete customer trong MVP vì customer có thể đã xuất hiện trên Order snapshot.
+- Soft delete customer để giữ order snapshot/history.
 
 Đang dùng:
 
 - Aggregate: `Customer`
+- Command: `CreateCustomer`, `UpdateCustomer`, `DeleteCustomer`
 - Phone normalize trong domain.
 - `ReversedPhone` để search suffix hiệu quả.
 - Query trong `CustomerReadService`.
@@ -323,6 +338,17 @@ Content-Type: application/json
   "phone": "+84 901 234 567"
 }
 ```
+
+Soft delete customer:
+
+```http
+DELETE /api/customers/{customerId}
+Authorization: Bearer <token>
+
+HTTP/1.1 204 No Content
+```
+
+Khi delete, hệ thống set `IsDelete = true`, `DeleteByUser`, `DeletedAt`, cập nhật `UpdatedAt`/`Version` và ẩn customer khỏi GET/search mặc định. Order đã tạo vẫn giữ snapshot `CustomerName`/`CustomerPhone`.
 
 Update customer. API update customer hiện không dùng `If-Match`; phần chống 2 người cùng sửa tập trung ở Order.
 
@@ -380,6 +406,8 @@ Yêu cầu:
 - Tổng đơn gồm tổng số lượng và tổng tiền.
 - Chỉ sửa được đơn `Draft`.
 - Giải quyết 2 người cùng sửa đơn.
+- `discountPercent` là field bắt buộc; thiếu field sẽ bị validation error, không còn mặc định ngầm về `0`.
+- `UpdatedAt` đổi mỗi khi order `Touch()` do replace lines/confirm/reserve/reject/cancel/undo confirm.
 
 Đang dùng:
 
@@ -397,6 +425,8 @@ Draft
       -> Confirmed
       -> InventoryRejected
 Confirmed
+  -> Draft (Undo confirm, Inventory release reservation)
+Draft / InventoryRejected
   -> Cancelled
 ```
 
@@ -491,7 +521,7 @@ Server xử lý:
 OrdersController
     -> Request.RequireVersion()
     -> ReplaceOrderLines(id, expectedVersion, lines)
-    -> OrderCommandHandler.LoadAndCheck
+    -> OrderCommandSupport.LoadAndCheck
     -> nếu version khác expectedVersion thì 409 Conflict
 ```
 
@@ -597,13 +627,15 @@ Inventory xử lý:
 - Nếu đủ hàng:
   - trừ `Available`
   - cộng `Reserved`
-  - tạo `Reservation`
+  - tạo hoặc re-activate `Reservation`
   - phát `inventory.stock-reserved.v1`
 - Nếu thiếu hàng:
   - không đổi tồn
   - phát `inventory.stock-rejected.v1`
 
-Lưu ý: Sales chỉ được cancel sau khi order đã `Confirmed`. Khi cancel, Sales phát `sales.order-cancellation-requested.v1`; Inventory release reservation và phát `inventory.stock-released.v1`.
+Inventory `Reservation` lưu `LastOrderVersion` để chống event cũ đến trễ giữa các lần confirm/undo confirm. Nếu release version cũ đến sau confirm version mới hơn, Inventory bỏ qua release cũ; nếu confirm mới hơn đến khi reservation đang active, Inventory vẫn publish `StockReserved` để Sales không kẹt `PendingInventory`.
+
+Lưu ý: undo confirm từ `Confirmed` đưa order về `Draft` và phát `sales.order-undo-confirmation-requested.v1`; Inventory release reservation và phát `inventory.stock-released.v1`. Cancel chỉ hợp lệ khi order không còn `Confirmed` hoặc `PendingInventory`.
 
 ## 9. AuditLog
 
@@ -622,7 +654,7 @@ src/Services/AuditLog
 Đang dùng:
 
 - `AuditLog.Worker`: Generic Host, không HTTP.
-- `AuditLog.Infrastructure/Mongo/AuditConsumer.cs`: Kafka handler lưu Mongo.
+- `AuditLog.Infrastructure/Mongo/AuditEventHandler.cs`: Kafka handler lưu Mongo.
 - Mongo unique index trên `EventId`.
 
 Audit worker subscribe nhiều topic:
@@ -631,7 +663,7 @@ Audit worker subscribe nhiều topic:
 sales.audit.v1
 inventory.audit.v1
 sales.order-confirmation-requested.v1
-sales.order-cancellation-requested.v1
+sales.order-undo-confirmation-requested.v1
 inventory.stock-reserved.v1
 inventory.stock-rejected.v1
 inventory.stock-released.v1
@@ -677,7 +709,7 @@ Compose dùng Kafka KRaft mode, không cần ZooKeeper.
 | `sales.audit.v1` | Sales | AuditLog | Audit các thay đổi Sales |
 | `inventory.audit.v1` | Inventory | AuditLog | Audit thay đổi tồn kho |
 | `sales.order-confirmation-requested.v1` | Sales | Inventory, AuditLog | Sales yêu cầu reserve tồn |
-| `sales.order-cancellation-requested.v1` | Sales | Inventory, AuditLog | Sales yêu cầu release tồn |
+| `sales.order-undo-confirmation-requested.v1` | Sales | Inventory, AuditLog | Sales yêu cầu release tồn khi undo confirm |
 | `inventory.stock-reserved.v1` | Inventory | Sales, AuditLog | Inventory báo reserve thành công |
 | `inventory.stock-rejected.v1` | Inventory | Sales, AuditLog | Inventory báo thiếu hàng |
 | `inventory.stock-released.v1` | Inventory | Sales, AuditLog | Inventory báo release xong |
@@ -688,7 +720,7 @@ Version `.v1` ở cuối topic để sau này có thể thêm `.v2` mà không p
 
 | Consumer group | Service | Subscribe topic |
 |---|---|---|
-| `inventory-orders-v1` | Inventory | Sales order confirmation/cancellation |
+| `inventory-orders-v1` | Inventory | Sales order confirmation/undo-confirmation |
 | `sales-inventory-results-v1` | Sales | Inventory stock result |
 | `audit-mongodb-v1` | AuditLog | Tất cả audit/integration topics |
 
@@ -1168,12 +1200,12 @@ Sales update order -> InventoryRejected
 Order lưu RejectionReason
 ```
 
-Nếu muốn cancel/release:
+Nếu muốn undo confirm/release:
 
 ```text
-1. Chỉ cancel khi order đã Confirmed
-2. Sales update order -> Cancelled
-3. Sales phát sales.order-cancellation-requested.v1
+1. Chỉ undo confirm khi order đã Confirmed
+2. Sales update order -> Draft
+3. Sales phát sales.order-undo-confirmation-requested.v1
 4. Inventory release reserved stock
 5. Inventory phát inventory.stock-released.v1
 ```

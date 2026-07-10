@@ -193,7 +193,7 @@ await cache.RemoveAsync(product.Id, ct);
 return product.ToDto();
 ```
 
-Không có handler xóa product nào gọi `IProductCache` — MVP không hard-delete Product (xem `project-presentation.md` mục 5), nên không cần path invalidate cho delete.
+Soft delete Product có handler riêng (`DeleteProductHandler`) và handler này gọi `IProductCache.RemoveAsync(product.Id)` sau khi lưu DB. Vì vậy cache-aside không trả lại product đã xóa sau khi `DELETE /api/products/{id}`. Create vẫn warm cache, update vẫn invalidate cache.
 
 ## 6. Distributed lock cho Hangfire cleanup job
 
