@@ -5,6 +5,7 @@ COPY Directory.Build.props .
 COPY src/Shared/BuildingBlocks.Contracts/BuildingBlocks.Contracts.csproj src/Shared/BuildingBlocks.Contracts/
 COPY src/Shared/BuildingBlocks.Observability/BuildingBlocks.Observability.csproj src/Shared/BuildingBlocks.Observability/
 COPY src/Shared/BuildingBlocks.Web/BuildingBlocks.Web.csproj src/Shared/BuildingBlocks.Web/
+COPY src/Shared/BuildingBlocks.Infrastructure/BuildingBlocks.Infrastructure.csproj src/Shared/BuildingBlocks.Infrastructure/
 COPY src/Services/Sales/Sales.Domain/Sales.Domain.csproj src/Services/Sales/Sales.Domain/
 COPY src/Services/Sales/Sales.Application/Sales.Application.csproj src/Services/Sales/Sales.Application/
 COPY src/Services/Sales/Sales.Infrastructure/Sales.Infrastructure.csproj src/Services/Sales/Sales.Infrastructure/
