@@ -22,6 +22,8 @@ public static class ApplicationBuilderExtensions
     {
         app.UseSerilogRequestLogging(RequestLoggingDefaults.Configure);
         app.UseMiddleware<RequestObservabilityMiddleware>();
+        app.UseRouting();
+        app.UseSwaggerCors();
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseApiDocumentation("Inventory API");

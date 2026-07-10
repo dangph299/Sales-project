@@ -76,10 +76,18 @@ public static class ApiDocumentationExtensions
     /// <param name="version">
     /// The API version document name and display value.
     /// </param>
+    /// <param name="additionalDocuments">
+    /// Other Swagger/OpenAPI documents to list alongside this API's own document, e.g. another
+    /// service's document fetched directly by the browser. Omit to preserve single-document behavior.
+    /// </param>
     /// <returns>
     /// The same application builder, to allow chaining.
     /// </returns>
-    public static WebApplication UseApiDocumentation(this WebApplication app, string title, string version = "v1")
+    public static WebApplication UseApiDocumentation(
+        this WebApplication app,
+        string title,
+        string version = "v1",
+        IReadOnlyCollection<SwaggerDocumentEndpoint>? additionalDocuments = null)
     {
         if (!app.Environment.IsDevelopment())
         {
@@ -90,6 +98,12 @@ public static class ApiDocumentationExtensions
         app.UseSwaggerUI(options =>
         {
             options.SwaggerEndpoint($"/swagger/{version}/swagger.json", $"{title} {version}");
+
+            foreach (var document in additionalDocuments ?? [])
+            {
+                options.SwaggerEndpoint(document.Url, document.DisplayName);
+            }
+
             options.RoutePrefix = "swagger";
         });
 

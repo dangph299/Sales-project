@@ -31,6 +31,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddApiDocumentation(
             "Inventory API",
             "Inventory service API for stock queries, reservations, and stock adjustments.");
+        builder.Services.AddSwaggerCors(builder.Environment);
         builder.Services.AddInventoryInfrastructure(builder.Configuration);
         builder.Services.AddJwtAuthentication(builder.Configuration);
         builder.Services.AddAuthorization();

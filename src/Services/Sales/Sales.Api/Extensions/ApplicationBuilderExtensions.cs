@@ -32,7 +32,9 @@ public static class ApplicationBuilderExtensions
         {
             Authorization = [new LocalDashboardAuthorizationFilter()]
         });
-        app.UseApiDocumentation("Sales API");
+        app.UseApiDocumentation(
+            "Sales API",
+            additionalDocuments: SalesSwaggerDocumentsFactory.Create(app.Configuration));
         app.MapControllers();
 
         return app;

@@ -7,6 +7,7 @@ namespace Sales.Api.Controllers;
 /// Unauthenticated liveness endpoint used by container orchestration/health checks.
 /// </summary>
 [ApiController]
+[ApiExplorerSettings(IgnoreApi = true)]
 [AllowAnonymous]
 [Route("health")]
 public sealed class HealthController : ControllerBase
