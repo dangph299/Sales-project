@@ -1,4 +1,4 @@
-using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 
 namespace AuditLog.Tests;
 

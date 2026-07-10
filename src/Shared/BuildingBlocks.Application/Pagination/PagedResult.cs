@@ -1,4 +1,4 @@
-namespace Sales.Application;
+namespace BuildingBlocks.Application;
 
 /// <summary>
 /// A single page of a larger result set.

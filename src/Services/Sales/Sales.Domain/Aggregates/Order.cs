@@ -5,7 +5,7 @@ namespace Sales.Domain;
 /// (<see cref="OrderStatus"/>), and totals, and raises the domain events consumed to talk to
 /// Inventory and for auditing.
 /// </summary>
-public sealed class Order : AggregateRoot
+public sealed class Order : AggregateRoot<Guid>
 {
     private readonly List<OrderLine> _lines = [];
     private Order() { }
@@ -178,7 +178,7 @@ public sealed class Order : AggregateRoot
     }
 
     /// <summary>
-    /// Moves the order to <see cref="OrderStatus.Cancelled"/> and raises <see cref="OrderUndoComfirmedDomainEvent"/>
+    /// Moves a confirmed order back to <see cref="OrderStatus.Draft"/> and raises <see cref="OrderUndoComfirmedDomainEvent"/>
     /// so Inventory can release any reserved stock.
     /// </summary>
     /// <exception cref="DomainException">

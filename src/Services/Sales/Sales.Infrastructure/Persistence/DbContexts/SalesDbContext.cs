@@ -1,4 +1,5 @@
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Domain;
 using BuildingBlocks.Infrastructure;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -47,7 +48,7 @@ public sealed class SalesDbContext(DbContextOptions<SalesDbContext> options, IEx
     /// </returns>
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        var aggregates = ChangeTracker.Entries<AggregateRoot>()
+        var aggregates = ChangeTracker.Entries<AggregateRoot<Guid>>()
             .Select(x => x.Entity)
             .Where(x => x.GetDomainEvents().Count > 0)
             .ToArray();

@@ -4,7 +4,7 @@ namespace Sales.Domain;
 /// A single product line owned by an <see cref="Order"/> aggregate. Not an aggregate root itself —
 /// it is only ever created, replaced, and persisted through its owning <see cref="Order"/>.
 /// </summary>
-public sealed class OrderLine : Entity
+public sealed class OrderLine : Entity<Guid>
 {
     private OrderLine() { }
     private OrderLine(Guid orderId, ProductSnapshot product, int quantity, decimal discountPercent)

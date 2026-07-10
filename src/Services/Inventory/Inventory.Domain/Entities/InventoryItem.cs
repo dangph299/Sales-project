@@ -4,7 +4,7 @@ namespace Inventory.Domain;
 /// Tracks available and reserved stock for a single product. Owns the invariant that available
 /// stock can never go negative.
 /// </summary>
-public sealed class InventoryItem
+public sealed class InventoryItem : IEntity<Guid>
 {
     private InventoryItem() { }
 
@@ -12,6 +12,8 @@ public sealed class InventoryItem
     /// Gets the unique identifier of the product this item tracks stock for.
     /// </summary>
     public Guid ProductId { get; private set; }
+
+    Guid IEntity<Guid>.Id => ProductId;
 
     /// <summary>
     /// Gets the product's normalized SKU.

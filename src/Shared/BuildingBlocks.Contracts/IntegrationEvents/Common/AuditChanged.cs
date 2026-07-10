@@ -14,7 +14,7 @@ namespace BuildingBlocks.Contracts;
 /// The action performed, for example <c>"Created"</c> or <c>"Updated"</c>.
 /// </param>
 /// <param name="Changes">
-/// The individual field-level changes, typically built via <see cref="AuditChangeDetector"/>.
+/// The individual field-level changes.
 /// </param>
 public sealed record AuditChanged(
     string Entity,

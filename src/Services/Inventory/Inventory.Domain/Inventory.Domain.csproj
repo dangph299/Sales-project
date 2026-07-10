@@ -1,3 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><RootNamespace>Inventory.Domain</RootNamespace></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
+  </ItemGroup>
 </Project>

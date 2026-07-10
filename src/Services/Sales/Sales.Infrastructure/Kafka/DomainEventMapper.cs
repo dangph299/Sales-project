@@ -1,4 +1,5 @@
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Domain;
 using BuildingBlocks.Infrastructure;
 using Sales.Application;
 using Sales.Domain;
@@ -23,8 +24,8 @@ internal static class DomainEventMapper
 
     /// <summary>Converts a Sales domain event into the Kafka topic + envelope ready to enqueue in the Outbox.</summary>
     public static (string Topic, EventEnvelope Envelope) Map(
-        AggregateRoot aggregate,
-        IDomainEvent domainEvent,
+        AggregateRoot<Guid> aggregate,
+        BuildingBlocks.Domain.IDomainEvent domainEvent,
         IExecutionContext context)
     {
         var (topic, payload) = MapToPayload(domainEvent);
@@ -33,7 +34,7 @@ internal static class DomainEventMapper
     }
 
     /// <summary>Picks the mapping method for the concrete domain event type; throws if a new event type is added here without one.</summary>
-    private static (string Topic, object Payload) MapToPayload(IDomainEvent domainEvent) => domainEvent switch
+    private static (string Topic, object Payload) MapToPayload(BuildingBlocks.Domain.IDomainEvent domainEvent) => domainEvent switch
     {
         ProductCreatedDomainEvent e => MapProductCreated(e),
         ProductUpdatedDomainEvent e => MapProductUpdated(e),

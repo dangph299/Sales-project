@@ -1,8 +1,8 @@
-namespace Sales.Domain;
+namespace BuildingBlocks.Domain;
 
 /// <summary>
-/// Marker contract for a fact raised by an aggregate. Implementations carry business data only and
-/// know nothing about how they are transported (Kafka topics, etc.).
+/// Marker contract for a fact raised by an aggregate. Implementations carry domain data only and
+/// know nothing about transport, storage, or framework concerns.
 /// </summary>
 public interface IDomainEvent
 {

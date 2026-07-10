@@ -3,16 +3,10 @@ namespace Inventory.Domain;
 /// <summary>
 /// A single product/quantity line owned by a <see cref="Reservation"/>.
 /// </summary>
-public sealed class ReservationLine
+public sealed class ReservationLine : Entity<Guid>
 {
     private ReservationLine() { }
 
-    /// <summary>
-    /// Gets the unique identifier of this line.
-    /// </summary>
-    public Guid Id { get; private set; }
-
-    /// <summary>
     /// Gets the unique identifier of the <see cref="Reservation"/> that owns this line.
     /// </summary>
     public Guid ReservationId { get; private set; }

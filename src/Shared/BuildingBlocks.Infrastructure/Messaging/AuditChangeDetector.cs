@@ -1,11 +1,12 @@
 using System.Collections;
 using System.Reflection;
+using BuildingBlocks.Contracts;
 
-namespace BuildingBlocks.Contracts;
+namespace BuildingBlocks.Infrastructure;
 
 /// <summary>
 /// Builds <see cref="AuditChange"/> lists for <see cref="AuditChanged"/> events by reflecting over
-/// (anonymous or named) objects, flattening nested properties into dotted field paths.
+/// objects and flattening nested properties into dotted field paths.
 /// </summary>
 public static class AuditChangeDetector
 {

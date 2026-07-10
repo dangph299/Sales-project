@@ -1,3 +1,4 @@
+using BuildingBlocks.Domain;
 using Microsoft.EntityFrameworkCore;
 using Sales.Domain;
 
@@ -11,7 +12,7 @@ namespace Sales.Infrastructure;
 /// <typeparam name="T">
 /// The aggregate root type this repository persists.
 /// </typeparam>
-public class Repository<T>(SalesDbContext db) : IRepository<T> where T : AggregateRoot
+public class Repository<T>(SalesDbContext db) : IRepository<T> where T : AggregateRoot<Guid>
 {
     /// <summary>
     /// The database context used by this repository and its derived classes.

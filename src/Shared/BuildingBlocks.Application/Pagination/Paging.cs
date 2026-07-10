@@ -1,4 +1,4 @@
-namespace Sales.Application;
+namespace BuildingBlocks.Application;
 
 /// <summary>
 /// Helpers for normalizing paging parameters supplied by callers.

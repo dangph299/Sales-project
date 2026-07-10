@@ -1,9 +1,9 @@
 using FluentValidation;
+using BuildingBlocks.Domain;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sales.Application;
-using Sales.Domain;
 
 namespace Sales.Api.Middleware;
 

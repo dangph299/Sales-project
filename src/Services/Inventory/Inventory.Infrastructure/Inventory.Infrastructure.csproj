@@ -4,6 +4,7 @@
     <ProjectReference Include="..\Inventory.Domain\Inventory.Domain.csproj" />
     <ProjectReference Include="..\Inventory.Application\Inventory.Application.csproj" />
     <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Observability\BuildingBlocks.Observability.csproj" />
   </ItemGroup>

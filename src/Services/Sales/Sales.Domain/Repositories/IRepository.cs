@@ -7,7 +7,7 @@ namespace Sales.Domain;
 /// <typeparam name="T">
 /// The aggregate root type this repository persists.
 /// </typeparam>
-public interface IRepository<T> where T : AggregateRoot
+public interface IRepository<T> where T : AggregateRoot<Guid>
 {
     /// <summary>
     /// Loads a single aggregate by its identifier.

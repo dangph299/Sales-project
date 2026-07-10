@@ -1,5 +1,4 @@
 using FluentValidation;
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Sales.Application;
@@ -22,9 +21,8 @@ public static class DependencyInjection
     public static IServiceCollection AddSalesApplication(this IServiceCollection services)
     {
         services.AddValidatorsFromAssemblyContaining<CreateCustomerValidator>();
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ErrorLoggingBehavior<,>));
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddSingleton<IApplicationExceptionClassifier, SalesApplicationExceptionClassifier>();
+        services.AddApplicationBuildingBlocks();
         return services;
     }
 }

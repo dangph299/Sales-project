@@ -8,12 +8,13 @@ namespace Sales.Application.Tests;
 public sealed class ErrorLoggingBehaviorTests
 {
     private sealed record Ping : IRequest<string>;
+    private static readonly IApplicationExceptionClassifier Classifier = new SalesApplicationExceptionClassifier();
 
     [Fact]
     public async Task Business_rule_violations_log_at_warning_not_error()
     {
         var logger = new RecordingLogger<ErrorLoggingBehavior<Ping, string>>();
-        var behavior = new ErrorLoggingBehavior<Ping, string>(logger);
+        var behavior = new ErrorLoggingBehavior<Ping, string>(logger, Classifier);
 
         await Assert.ThrowsAsync<NotFoundException>(() => behavior.Handle(
             new Ping(), _ => throw new NotFoundException("Order", Guid.NewGuid()), CancellationToken.None));
@@ -27,7 +28,7 @@ public sealed class ErrorLoggingBehaviorTests
     public async Task Unexpected_exceptions_log_at_error()
     {
         var logger = new RecordingLogger<ErrorLoggingBehavior<Ping, string>>();
-        var behavior = new ErrorLoggingBehavior<Ping, string>(logger);
+        var behavior = new ErrorLoggingBehavior<Ping, string>(logger, Classifier);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => behavior.Handle(
             new Ping(), _ => throw new InvalidOperationException("boom"), CancellationToken.None));
@@ -41,7 +42,7 @@ public sealed class ErrorLoggingBehaviorTests
     public async Task Success_produces_no_log_and_never_swallows_the_result()
     {
         var logger = new RecordingLogger<ErrorLoggingBehavior<Ping, string>>();
-        var behavior = new ErrorLoggingBehavior<Ping, string>(logger);
+        var behavior = new ErrorLoggingBehavior<Ping, string>(logger, Classifier);
 
         var result = await behavior.Handle(new Ping(), _ => Task.FromResult("ok"), CancellationToken.None);
 
@@ -56,7 +57,7 @@ public sealed class ErrorLoggingBehaviorTests
         // directly (Application must not depend on Infrastructure), so it matches by type full name -
         // this fake, declared under the same namespace, proves that match actually fires.
         var logger = new RecordingLogger<ErrorLoggingBehavior<Ping, string>>();
-        var behavior = new ErrorLoggingBehavior<Ping, string>(logger);
+        var behavior = new ErrorLoggingBehavior<Ping, string>(logger, Classifier);
 
         await Assert.ThrowsAsync<Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException>(() => behavior.Handle(
             new Ping(), _ => throw new Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException(), CancellationToken.None));
@@ -69,7 +70,7 @@ public sealed class ErrorLoggingBehaviorTests
     public async Task Failure_log_includes_the_request_for_correlation()
     {
         var logger = new RecordingLogger<ErrorLoggingBehavior<Ping, string>>();
-        var behavior = new ErrorLoggingBehavior<Ping, string>(logger);
+        var behavior = new ErrorLoggingBehavior<Ping, string>(logger, Classifier);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => behavior.Handle(
             new Ping(), _ => throw new InvalidOperationException("boom"), CancellationToken.None));

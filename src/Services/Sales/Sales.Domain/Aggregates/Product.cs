@@ -4,7 +4,7 @@ namespace Sales.Domain;
 /// Aggregate root for a catalog product. Owns invariants around SKU/name/price validity and raises
 /// the domain events consumed for auditing.
 /// </summary>
-public sealed class Product : AggregateRoot
+public sealed class Product : AggregateRoot<Guid>
 {
     private Product() { }
     private Product(Guid id, string sku, string name, Money price)

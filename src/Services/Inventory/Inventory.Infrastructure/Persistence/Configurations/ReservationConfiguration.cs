@@ -15,6 +15,9 @@ public sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservat
     public void Configure(EntityTypeBuilder<Reservation> entity)
     {
         entity.ToTable("reservations").HasKey(x => x.Id);
+        entity.Ignore(x => x.DomainEvents);
+        entity.Ignore(x => x.UpdatedAt);
+        entity.Ignore(x => x.Version);
         entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(24);
         entity.HasIndex(x => x.OrderId).IsUnique();
         entity.HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.ReservationId);

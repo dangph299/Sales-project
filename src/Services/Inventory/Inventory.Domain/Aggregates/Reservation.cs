@@ -5,17 +5,11 @@ namespace Inventory.Domain;
 /// <see cref="InventoryItem.Reserve"/> succeeds for every requested line, and released when the
 /// order is cancelled or its confirmation is rejected.
 /// </summary>
-public sealed class Reservation
+public sealed class Reservation : AggregateRoot<Guid>
 {
     private readonly List<ReservationLine> _lines = [];
     private Reservation() { }
 
-    /// <summary>
-    /// Gets the unique identifier of this reservation.
-    /// </summary>
-    public Guid Id { get; private set; }
-
-    /// <summary>
     /// Gets the unique identifier of the Sales order this reservation was made for.
     /// </summary>
     public Guid OrderId { get; private set; }

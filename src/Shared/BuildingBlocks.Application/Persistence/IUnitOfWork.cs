@@ -1,7 +1,7 @@
-namespace Sales.Application;
+namespace BuildingBlocks.Application;
 
 /// <summary>
-/// Commits all changes made to aggregates within the current unit of work.
+/// Commits all changes made within the current unit of work.
 /// </summary>
 public interface IUnitOfWork
 {

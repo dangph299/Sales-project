@@ -21,14 +21,15 @@ public sealed class OrderTests
     }
 
     [Fact]
-    public void Confirm_follows_inventory_state_machine()
+    public void Confirm_and_undo_follows_inventory_state_machine()
     {
         var order = CreateOrder();
         order.RequestConfirmation();
         Assert.Contains(order.GetDomainEvents(), x => x is OrderConfirmationRequestedDomainEvent);
         order.MarkReserved();
-        order.Cancel();
-        Assert.Equal(OrderStatus.Cancelled, order.Status);
+        order.UndoConfirmed();
+        Assert.Equal(OrderStatus.Draft, order.Status);
+        Assert.Contains(order.GetDomainEvents(), x => x is OrderUndoComfirmedDomainEvent);
     }
 
     [Fact]

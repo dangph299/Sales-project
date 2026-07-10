@@ -4,7 +4,7 @@ namespace Sales.Domain;
 /// Aggregate root for a customer. Owns invariants around name/phone validity and raises the
 /// domain events consumed for auditing.
 /// </summary>
-public sealed class Customer : AggregateRoot
+public sealed class Customer : AggregateRoot<Guid>
 {
     private Customer() { }
     private Customer(Guid id, string name, string phone)
