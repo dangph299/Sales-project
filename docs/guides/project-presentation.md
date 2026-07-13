@@ -74,11 +74,13 @@ Dùng cho domain model, invariant, business rule.
 
 | Folder | Vai trò | Ví dụ |
 |---|---|---|
-| `Aggregates` | Aggregate root và entity nằm trong aggregate | `Order`, `Product`, `Customer`, `OrderLine` |
+| `Aggregates` | Aggregate root (kế thừa `BuildingBlocks.Domain.AggregateRoot<TId>`) và entity nằm trong aggregate | `Order`, `Product`, `Customer`, `OrderLine` |
 | `ValueObjects` | Object không có identity, so sánh theo giá trị | `Money`, `CustomerSnapshot`, `ProductSnapshot` |
-| `Events` | Domain event mô tả việc đã xảy ra | `OrderConfirmationRequestedDomainEvent` |
-| `Exceptions` | Lỗi nghiệp vụ domain | `DomainException` |
+| `Events` | Domain event mô tả việc đã xảy ra, implement `BuildingBlocks.Domain.IDomainEvent` | `OrderConfirmationRequestedDomainEvent` |
+| `Exceptions` | Lỗi nghiệp vụ domain (hiện Sales chưa có subclass riêng, để `.gitkeep`) | `BuildingBlocks.Domain.DomainException` |
 | `Repositories` | Interface repository command-side | `IOrderRepository` |
+
+`AggregateRoot<TId>`, `Entity<TId>`, `IDomainEvent`/`DomainEvent`, `DomainException` không nằm trong `Sales.Domain` — chúng sống ở `Shared/BuildingBlocks.Domain` (dùng chung với `Inventory.Domain` từ 2026-07-10, xem `architecture.md`).
 
 Ví dụ `Order` là aggregate root, quản lý nhất quán cho các `OrderLine`:
 
@@ -102,9 +104,11 @@ Dùng cho CQRS và use case.
 |---|---|---|
 | `Commands` | Use case ghi dữ liệu qua aggregate/repository/UoW | `CreateProduct`, `ReplaceOrderLines`, `ConfirmOrder` |
 | `Queries` | Use case đọc dữ liệu qua read service | `SearchProducts`, `SearchOrders` |
-| `DTOs` | Response model/API model | `ProductDto`, `OrderDto`, `PagedResult<T>` |
-| `Interfaces` | Port để Infrastructure implement | `IProductReadService`, `IUnitOfWork`, `IProductCache` |
-| `Services` | Application exception/orchestration | `NotFoundException`, `ConflictException` |
+| `DTOs` | Response model/API model | `ProductDto`, `OrderDto` |
+| `Interfaces` | Port để Infrastructure implement | `IProductReadService`, `IProductCache`, `IExecutionContext` |
+| `Services` | Application exception/orchestration | `NotFoundException`, `ConflictException`, `SalesApplicationExceptionClassifier` |
+
+`IUnitOfWork` và `PagedResult<T>`/`Paging` không nằm trong `Sales.Application` — chúng sống ở `Shared/BuildingBlocks.Application` (dùng chung skeleton cho CQRS, xem `architecture.md`).
 
 Command không map thẳng vào aggregate. Command handler load aggregate, gọi behavior domain, rồi commit Unit of Work.
 
@@ -180,7 +184,7 @@ public OrdersController(ISender sender)
 | Product tạo/sửa/xóa mềm/xem/search tên | Controller + MediatR + Repository + EF query filter + Redis cache | `ProductsController`, `Product.cs`, `ProductReadService`, `ProductCache` |
 | Customer tạo/sửa/xóa mềm/xem/search phone đầu/đuôi/tên | Phone normalize, `Phone`, `ReversedPhone`, EF query filter | `Customer.cs`, `CustomerReadService` |
 | Order tổng SL/tổng tiền/chiết khấu | Aggregate `Order`, `OrderLine`, `Money` | `Order.cs`, `Money.cs` |
-| Audit columns | `UpdatedAt` cho Product/Customer/Order; soft-delete metadata cho Product/Customer | `AggregateRoot`, `Product`, `Customer`, migration `SoftDeleteAndUpdatedAt` |
+| Audit columns | `UpdatedAt` cho Product/Customer/Order; soft-delete metadata cho Product/Customer | `BuildingBlocks.Domain.AggregateRoot`, `Product`, `Customer`, migration `SoftDeleteAndUpdatedAt` |
 | Search order theo ngày/tên/SĐT | Query projection `AsNoTracking`, index ngày/tên/SĐT | `OrderReadService`, `SalesDbContext` |
 | 2 người cùng sửa order | Optimistic concurrency bằng `Version`, `ETag`, `If-Match` | `OrdersController`, `ControllerEtagExtensions`, `OrderCommandSupport.LoadAndCheck` |
 | AuditLog MongoDB qua Kafka | Kafka consumer lưu Mongo, unique `eventId` | `AuditEventHandler.cs` |
@@ -189,7 +193,7 @@ public OrdersController(ISender sender)
 | CQRS | Command/query tách riêng, MediatR | `Sales.Application/Commands`, `Sales.Application/Queries` |
 | Factory Method | Static factory tạo aggregate/value object | `Product.Create`, `Customer.Create`, `Order.Create`, `Money.Vnd` |
 | Repository | Interface ở Domain, implement ở Infrastructure | `Repositories.cs` |
-| Unit of Work | `SalesDbContext` implement `IUnitOfWork` | `SalesDbContext.cs` |
+| Unit of Work | `SalesDbContext` implement `IUnitOfWork` (`Shared/BuildingBlocks.Application`) | `SalesDbContext.cs` |
 | Mapster | Mapping domain sang DTO | `DTOs/Models.cs` |
 | Redis cache | Cache-aside cho product detail, Redis lock cho cleanup job | `ProductCache.cs`, `MaintenanceJobs.cs` |
 | Hangfire | Scheduled cleanup/replay job | `Program.cs`, `MaintenanceJobs.cs` |

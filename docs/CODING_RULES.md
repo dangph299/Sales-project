@@ -43,8 +43,8 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 
 ## 5. Dependency direction (Clean Architecture / DDD)
 
-- **Domain** không được reference Application, Infrastructure, EF Core, MediatR, Kafka, Hangfire, MongoDB Driver hay bất kỳ framework nào. Domain chỉ chứa C# thuần + business rule.
-- **Application** không được reference Infrastructure. Application có thể reference Domain và `BuildingBlocks.Contracts` (chỉ khi cần dùng chung contract, ví dụ mapping sang integration event) — không bắt buộc nếu Application chưa cần.
+- **Domain** không được reference Application, Infrastructure, EF Core, MediatR, Kafka, Hangfire, MongoDB Driver hay bất kỳ framework nào. Domain chỉ chứa C# thuần + business rule. `Sales.Domain`/`Inventory.Domain` được phép reference `Shared/BuildingBlocks.Domain` (base type framework-independent dùng chung — `AggregateRoot<TId>`, `Entity<TId>`, `IDomainEvent`/`DomainEvent`, `DomainException`), không được reference `BuildingBlocks.Application`/`BuildingBlocks.Infrastructure`/`BuildingBlocks.Web`.
+- **Application** không được reference Infrastructure. Application có thể reference Domain, `BuildingBlocks.Contracts` (chỉ khi cần dùng chung contract, ví dụ mapping sang integration event — không bắt buộc nếu Application chưa cần), và `Shared/BuildingBlocks.Application` (pipeline behavior, `IUnitOfWork`, pagination dùng chung — hiện chỉ `Sales.Application` dùng, vì Inventory không dùng CQRS/MediatR).
 - **Infrastructure** implement các abstraction khai báo ở Domain/Application (repository interfaces, `IUnitOfWork`, `IOutboxPublisher`...). Infrastructure được reference Domain, Application, `BuildingBlocks.Contracts`, và mọi package hạ tầng (EF Core, Npgsql, KafkaFlow, MongoDB.Driver, Hangfire...).
 - **Api/Worker** (entrypoint) được reference Application + Infrastructure để wiring DI; không chứa business logic.
 - **Cross-service**: Sales không được reference trực tiếp implementation của Inventory (và ngược lại). Giao tiếp liên service chỉ qua **integration event** định nghĩa trong `Shared/BuildingBlocks.Contracts` + Kafka topic, không qua project reference trực tiếp giữa hai service.
@@ -61,7 +61,9 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 | Repository implementation | `<Service>.Infrastructure/Repositories/` |
 | CQRS command/query + handler | `<Service>.Application/Commands/<Aggregate>/`, `Queries/<Aggregate>/` — mỗi record và mỗi handler một file riêng |
 | FluentValidation validator | `<Service>.Application/Validators/<Aggregate>/` |
-| MediatR pipeline behavior | `<Service>.Application/Services/Behaviors/` |
+| MediatR pipeline behavior | `Shared/BuildingBlocks.Application/Behaviors/` (shared behaviors: `ErrorLoggingBehavior`, `LoggingBehavior`, `ValidationBehavior`); service-specific behavior (nếu có) vẫn ở `<Service>.Application/Services/Behaviors/` |
+| Aggregate/entity base type, domain event, domain exception dùng chung | `Shared/BuildingBlocks.Domain/Abstractions/` (`AggregateRoot<TId>`, `Entity<TId>`, `IDomainEvent`/`DomainEvent`), `Shared/BuildingBlocks.Domain/Exceptions/` (`DomainException`) |
+| `IUnitOfWork`, pagination (`PagedResult<T>`/`Paging`) dùng chung | `Shared/BuildingBlocks.Application/Persistence/`, `Shared/BuildingBlocks.Application/Pagination/` |
 | DbContext | `<Service>.Infrastructure/Persistence/DbContexts/` |
 | EF Core `IEntityTypeConfiguration<T>` | `<Service>.Infrastructure/Persistence/Configurations/` |
 | EF Core Migrations | `<Service>.Infrastructure/Persistence/Migrations/` (sinh bởi `dotnet ef migrations add`, không sửa tay) |

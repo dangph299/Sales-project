@@ -157,6 +157,8 @@ Không thêm project `*.Contracts` riêng cho từng service nếu contract đó
 
 ## 4. Domain Layer Convention
 
+Base type dùng chung (`AggregateRoot<TId>`, `Entity<TId>`/`IEntity<TId>`, `IAggregateRoot`, `IDomainEvent`/`DomainEvent`, `DomainException`) **không còn nằm trong `Sales.Domain`** — đã chuyển sang `Shared/BuildingBlocks.Domain/Abstractions/` (+ `Exceptions/`) từ 2026-07-10 để `Inventory.Domain` cũng dùng chung được. `Sales.Domain`/`Inventory.Domain` reference project này qua `global using BuildingBlocks.Domain;`.
+
 Sales.Domain hiện tại:
 
 ```text
@@ -164,18 +166,14 @@ Sales.Domain/
 ├── Aggregates/
 │   ├── Customer.cs
 │   ├── Order.cs
-│   ├── Product.cs
-│   └── AggregateRoot.cs
+│   └── Product.cs
 ├── Entities/
-│   ├── Entity.cs
 │   └── OrderLine.cs
 ├── Events/
 │   ├── Customers/
 │   ├── Orders/
-│   ├── Products/
-│   ├── DomainEvent.cs
-│   └── IDomainEvent.cs
-├── Exceptions/
+│   └── Products/
+├── Exceptions/       (.gitkeep — chưa có DomainException con riêng của Sales)
 ├── Repositories/
 ├── Services/
 │   └── Specifications/
@@ -187,11 +185,26 @@ Inventory.Domain hiện tại:
 ```text
 Inventory.Domain/
 ├── Aggregates/
-│   └── Reservation.cs
+│   └── Reservation.cs   (AggregateRoot<Guid>)
 ├── Entities/
-│   ├── InventoryItem.cs
+│   ├── InventoryItem.cs (IEntity<Guid>)
 │   └── ReservationLine.cs
 └── ValueObjects/
+```
+
+Shared/BuildingBlocks.Domain hiện tại:
+
+```text
+Shared/BuildingBlocks.Domain/
+├── Abstractions/
+│   ├── AggregateRoot.cs
+│   ├── DomainEvent.cs
+│   ├── Entity.cs
+│   ├── IAggregateRoot.cs
+│   ├── IDomainEvent.cs
+│   └── IEntity.cs
+└── Exceptions/
+    └── DomainException.cs
 ```
 
 Rules:
@@ -223,12 +236,13 @@ Sales.Application/
 │   └── Products/
 ├── DTOs/
 ├── Interfaces/
-├── Services/
-│   └── Behaviors/
+├── Services/            (ConflictException, NotFoundException, SalesApplicationExceptionClassifier)
 ├── Validators/
 ├── Common/
 └── DependencyInjection.cs
 ```
+
+`Services/Behaviors/` không còn tồn tại — 3 pipeline behavior (`ErrorLoggingBehavior`, `LoggingBehavior`, `ValidationBehavior`) đã chuyển sang `Shared/BuildingBlocks.Application/Behaviors/` từ 2026-07-10 (dùng chung nếu sau này có CQRS service khác). `IUnitOfWork` và `PagedResult`/`Paging` cũng chuyển sang `Shared/BuildingBlocks.Application/Persistence/` và `Pagination/` — không còn trong `Sales.Application/Interfaces/` hay `DTOs/`.
 
 Rules:
 
@@ -236,16 +250,17 @@ Rules:
 - Request MediatR hiện tại dùng tên ngắn theo use case, ví dụ `CreateOrder`, `ConfirmOrder`, `SearchOrders`, không dùng hậu tố `Command`/`Query` bắt buộc.
 - Handler đặt cùng feature folder trong `Commands/<Area>` hoặc `Queries/<Area>`, ví dụ `CreateOrderHandler`.
 - Validator đặt trong `Validators/<Area>`, ví dụ `CreateOrderValidator`.
-- DTO/read models đặt trong `DTOs/<Area>` hoặc `DTOs` chung cho pagination/mapping.
-- Ports đặt trong `Interfaces`, ví dụ `IUnitOfWork`, `IOrderReadService`, `IProductCache`.
+- DTO/read models đặt trong `DTOs/<Area>`.
+- Ports đặt trong `Interfaces`, ví dụ `IOrderReadService`, `IProductCache`, `IExecutionContext`. `IUnitOfWork` là port dùng chung, nay nằm ở `BuildingBlocks.Application` thay vì `Sales.Application/Interfaces/`.
 - Handler không chứa domain rule phức tạp; gọi aggregate/domain service để xử lý nghiệp vụ.
 - Handler command không gọi `DbContext` trực tiếp; dùng repository/read port/unit of work.
 - Query handler gọi read-service port; EF projection nằm trong Infrastructure.
 - Validation dùng FluentValidation.
 - Mapping hiện tại dùng extension/mapping trong `DtoMapping.cs` và Mapster package nếu phù hợp; không trả entity ra API.
 - Không publish Kafka trực tiếp trong handler; thay đổi business data và outbox phải đi cùng transaction.
+- Exception nào được coi là "expected rejection" (log Warning thay vì Error) khai báo qua `IApplicationExceptionClassifier`; mỗi service extend `BuildingBlocks.Application.DefaultApplicationExceptionClassifier` thay vì sửa thẳng `ErrorLoggingBehavior`, ví dụ `SalesApplicationExceptionClassifier` thêm `NotFoundException`/`ConflictException`.
 
-MediatR pipeline hiện tại:
+MediatR pipeline hiện tại (đăng ký qua `BuildingBlocks.Application.DependencyInjection.AddApplicationBuildingBlocks()`, được `Sales.Application.AddSalesApplication()` gọi lại):
 
 ```text
 ErrorLoggingBehavior
@@ -253,7 +268,7 @@ LoggingBehavior
 ValidationBehavior
 ```
 
-Nếu thêm behavior mới, đăng ký trong `Sales.Application/DependencyInjection.cs` và cân nhắc thứ tự wrapping.
+Nếu thêm behavior mới dùng chung cho mọi CQRS service, đăng ký trong `Shared/BuildingBlocks.Application/DependencyInjection.cs`; nếu chỉ riêng Sales cần, đăng ký trong `Sales.Application/DependencyInjection.cs` sau lời gọi `AddApplicationBuildingBlocks()` và cân nhắc thứ tự wrapping.
 
 ---
 
@@ -269,7 +284,7 @@ OrderDto
 
 SearchOrders
 SearchOrdersHandler
-PagedResult<OrderDto>
+PagedResult<OrderDto>  (BuildingBlocks.Application.PagedResult<T>)
 ```
 
 Rules:
@@ -305,6 +320,8 @@ Sales.Infrastructure/
 └── UnitOfWork/
     └── UnitOfWork.cs
 ```
+
+`IUnitOfWork` là interface dùng chung, khai báo ở `Shared/BuildingBlocks.Application/Persistence/IUnitOfWork.cs` — không phải một file trong `Sales.Domain`/`Sales.Application`.
 
 Rules:
 

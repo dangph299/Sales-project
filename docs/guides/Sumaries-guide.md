@@ -17,7 +17,7 @@ Tài liệu này là **điểm vào duy nhất**: chốt lại yêu cầu bài t
 | CQRS (command/query) qua MediatR | ✅ Đủ (Sales) | `Sales.Application/Commands`, `Queries` — Inventory dùng Minimal API + `IInventoryService` trực tiếp (quyết định kiến trúc có chủ đích cho service nhỏ, xem `ARCHITECTURE_CHECKLIST.md`) |
 | Factory Method | ✅ Đủ | `Product.Create`, `Customer.Create`, `Order.Create`, `ProductSnapshot.Create`, `CustomerSnapshot.Create`, `Money.Vnd` — 6 static factory, đều có private constructor giữ invariant |
 | Repository | ✅ Đủ | `IRepository<T>`/`Repository<T>` + `IProductRepository`/`IOrderRepository` cho query đặc thù |
-| Unit of Work | ✅ Đủ | `SalesDbContext` implement `IUnitOfWork`, tách `UnitOfWork.cs` mỏng |
+| Unit of Work | ✅ Đủ | `SalesDbContext` implement `IUnitOfWork` (`Shared/BuildingBlocks.Application/Persistence/IUnitOfWork.cs`, dùng chung — không còn khai báo riêng trong `Sales.Application`), tách `UnitOfWork.cs` mỏng |
 | AutoMapper/Mapster | ✅ Đủ (đã sửa hiểu nhầm cũ) | Xem mục 2 — Mapster **có dùng thật** cho Product/Customer; Order mapping tay có lý do rõ ràng |
 | Redis cache (cache-aside + distributed lock) | ✅ Đủ | Cache-aside `ProductDto` (`ProductCache`), lock SET-NX/Lua cho Hangfire cleanup job — xem [Redis-cache-usage-guide.md](Redis-cache-usage-guide.md) |
 | Hangfire (queue) | ✅ Đủ | 3 queue (`critical`/`default`/`maintenance`), job cleanup + replay outbox/DLQ, dashboard `/hangfire` |
@@ -87,7 +87,7 @@ private static TypeAdapterConfig CreateConfig()
 ## 5. Thay đổi nghiệp vụ mới đã phản ánh trong code
 
 1. **Soft delete Product/Customer.** API mới `DELETE /api/products/{id}` và `DELETE /api/customers/{id}` chỉ set `IsDelete = true`, `DeleteByUser`, `DeletedAt`, cập nhật `UpdatedAt`/`Version`; read/search mặc định ẩn record đã xóa bằng EF query filter. Product cache được invalidate khi delete. Angular test client có nút `Delete` cho cả Product và Customer.
-2. **Audit timestamp.** `AggregateRoot.Touch()` cập nhật `UpdatedAt`, vì vậy Product/Customer/Order đều trả `updatedAt` trong DTO. Migration Sales mới: `SoftDeleteAndUpdatedAt`.
+2. **Audit timestamp.** `AggregateRoot.Touch()` (`Shared/BuildingBlocks.Domain/Abstractions/AggregateRoot.cs`, dùng chung với Inventory từ 2026-07-10) cập nhật `UpdatedAt`, vì vậy Product/Customer/Order đều trả `updatedAt` trong DTO. Migration Sales mới: `SoftDeleteAndUpdatedAt`.
 3. **Discount input không được thiếu.** `OrderLineInput.DiscountPercent` là nullable và validator bắt buộc `NotNull().InclusiveBetween(0, 100)`; nếu client gửi nhầm key như `discount` thì bị reject thay vì lưu ngầm `0`.
 4. **Reconfirm/undo confirm bền hơn trước event đến trễ.** Inventory `Reservation` lưu `LastOrderVersion`; release event version cũ bị bỏ qua, confirm mới hơn trên active reservation vẫn publish `StockReserved` để Sales không chờ mãi. Migration Inventory mới: `ReservationOrderVersion`.
 5. **Playwright regression specs.** `reconfirm-flow.spec.ts` kiểm tra `create -> confirm -> undo confirm -> confirm`; `over-available-after-undo.spec.ts` kiểm tra `create -> confirm -> undo confirm -> update quantity > available -> confirm` và chờ kết quả `InventoryRejected`.
