@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY Sales.sln .
@@ -12,9 +13,9 @@ COPY src/Services/Sales/Sales.Domain/Sales.Domain.csproj src/Services/Sales/Sale
 COPY src/Services/Sales/Sales.Application/Sales.Application.csproj src/Services/Sales/Sales.Application/
 COPY src/Services/Sales/Sales.Infrastructure/Sales.Infrastructure.csproj src/Services/Sales/Sales.Infrastructure/
 COPY src/Services/Sales/Sales.Api/Sales.Api.csproj src/Services/Sales/Sales.Api/
-RUN dotnet restore src/Services/Sales/Sales.Api/Sales.Api.csproj
+RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages dotnet restore src/Services/Sales/Sales.Api/Sales.Api.csproj
 COPY . .
-RUN dotnet publish src/Services/Sales/Sales.Api/Sales.Api.csproj -c Release -o /app --no-restore
+RUN --mount=type=cache,target=/root/.nuget/packages dotnet publish src/Services/Sales/Sales.Api/Sales.Api.csproj -c Release -o /app --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .

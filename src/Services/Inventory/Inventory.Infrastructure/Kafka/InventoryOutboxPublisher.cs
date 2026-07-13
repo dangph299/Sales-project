@@ -1,6 +1,7 @@
 using BuildingBlocks.Application;
 using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,9 +16,11 @@ public sealed class InventoryOutboxPublisher(
     IServiceScopeFactory scopes,
     IOutboxPublisher publisher,
     ILogger<InventoryOutboxPublisher> logger,
-    IClock clock) : BackgroundService
+    IClock clock,
+    IConfiguration configuration) : BackgroundService
 {
     private static readonly TimeSpan LockDuration = TimeSpan.FromSeconds(30);
+    private readonly TimeSpan pollInterval = ReadPollInterval(configuration);
 
     /// <summary>
     /// Runs the outbox publish loop until the host requests a stop.
@@ -35,7 +38,7 @@ public sealed class InventoryOutboxPublisher(
                 await UpdateMetrics(db, ct);
             }
             catch (Exception ex) when (!ct.IsCancellationRequested) { logger.LogError(ex, "Inventory outbox cycle failed"); }
-            await Task.Delay(TimeSpan.FromSeconds(2), ct);
+            await Task.Delay(pollInterval, ct);
         }
     }
 
@@ -113,5 +116,11 @@ public sealed class InventoryOutboxPublisher(
         var backlog = await db.Outbox.LongCountAsync(x => x.ProcessedAt == null && x.DeadLetteredAt == null, ct);
         var deadLetters = await db.Outbox.LongCountAsync(x => x.DeadLetteredAt != null, ct);
         InventoryMetrics.SetOutboxSnapshot(backlog, deadLetters);
+    }
+
+    private static TimeSpan ReadPollInterval(IConfiguration configuration)
+    {
+        var milliseconds = configuration.GetValue("Outbox:PollIntervalMilliseconds", 2_000);
+        return TimeSpan.FromMilliseconds(Math.Clamp(milliseconds, 100, 60_000));
     }
 }

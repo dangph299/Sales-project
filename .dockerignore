@@ -5,6 +5,14 @@
 **/.angular
 **/playwright-report
 **/test-results
+.agents
+.claude
+.config
+.playwright-mcp
 .git
 .vs
 .idea
+docs
+tests
+src/tests
+src/Web

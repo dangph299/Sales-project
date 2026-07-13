@@ -108,6 +108,7 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Development
+      Outbox__PollIntervalMilliseconds: 250
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: sales-api
     ports: ["5000:8080"]
@@ -124,6 +125,7 @@ services:
     environment:
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Development
+      Outbox__PollIntervalMilliseconds: 250
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: inventory-api
     ports: ["5001:8080"]
