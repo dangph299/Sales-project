@@ -5,7 +5,5 @@ namespace Sales.Application;
 /// <summary>
 /// Query to load a single customer by its identifier.
 /// </summary>
-/// <param name="Id">
-/// The unique identifier of the customer to load.
-/// </param>
+/// <param name="Id">Customer identifier.</param>
 public sealed record GetCustomer(Guid Id) : IRequest<CustomerDto>;

@@ -26,21 +26,11 @@ public sealed record CustomerSnapshot
     /// <summary>
     /// Creates a validated <see cref="CustomerSnapshot"/>.
     /// </summary>
-    /// <param name="id">
-    /// The unique identifier of the customer.
-    /// </param>
-    /// <param name="name">
-    /// The customer's name.
-    /// </param>
-    /// <param name="phone">
-    /// The customer's phone number, normalized via <see cref="Customer.NormalizePhone"/>.
-    /// </param>
-    /// <returns>
-    /// The validated snapshot.
-    /// </returns>
-    /// <exception cref="DomainException">
-    /// Thrown when <paramref name="id"/> is empty or <paramref name="name"/> is empty/whitespace.
-    /// </exception>
+    /// <param name="id">Customer identifier.</param>
+    /// <param name="name">Customer's name.</param>
+    /// <param name="phone">Customer's phone number, normalized via <see cref="Customer.NormalizePhone"/>.</param>
+    /// <returns>Validated snapshot.</returns>
+    /// <exception cref="DomainException">Thrown when <paramref name="id"/> is empty or <paramref name="name"/> is empty/whitespace.</exception>
     public static CustomerSnapshot Create(Guid id, string name, string phone)
     {
         if (id == Guid.Empty) throw new DomainException("Customer id is required.");

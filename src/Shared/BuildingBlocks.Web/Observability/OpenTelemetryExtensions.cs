@@ -11,23 +11,13 @@ namespace BuildingBlocks.Web.Observability;
 public static class OpenTelemetryExtensions
 {
     /// <summary>
-    /// Registers ASP.NET Core, HTTP client, EF Core, runtime, and service-specific telemetry.
+    /// Registers service telemetry shared by API hosts.
     /// </summary>
-    /// <param name="services">
-    /// The service collection to register into.
-    /// </param>
-    /// <param name="configuration">
-    /// The application configuration. Kept in the signature for consistent host composition.
-    /// </param>
-    /// <param name="activitySourceName">
-    /// The service-specific activity source name to include in tracing.
-    /// </param>
-    /// <param name="meterName">
-    /// The service-specific meter name to include in metrics.
-    /// </param>
-    /// <returns>
-    /// The same service collection, to allow chaining.
-    /// </returns>
+    /// <param name="services">Service collection.</param>
+    /// <param name="configuration">Application configuration. Kept in the signature for consistent host composition.</param>
+    /// <param name="activitySourceName">Service-specific activity source name to include in tracing.</param>
+    /// <param name="meterName">Service-specific meter name to include in metrics.</param>
+    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddApplicationObservability(
         this IServiceCollection services,
         IConfiguration configuration,

@@ -16,9 +16,7 @@ public static class RequestLoggingDefaults
     /// Health checks and dashboard polling are not incidents - keep them out of the
     /// Information-level HTTP summary log so on-call signal isn't drowned by uptime noise.
     /// </summary>
-    /// <param name="options">
-    /// The request logging options to configure.
-    /// </param>
+    /// <param name="options">Request logging options to configure.</param>
     public static void Configure(RequestLoggingOptions options)
     {
         options.GetLevel = (context, _, exception) =>

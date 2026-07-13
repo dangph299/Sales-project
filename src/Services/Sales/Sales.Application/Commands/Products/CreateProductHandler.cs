@@ -13,18 +13,10 @@ public sealed class CreateProductHandler(IProductRepository repository, IUnitOfW
     /// Checks that the SKU is not already in use, creates the product, commits the unit of work,
     /// and warms the product cache.
     /// </summary>
-    /// <param name="request">
-    /// The command describing the product to create.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// The created product, mapped to a <see cref="ProductDto"/>.
-    /// </returns>
-    /// <exception cref="Sales.Domain.DomainException">
-    /// Thrown when the SKU is already in use, or the provided SKU/name/price is invalid.
-    /// </exception>
+    /// <param name="request">Command describing the product to create.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Created product, mapped to a <see cref="ProductDto"/>.</returns>
+    /// <exception cref="Sales.Domain.DomainException">Thrown when the SKU is already in use, or the provided SKU/name/price is invalid.</exception>
     public async Task<ProductDto> Handle(CreateProduct request, CancellationToken ct)
     {
         if (await repository.GetBySkuAsync(request.Sku.Trim().ToUpperInvariant(), ct) is not null)

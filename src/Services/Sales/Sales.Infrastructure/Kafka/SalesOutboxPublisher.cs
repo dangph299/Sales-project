@@ -17,12 +17,7 @@ public sealed class SalesOutboxPublisher(IServiceScopeFactory scopes, IOutboxPub
     /// <summary>
     /// Runs the outbox publish loop until the host requests a stop.
     /// </summary>
-    /// <param name="stoppingToken">
-    /// A token that signals when the host is shutting down.
-    /// </param>
-    /// <returns>
-    /// A task representing the long-running background operation.
-    /// </returns>
+    /// <param name="stoppingToken">Host shutdown token.</param>
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)

@@ -4,8 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core mapping for <see cref="InboxMessage"/>: keyed by <c>EventId</c> so a unique-constraint
-/// violation on insert signals a duplicate Kafka message.
+/// Persistence mapping for processed Sales messages.
 /// </summary>
 public sealed class InboxMessageConfiguration : IEntityTypeConfiguration<InboxMessage>
 {

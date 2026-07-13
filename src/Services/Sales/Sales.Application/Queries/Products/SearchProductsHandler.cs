@@ -10,15 +10,9 @@ public sealed class SearchProductsHandler(IProductReadService readService) : IRe
     /// <summary>
     /// Searches products matching the given criteria.
     /// </summary>
-    /// <param name="request">
-    /// The query describing the search criteria and paging.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// A page of matching products.
-    /// </returns>
+    /// <param name="request">Query describing the search criteria and paging.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A page of matching products.</returns>
     public async Task<PagedResult<ProductDto>> Handle(SearchProducts request, CancellationToken ct)
     {
         return await readService.SearchAsync(request.Name, request.Page, request.PageSize, ct);

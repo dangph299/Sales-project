@@ -15,12 +15,8 @@ public static class ApplicationBuilderExtensions
     /// Applies exception handling, request logging, observability, authentication, authorization,
     /// Hangfire dashboard, Swagger, and controller mapping.
     /// </summary>
-    /// <param name="app">
-    /// The Sales API application.
-    /// </param>
-    /// <returns>
-    /// The same application, to allow chaining.
-    /// </returns>
+    /// <param name="app">Sales API application.</param>
+    /// <returns>Application for chaining.</returns>
     public static WebApplication ConfigureApplication(this WebApplication app)
     {
         app.UseExceptionHandler();

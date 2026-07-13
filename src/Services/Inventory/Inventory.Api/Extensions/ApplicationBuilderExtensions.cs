@@ -12,12 +12,8 @@ public static class ApplicationBuilderExtensions
     /// <summary>
     /// Applies request logging, observability, authentication, authorization, Swagger, and controller mapping.
     /// </summary>
-    /// <param name="app">
-    /// The Inventory API application.
-    /// </param>
-    /// <returns>
-    /// The same application, to allow chaining.
-    /// </returns>
+    /// <param name="app">Inventory API application.</param>
+    /// <returns>Application for chaining.</returns>
     public static WebApplication ConfigureApplication(this WebApplication app)
     {
         app.UseSerilogRequestLogging(RequestLoggingDefaults.Configure);

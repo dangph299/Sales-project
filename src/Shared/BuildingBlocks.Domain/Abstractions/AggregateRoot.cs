@@ -4,9 +4,6 @@ namespace BuildingBlocks.Domain;
 /// Base class for a consistency boundary in the domain model. It buffers domain events until the
 /// application or infrastructure layer persists and dispatches them.
 /// </summary>
-/// <typeparam name="TId">
-/// The aggregate identifier type.
-/// </typeparam>
 public abstract class AggregateRoot<TId> : Entity<TId>, IAggregateRoot
     where TId : notnull
 {
@@ -15,9 +12,7 @@ public abstract class AggregateRoot<TId> : Entity<TId>, IAggregateRoot
     /// <summary>
     /// Initializes a new aggregate with the provided identifier.
     /// </summary>
-    /// <param name="id">
-    /// The aggregate identifier.
-    /// </param>
+    /// <param name="id">Aggregate identifier.</param>
     protected AggregateRoot(TId id)
         : base(id)
     {
@@ -49,9 +44,7 @@ public abstract class AggregateRoot<TId> : Entity<TId>, IAggregateRoot
     /// <summary>
     /// Gets the domain events raised by this aggregate since it was loaded or created.
     /// </summary>
-    /// <returns>
-    /// A read-only snapshot of the buffered domain events.
-    /// </returns>
+    /// <returns>A read-only snapshot of the buffered domain events.</returns>
     public IReadOnlyCollection<IDomainEvent> GetDomainEvents() => DomainEvents;
 
     /// <summary>
@@ -62,9 +55,7 @@ public abstract class AggregateRoot<TId> : Entity<TId>, IAggregateRoot
     /// <summary>
     /// Buffers a domain event to be dispatched after the aggregate is persisted.
     /// </summary>
-    /// <param name="domainEvent">
-    /// The domain event describing the fact that occurred.
-    /// </param>
+    /// <param name="domainEvent">Domain event describing the fact that occurred.</param>
     protected void RaiseDomainEvent(IDomainEvent domainEvent)
     {
         ArgumentNullException.ThrowIfNull(domainEvent);
@@ -74,9 +65,7 @@ public abstract class AggregateRoot<TId> : Entity<TId>, IAggregateRoot
     /// <summary>
     /// Buffers a domain event to be dispatched after the aggregate is persisted.
     /// </summary>
-    /// <param name="domainEvent">
-    /// The domain event describing the fact that occurred.
-    /// </param>
+    /// <param name="domainEvent">Domain event describing the fact that occurred.</param>
     protected void Raise(IDomainEvent domainEvent) => RaiseDomainEvent(domainEvent);
 
     /// <summary>

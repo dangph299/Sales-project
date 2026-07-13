@@ -10,18 +10,10 @@ public sealed class GetCustomerHandler(ICustomerReadService readService) : IRequ
     /// <summary>
     /// Loads the requested customer.
     /// </summary>
-    /// <param name="request">
-    /// The query identifying the customer to load.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// The customer, mapped to a <see cref="CustomerDto"/>.
-    /// </returns>
-    /// <exception cref="NotFoundException">
-    /// Thrown when no customer exists with the given identifier.
-    /// </exception>
+    /// <param name="request">Query identifying the customer.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Customer, mapped to a <see cref="CustomerDto"/>.</returns>
+    /// <exception cref="NotFoundException">Thrown when no customer exists with the given identifier.</exception>
     public async Task<CustomerDto> Handle(GetCustomer request, CancellationToken ct) =>
         await readService.GetAsync(request.Id, ct) ?? throw new NotFoundException("Customer", request.Id);
 }

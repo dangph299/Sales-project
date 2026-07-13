@@ -14,12 +14,7 @@ public static class IdentitySeeder
     /// Applies pending database migrations, ensures the <c>Admin</c>/<c>Sales</c>/<c>Warehouse</c>
     /// roles exist, and creates a default <c>admin</c> user if none exists.
     /// </summary>
-    /// <param name="services">
-    /// The application's root service provider, used to resolve a scoped set of Identity services.
-    /// </param>
-    /// <returns>
-    /// A task representing the asynchronous operation.
-    /// </returns>
+    /// <param name="services">Application's root service provider, used to resolve a scoped set of Identity services.</param>
     public static async Task SeedIdentityAsync(this IServiceProvider services)
     {
         using var scope = services.CreateScope();

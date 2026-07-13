@@ -17,15 +17,8 @@ public sealed class AuditEventHandler(IAuditWriter writer, ILogger<AuditEventHan
     /// Handles a single consumed message: opens a tracing span linked to the producer's trace, and
     /// upserts the event into MongoDB.
     /// </summary>
-    /// <param name="context">
-    /// The KafkaFlow message context, providing topic/partition/offset/headers.
-    /// </param>
-    /// <param name="envelope">
-    /// The deserialized event envelope.
-    /// </param>
-    /// <returns>
-    /// A task representing the asynchronous operation.
-    /// </returns>
+    /// <param name="context">KafkaFlow message context, providing topic/partition/offset/headers.</param>
+    /// <param name="envelope">Deserialized event envelope.</param>
     public async Task Handle(IMessageContext context, EventEnvelope envelope)
     {
         var parentContext = TraceContextParser.Parse(context.Headers.GetString(ContractHeaders.TraceParent), context.Headers.GetString(ContractHeaders.TraceState));

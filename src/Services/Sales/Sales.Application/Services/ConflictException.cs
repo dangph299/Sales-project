@@ -4,9 +4,7 @@ namespace Sales.Application;
 /// Thrown when an optimistic concurrency check fails because a resource's actual version does not
 /// match the version a command expected.
 /// </summary>
-/// <param name="currentVersion">
-/// The resource's actual current version.
-/// </param>
+/// <param name="currentVersion">Resource's actual current version.</param>
 public sealed class ConflictException(long currentVersion) : Exception("The resource was changed by another request.")
 {
     /// <summary>

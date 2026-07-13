@@ -9,14 +9,8 @@ public interface IOrderRepository : IRepository<Order>
     /// <summary>
     /// Loads a single order together with its lines.
     /// </summary>
-    /// <param name="id">
-    /// The unique identifier of the order to load.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// The order with its lines populated, or <see langword="null"/> if no order with that identifier exists.
-    /// </returns>
+    /// <param name="id">Order identifier.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Order with its lines populated, or <see langword="null"/> if no order with that identifier exists.</returns>
     Task<Order?> GetWithLinesAsync(Guid id, CancellationToken cancellationToken = default);
 }

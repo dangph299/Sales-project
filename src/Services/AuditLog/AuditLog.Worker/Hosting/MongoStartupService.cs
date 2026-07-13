@@ -17,15 +17,9 @@ public sealed class MongoStartupService : IHostedService
     /// <summary>
     /// Initializes the service with the MongoDB database and audit writer to prepare on startup.
     /// </summary>
-    /// <param name="database">
-    /// The audit MongoDB database.
-    /// </param>
-    /// <param name="writer">
-    /// The audit writer, used to ensure indexes exist.
-    /// </param>
-    /// <param name="logger">
-    /// The logger.
-    /// </param>
+    /// <param name="database">Audit MongoDB database.</param>
+    /// <param name="writer">Audit writer.</param>
+    /// <param name="logger">Logger.</param>
     public MongoStartupService(IMongoDatabase database, IAuditWriter writer, ILogger<MongoStartupService> logger)
     {
         _database = database;
@@ -37,12 +31,7 @@ public sealed class MongoStartupService : IHostedService
     /// Pings MongoDB (retrying up to 20 times, 2 seconds apart) and ensures indexes exist once it
     /// responds.
     /// </summary>
-    /// <param name="cancellationToken">
-    /// A token that signals when the host is shutting down.
-    /// </param>
-    /// <returns>
-    /// A task representing the asynchronous operation.
-    /// </returns>
+    /// <param name="cancellationToken">Host shutdown token.</param>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         for (var attempt = 1; attempt <= 20; attempt++)

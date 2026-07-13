@@ -8,12 +8,12 @@ namespace BuildingBlocks.Observability;
 public static class ObservabilityNames
 {
     /// <summary>
-    /// The tracing source name for Sales' Kafka publish/consume operations.
+    /// tracing source name for Sales' Kafka publish/consume operations.
     /// </summary>
     public const string SalesKafka = "Sales.Infrastructure.Kafka";
 
     /// <summary>
-    /// The tracing source name for Inventory's Kafka publish/consume operations.
+    /// tracing source name for Inventory's Kafka publish/consume operations.
     /// </summary>
     public const string InventoryKafka = "Inventory.Infrastructure.Kafka";
 }

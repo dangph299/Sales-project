@@ -26,18 +26,6 @@ public sealed class ReservationLine : Entity<Guid>
     /// </summary>
     public int Quantity { get; private set; }
 
-    /// <summary>
-    /// Creates a new reservation line from a requested line.
-    /// </summary>
-    /// <param name="reservationId">
-    /// The unique identifier of the owning reservation.
-    /// </param>
-    /// <param name="line">
-    /// The requested product/quantity.
-    /// </param>
-    /// <returns>
-    /// The new reservation line.
-    /// </returns>
     internal static ReservationLine Create(Guid reservationId, ReservationRequestLine line)
     {
         return new ReservationLine

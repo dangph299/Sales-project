@@ -20,9 +20,7 @@ public sealed class InventoryController : ControllerBase
     /// <summary>
     /// Initializes the controller with the Inventory application service.
     /// </summary>
-    /// <param name="inventory">
-    /// The Inventory application service.
-    /// </param>
+    /// <param name="inventory">Inventory application service.</param>
     public InventoryController(IInventoryService inventory)
     {
         _inventory = inventory;
@@ -31,15 +29,9 @@ public sealed class InventoryController : ControllerBase
     /// <summary>
     /// Loads current stock levels for a product.
     /// </summary>
-    /// <param name="productId">
-    /// The unique identifier of the product to load.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with the stock snapshot, or <c>404 Not Found</c> if no inventory item exists.
-    /// </returns>
+    /// <param name="productId">Product identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the stock snapshot, or <c>404 Not Found</c> if no inventory item exists.</returns>
     [HttpGet("{productId:guid}")]
     public async Task<IActionResult> Get(Guid productId, CancellationToken ct)
     {
@@ -52,15 +44,9 @@ public sealed class InventoryController : ControllerBase
     /// <summary>
     /// Loads the inventory reservation associated with a Sales order.
     /// </summary>
-    /// <param name="orderId">
-    /// The unique identifier of the Sales order.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with the reservation snapshot, or <c>404 Not Found</c> if none exists.
-    /// </returns>
+    /// <param name="orderId">Sales order.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the reservation snapshot, or <c>404 Not Found</c> if none exists.</returns>
     [HttpGet("reservations/{orderId:guid}")]
     public async Task<IActionResult> GetReservation(Guid orderId, CancellationToken ct)
     {
@@ -71,18 +57,10 @@ public sealed class InventoryController : ControllerBase
     /// <summary>
     /// Manually adjusts the available stock for a product.
     /// </summary>
-    /// <param name="productId">
-    /// The unique identifier of the product to adjust.
-    /// </param>
-    /// <param name="body">
-    /// The SKU and signed quantity delta to apply.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with the adjusted stock snapshot.
-    /// </returns>
+    /// <param name="productId">Product identifier.</param>
+    /// <param name="body">SKU and signed quantity delta to apply.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the adjusted stock snapshot.</returns>
     [HttpPost("{productId:guid}/adjust")]
     [Authorize(Roles = "Admin,Warehouse")]
     public async Task<IActionResult> Adjust(Guid productId, [FromBody] AdjustStockRequest body, CancellationToken ct)

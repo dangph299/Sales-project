@@ -3,18 +3,13 @@ namespace BuildingBlocks.Domain;
 /// <summary>
 /// Base class for domain objects with a stable identity.
 /// </summary>
-/// <typeparam name="TId">
-/// The identifier type.
-/// </typeparam>
 public abstract class Entity<TId> : IEntity<TId>
     where TId : notnull
 {
     /// <summary>
     /// Initializes a new entity with the provided identifier.
     /// </summary>
-    /// <param name="id">
-    /// The entity identifier.
-    /// </param>
+    /// <param name="id">Entity identifier.</param>
     protected Entity(TId id)
     {
         Id = id;

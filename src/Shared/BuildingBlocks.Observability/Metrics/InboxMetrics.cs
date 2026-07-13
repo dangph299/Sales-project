@@ -13,15 +13,8 @@ public sealed class InboxMetrics
     /// Creates the inbox counters for a service, scoped to the given meter and metric-name
     /// prefix.
     /// </summary>
-    /// <param name="meterName">
-    /// The name of the <see cref="Meter"/> to create the instruments on. Must match the name
-    /// passed to the service's <c>AddMeter(...)</c> registration for the instruments to be
-    /// exported.
-    /// </param>
-    /// <param name="prefix">
-    /// The metric-name prefix (e.g. <c>"sales"</c> or <c>"inventory"</c>) prepended to each
-    /// instrument name.
-    /// </param>
+    /// <param name="meterName">Name of the <see cref="Meter"/> to create the instruments on. Must match the name passed to the service's <c>AddMeter(...)</c> registration for the instruments to be exported.</param>
+    /// <param name="prefix">Metric-name prefix (e.g. <c>"sales"</c> or <c>"inventory"</c>) prepended to each instrument name.</param>
     public InboxMetrics(string meterName, string prefix)
     {
         var meter = new Meter(meterName);

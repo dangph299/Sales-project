@@ -13,18 +13,9 @@ public static class AuditChangeDetector
     /// <summary>
     /// Builds the changes representing an entity's initial values.
     /// </summary>
-    /// <typeparam name="T">
-    /// The type of the value being flattened.
-    /// </typeparam>
-    /// <param name="value">
-    /// The entity's initial values, typically an anonymous object.
-    /// </param>
-    /// <param name="displayNames">
-    /// An optional map from field name to human-readable label.
-    /// </param>
-    /// <returns>
-    /// One change per flattened field, with <c>OldValue</c> null and <c>NewValue</c> set.
-    /// </returns>
+    /// <param name="value">Entity's initial values, typically an anonymous object.</param>
+    /// <param name="displayNames">An optional map from field name to human-readable label.</param>
+    /// <returns>One change per flattened field, with <c>OldValue</c> null and <c>NewValue</c> set.</returns>
     public static IReadOnlyCollection<AuditChange> Created<T>(T value, IReadOnlyDictionary<string, string>? displayNames = null) =>
         Flatten(value)
             .Select(x => ToChange(x.Key, displayNames, null, x.Value))
@@ -33,18 +24,9 @@ public static class AuditChangeDetector
     /// <summary>
     /// Builds the changes representing an entity's final values before deletion.
     /// </summary>
-    /// <typeparam name="T">
-    /// The type of the value being flattened.
-    /// </typeparam>
-    /// <param name="value">
-    /// The entity's values at the time of deletion, typically an anonymous object.
-    /// </param>
-    /// <param name="displayNames">
-    /// An optional map from field name to human-readable label.
-    /// </param>
-    /// <returns>
-    /// One change per flattened field, with <c>OldValue</c> set and <c>NewValue</c> null.
-    /// </returns>
+    /// <param name="value">Entity's values at the time of deletion, typically an anonymous object.</param>
+    /// <param name="displayNames">An optional map from field name to human-readable label.</param>
+    /// <returns>One change per flattened field, with <c>OldValue</c> set and <c>NewValue</c> null.</returns>
     public static IReadOnlyCollection<AuditChange> Deleted<T>(T value, IReadOnlyDictionary<string, string>? displayNames = null) =>
         Flatten(value)
             .Select(x => ToChange(x.Key, displayNames, x.Value, null))
@@ -53,25 +35,10 @@ public static class AuditChangeDetector
     /// <summary>
     /// Diffs two snapshots of an entity and builds the changes for every field whose value differs.
     /// </summary>
-    /// <typeparam name="TBefore">
-    /// The type of the value before the update.
-    /// </typeparam>
-    /// <typeparam name="TAfter">
-    /// The type of the value after the update.
-    /// </typeparam>
-    /// <param name="before">
-    /// The entity's values before the update, typically an anonymous object.
-    /// </param>
-    /// <param name="after">
-    /// The entity's values after the update, typically an anonymous object.
-    /// </param>
-    /// <param name="displayNames">
-    /// An optional map from field name to human-readable label.
-    /// </param>
-    /// <returns>
-    /// One change per field whose flattened value differs between <paramref name="before"/> and
-    /// <paramref name="after"/>. Unchanged fields are omitted.
-    /// </returns>
+    /// <param name="before">Entity's values before the update, typically an anonymous object.</param>
+    /// <param name="after">Entity's values after the update, typically an anonymous object.</param>
+    /// <param name="displayNames">An optional map from field name to human-readable label.</param>
+    /// <returns>One change per field whose flattened value differs between <paramref name="before"/> and <paramref name="after"/>. Unchanged fields are omitted.</returns>
     public static IReadOnlyCollection<AuditChange> Updated<TBefore, TAfter>(
         TBefore before,
         TAfter after,
@@ -91,24 +58,12 @@ public static class AuditChangeDetector
     /// <summary>
     /// Builds a single field-level change, normalizing values and inferring a data type hint when not supplied.
     /// </summary>
-    /// <param name="field">
-    /// The name of the field that changed.
-    /// </param>
-    /// <param name="oldValue">
-    /// The field's value before the change, or <see langword="null"/>.
-    /// </param>
-    /// <param name="newValue">
-    /// The field's value after the change, or <see langword="null"/>.
-    /// </param>
-    /// <param name="displayName">
-    /// An optional human-readable label for the field.
-    /// </param>
-    /// <param name="dataType">
-    /// An optional explicit data type hint; inferred from <paramref name="oldValue"/>/<paramref name="newValue"/> if not supplied.
-    /// </param>
-    /// <returns>
-    /// The change record.
-    /// </returns>
+    /// <param name="field">Changed field name.</param>
+    /// <param name="oldValue">Field's value before the change, or <see langword="null"/>.</param>
+    /// <param name="newValue">Field's value after the change, or <see langword="null"/>.</param>
+    /// <param name="displayName">An optional human-readable label for the field.</param>
+    /// <param name="dataType">An optional explicit data type hint; inferred from <paramref name="oldValue"/>/<paramref name="newValue"/> if not supplied.</param>
+    /// <returns>Change record.</returns>
     public static AuditChange Change(string field, object? oldValue, object? newValue, string? displayName = null, string? dataType = null) =>
         new(field, displayName, Normalize(oldValue), Normalize(newValue), dataType ?? DataType(oldValue ?? newValue));
 

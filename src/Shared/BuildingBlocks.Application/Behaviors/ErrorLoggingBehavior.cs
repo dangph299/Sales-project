@@ -7,12 +7,6 @@ namespace BuildingBlocks.Application;
 /// <summary>
 /// Logs command/query failures once at Warning for expected rejections or Error for unexpected failures.
 /// </summary>
-/// <typeparam name="TRequest">
-/// The MediatR request type being handled.
-/// </typeparam>
-/// <typeparam name="TResponse">
-/// The response type returned by the request handler.
-/// </typeparam>
 public sealed class ErrorLoggingBehavior<TRequest, TResponse>(
     ILogger<ErrorLoggingBehavior<TRequest, TResponse>> logger,
     IApplicationExceptionClassifier exceptionClassifier) : IPipelineBehavior<TRequest, TResponse>

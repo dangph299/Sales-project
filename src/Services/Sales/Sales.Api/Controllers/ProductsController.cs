@@ -21,9 +21,7 @@ public sealed class ProductsController : ControllerBase
     /// <summary>
     /// Initializes the controller with the MediatR sender used to dispatch commands and queries.
     /// </summary>
-    /// <param name="sender">
-    /// The MediatR sender.
-    /// </param>
+    /// <param name="sender">MediatR sender.</param>
     public ProductsController(ISender sender)
     {
         _sender = sender;
@@ -32,15 +30,9 @@ public sealed class ProductsController : ControllerBase
     /// <summary>
     /// Creates a new product.
     /// </summary>
-    /// <param name="command">
-    /// The product to create.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>201 Created</c> with the created product.
-    /// </returns>
+    /// <param name="command">Product to create.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>201 Created</c> with the created product.</returns>
     [HttpPost]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateProduct command, CancellationToken ct)
@@ -52,21 +44,11 @@ public sealed class ProductsController : ControllerBase
     /// <summary>
     /// Searches products by name.
     /// </summary>
-    /// <param name="name">
-    /// An optional substring to match against the product's name.
-    /// </param>
-    /// <param name="page">
-    /// The 1-based page number to return. Defaults to 1.
-    /// </param>
-    /// <param name="pageSize">
-    /// The maximum number of items per page. Defaults to 20.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with a page of matching products.
-    /// </returns>
+    /// <param name="name">An optional substring to match against the product's name.</param>
+    /// <param name="page">1-based page number. Defaults to 1.</param>
+    /// <param name="pageSize">Maximum page size. Defaults to 20.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with a page of matching products.</returns>
     [HttpGet]
     public async Task<IActionResult> Search([FromQuery] string? name, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
@@ -76,15 +58,9 @@ public sealed class ProductsController : ControllerBase
     /// <summary>
     /// Loads a single product by its identifier.
     /// </summary>
-    /// <param name="id">
-    /// The unique identifier of the product to load.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with the product, and an <c>ETag</c> response header set to its version.
-    /// </returns>
+    /// <param name="id">Product identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the product, and an <c>ETag</c> response header set to its version.</returns>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct)
     {
@@ -96,18 +72,10 @@ public sealed class ProductsController : ControllerBase
     /// <summary>
     /// Updates an existing product's name, price, and active flag.
     /// </summary>
-    /// <param name="id">
-    /// The unique identifier of the product to update, from the route.
-    /// </param>
-    /// <param name="body">
-    /// The product's new values.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with the updated product.
-    /// </returns>
+    /// <param name="id">Product to update, from the route.</param>
+    /// <param name="body">Product's new values.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the updated product.</returns>
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProductRequest body, CancellationToken ct)
@@ -118,15 +86,9 @@ public sealed class ProductsController : ControllerBase
     /// <summary>
     /// Soft-deletes an existing product.
     /// </summary>
-    /// <param name="id">
-    /// The unique identifier of the product to delete.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>204 No Content</c> after the product has been soft-deleted.
-    /// </returns>
+    /// <param name="id">Product identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>204 No Content</c> after the product has been soft-deleted.</returns>
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)

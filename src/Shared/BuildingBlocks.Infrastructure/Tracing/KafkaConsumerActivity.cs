@@ -17,16 +17,9 @@ public static class KafkaConsumerActivity
     /// activity linked to the producer's trace, tagged with the standard OpenTelemetry messaging
     /// attributes.
     /// </summary>
-    /// <param name="source">
-    /// The <see cref="ActivitySource"/> to start the activity from.
-    /// </param>
-    /// <param name="context">
-    /// The KafkaFlow message context, providing the headers and consumer topic/group.
-    /// </param>
-    /// <returns>
-    /// The started activity, or <see langword="null"/> if there are no listeners for
-    /// <paramref name="source"/>.
-    /// </returns>
+    /// <param name="source">The <see cref="ActivitySource"/> to start the activity from.</param>
+    /// <param name="context">KafkaFlow message context, providing the headers and consumer topic/group.</param>
+    /// <returns>Started activity, or <see langword="null"/> if there are no listeners for <paramref name="source"/>.</returns>
     public static Activity? Start(ActivitySource source, IMessageContext context)
     {
         var parentContext = TraceContextParser.Parse(

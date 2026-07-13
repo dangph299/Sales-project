@@ -5,9 +5,7 @@ using Sales.Domain;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core mapping for <see cref="Order"/>: table/index/column configuration, including the
-/// computed <c>Total</c>/<c>TotalQuantity</c> properties (ignored, derived from lines) and the
-/// owned <see cref="OrderLine"/> collection.
+/// Persistence mapping for orders and their lines.
 /// </summary>
 public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
 {

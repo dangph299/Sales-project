@@ -6,12 +6,6 @@ namespace BuildingBlocks.Application;
 /// <summary>
 /// Logs Debug-level progress markers around every command/query.
 /// </summary>
-/// <typeparam name="TRequest">
-/// The MediatR request type being handled.
-/// </typeparam>
-/// <typeparam name="TResponse">
-/// The response type returned by the request handler.
-/// </typeparam>
 public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior<TRequest, TResponse>> logger) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {

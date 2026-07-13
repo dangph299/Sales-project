@@ -13,19 +13,10 @@ namespace BuildingBlocks.Infrastructure;
 /// Publishes a single outbox message to Kafka, opening a tracing span and propagating the W3C
 /// <c>traceparent</c>/<c>tracestate</c> headers so the consumer can continue the same distributed trace.
 /// </summary>
-/// <param name="producers">
-/// The KafkaFlow producer accessor used to resolve the named producer to publish through.
-/// </param>
-/// <param name="logger">
-/// The logger used to record a structured entry after each successful publish.
-/// </param>
-/// <param name="activitySource">
-/// The <see cref="System.Diagnostics.ActivitySource"/> the calling service uses to trace its Kafka
-/// publish/consume operations.
-/// </param>
-/// <param name="producerName">
-/// The name of the KafkaFlow producer, as registered with <c>AddProducer</c>, to publish through.
-/// </param>
+/// <param name="producers">KafkaFlow producer accessor used to resolve the named producer to publish through.</param>
+/// <param name="logger">Logger used to record a structured entry after each successful publish.</param>
+/// <param name="activitySource">The <see cref="System.Diagnostics.ActivitySource"/> the calling service uses to trace its Kafka publish/consume operations.</param>
+/// <param name="producerName">Name of the KafkaFlow producer, as registered with <c>AddProducer</c>, to publish through.</param>
 public sealed class KafkaOutboxPublisher(
     IProducerAccessor producers,
     ILogger<KafkaOutboxPublisher> logger,

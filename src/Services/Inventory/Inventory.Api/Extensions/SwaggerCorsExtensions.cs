@@ -6,7 +6,7 @@ namespace Inventory.Api.Extensions;
 public static class SwaggerCorsExtensions
 {
     /// <summary>
-    /// The named CORS policy used for aggregated Swagger UI access.
+    /// named CORS policy used for aggregated Swagger UI access.
     /// </summary>
     public const string PolicyName = "AggregatedSwaggerUi";
 

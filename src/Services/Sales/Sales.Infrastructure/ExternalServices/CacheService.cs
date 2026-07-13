@@ -5,13 +5,8 @@ using Sales.Application;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// Generic cache-aside implementation of <see cref="ICacheService{T}"/> backed by
-/// <see cref="IDistributedCache"/> (Redis), serializing values as JSON strings. Concrete caches
-/// only need to supply a key prefix and how to extract an identifier from a value.
+/// Shared cache adapter for read-model values.
 /// </summary>
-/// <typeparam name="T">
-/// The type of value cached.
-/// </typeparam>
 public abstract class CacheService<T> : ICacheService<T>
 {
     private readonly IDistributedCache _cache;
@@ -19,9 +14,7 @@ public abstract class CacheService<T> : ICacheService<T>
     /// <summary>
     /// Initializes the cache service with its backing distributed cache.
     /// </summary>
-    /// <param name="cache">
-    /// The distributed cache to read/write through.
-    /// </param>
+    /// <param name="cache">Distributed cache.</param>
     protected CacheService(IDistributedCache cache)
     {
         _cache = cache;
@@ -40,12 +33,8 @@ public abstract class CacheService<T> : ICacheService<T>
     /// <summary>
     /// Extracts the unique identifier from a value, used to build its cache key.
     /// </summary>
-    /// <param name="value">
-    /// The value to extract the identifier from.
-    /// </param>
-    /// <returns>
-    /// The value's unique identifier.
-    /// </returns>
+    /// <param name="value">Value to extract the identifier from.</param>
+    /// <returns>Value's unique identifier.</returns>
     protected abstract Guid GetId(T value);
 
     /// <inheritdoc/>
@@ -74,11 +63,7 @@ public abstract class CacheService<T> : ICacheService<T>
     /// <summary>
     /// Builds the cache key for a given identifier.
     /// </summary>
-    /// <param name="id">
-    /// The unique identifier to build a key for.
-    /// </param>
-    /// <returns>
-    /// The cache key, combining <see cref="KeyPrefix"/> and <paramref name="id"/>.
-    /// </returns>
+    /// <param name="id">Unique identifier to build a key for.</param>
+    /// <returns>Cache key, combining <see cref="KeyPrefix"/> and <paramref name="id"/>.</returns>
     protected virtual string Key(Guid id) => $"{KeyPrefix}:{id:N}";
 }

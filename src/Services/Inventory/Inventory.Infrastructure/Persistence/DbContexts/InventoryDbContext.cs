@@ -6,47 +6,36 @@ using Microsoft.EntityFrameworkCore;
 namespace Inventory.Infrastructure;
 
 /// <summary>
-/// EF Core database context for Inventory, combining stock items, reservations, and the Outbox/Inbox
-/// tables. Unlike Sales, outbox rows are enqueued explicitly via <see cref="Enqueue"/> rather than
-/// derived from domain events, since Inventory does not raise domain events.
+/// Persistence state for Inventory stock, reservations, and reliable messaging.
 /// </summary>
 public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : DbContext(options)
 {
     private readonly List<OutboxMessage> _pending = [];
 
-    /// <summary>Gets the inventory items table.</summary>
+    /// <summary>Inventory items.</summary>
     public DbSet<InventoryItem> Items => Set<InventoryItem>();
 
-    /// <summary>Gets the reservations table.</summary>
+    /// <summary>Stock reservations.</summary>
     public DbSet<Reservation> Reservations => Set<Reservation>();
 
-    /// <summary>Gets the inbox rows table.</summary>
+    /// <summary>Processed inbound messages.</summary>
     public DbSet<InboxRow> Inbox => Set<InboxRow>();
 
-    /// <summary>Gets the outbox rows table.</summary>
+    /// <summary>Outbound messages awaiting publication.</summary>
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
 
     /// <summary>
-    /// Buffers an event to be persisted as an outbox row on the next <see cref="SaveChangesAsync"/>.
+    /// Buffers an event for reliable publication with the next save.
     /// </summary>
-    /// <param name="envelope">
-    /// The event envelope to enqueue.
-    /// </param>
-    /// <param name="topic">
-    /// The Kafka topic the event must be published to.
-    /// </param>
+    /// <param name="envelope">Event envelope to enqueue.</param>
+    /// <param name="topic">Destination topic.</param>
     public void Enqueue(EventEnvelope envelope, string topic) => _pending.Add(OutboxMessage.From(envelope, topic));
 
     /// <summary>
-    /// Flushes any events buffered via <see cref="Enqueue"/> into the Outbox table, then persists
-    /// all pending changes in the same transaction.
+    /// Persists pending state changes and buffered integration events together.
     /// </summary>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// The number of state entries written to the database.
-    /// </returns>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Number of state entries written to the database.</returns>
     public override Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
         if (_pending.Count > 0) { Outbox.AddRange(_pending); _pending.Clear(); }
@@ -56,9 +45,7 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
     /// <summary>
     /// Applies every <c>IEntityTypeConfiguration&lt;T&gt;</c> in this assembly.
     /// </summary>
-    /// <param name="builder">
-    /// The model builder to configure.
-    /// </param>
+    /// <param name="builder">Model builder to configure.</param>
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.ApplyConfigurationsFromAssembly(typeof(InventoryDbContext).Assembly);

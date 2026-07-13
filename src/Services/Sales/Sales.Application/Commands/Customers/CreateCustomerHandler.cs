@@ -11,18 +11,10 @@ public sealed class CreateCustomerHandler(IRepository<Customer> repository, IUni
     /// <summary>
     /// Creates a new customer and commits the unit of work.
     /// </summary>
-    /// <param name="request">
-    /// The command describing the customer to create.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// The created customer, mapped to a <see cref="CustomerDto"/>.
-    /// </returns>
-    /// <exception cref="Sales.Domain.DomainException">
-    /// Thrown when the provided name or phone number is invalid.
-    /// </exception>
+    /// <param name="request">Command describing the customer to create.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Created customer, mapped to a <see cref="CustomerDto"/>.</returns>
+    /// <exception cref="Sales.Domain.DomainException">Thrown when the provided name or phone number is invalid.</exception>
     public async Task<CustomerDto> Handle(CreateCustomer request, CancellationToken ct)
     {
         var customer = Customer.Create(request.Name, request.Phone);

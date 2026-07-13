@@ -15,9 +15,7 @@ public sealed class HealthController : ControllerBase
     /// <summary>
     /// Reports that the API is up and able to handle requests.
     /// </summary>
-    /// <returns>
-    /// <c>200 OK</c> with a simple status payload.
-    /// </returns>
+    /// <returns><c>200 OK</c> with a simple status payload.</returns>
     [HttpGet]
     public IActionResult Get()
     {

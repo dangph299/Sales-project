@@ -4,8 +4,7 @@ using Sales.Domain;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core implementation of <see cref="IOrderRepository"/>, adding the eager-loaded lookup on top
-/// of the generic CRUD from <see cref="Repository{T}"/>.
+/// Order persistence adapter with line-aware loading.
 /// </summary>
 public sealed class OrderRepository(SalesDbContext db) : Repository<Order>(db), IOrderRepository
 {

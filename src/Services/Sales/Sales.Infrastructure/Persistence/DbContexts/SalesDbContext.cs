@@ -10,42 +10,33 @@ using Sales.Domain;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core database context for Sales, combining the domain's aggregates, the Outbox/Inbox tables,
-/// and ASP.NET Core Identity. On every <see cref="SaveChangesAsync"/> it maps any domain events
-/// raised by tracked aggregates into Outbox rows before committing, implementing the transactional
-/// outbox pattern.
+/// Persistence state for Sales aggregates, identity data, and reliable messaging.
 /// </summary>
 public sealed class SalesDbContext(DbContextOptions<SalesDbContext> options, IExecutionContext executionContext) : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IUnitOfWork
 {
-    /// <summary>Gets the products table.</summary>
+    /// <summary>Products in the sales catalog.</summary>
     public DbSet<Product> Products => Set<Product>();
 
-    /// <summary>Gets the customers table.</summary>
+    /// <summary>Sales customers.</summary>
     public DbSet<Customer> Customers => Set<Customer>();
 
-    /// <summary>Gets the orders table.</summary>
+    /// <summary>Customer orders.</summary>
     public DbSet<Order> Orders => Set<Order>();
 
-    /// <summary>Gets the outbox messages table.</summary>
+    /// <summary>Outbound messages awaiting publication.</summary>
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
 
-    /// <summary>Gets the inbox messages table.</summary>
+    /// <summary>Processed inbound messages.</summary>
     public DbSet<InboxMessage> InboxMessages => Set<InboxMessage>();
 
-    /// <summary>Gets the refresh tokens table.</summary>
+    /// <summary>Issued refresh tokens.</summary>
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     /// <summary>
-    /// Maps any domain events raised by tracked aggregates into Outbox rows, then persists all
-    /// pending changes (including the new Outbox rows) in the same transaction, and finally clears
-    /// the aggregates' buffered events.
+    /// Persists pending state changes and domain events together.
     /// </summary>
-    /// <param name="cancellationToken">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// The number of state entries written to the database.
-    /// </returns>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Number of state entries written to the database.</returns>
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         var aggregates = ChangeTracker.Entries<AggregateRoot<Guid>>()
@@ -68,12 +59,9 @@ public sealed class SalesDbContext(DbContextOptions<SalesDbContext> options, IEx
     }
 
     /// <summary>
-    /// Configures the EF Core model: enables the <c>pg_trgm</c> Postgres extension used by trigram
-    /// indexes, and applies every <c>IEntityTypeConfiguration&lt;T&gt;</c> in this assembly.
+    /// Configures the Sales persistence model.
     /// </summary>
-    /// <param name="builder">
-    /// The model builder to configure.
-    /// </param>
+    /// <param name="builder">Model builder to configure.</param>
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);

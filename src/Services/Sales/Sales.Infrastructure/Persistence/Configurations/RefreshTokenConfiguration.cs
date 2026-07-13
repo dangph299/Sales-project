@@ -4,8 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core mapping for <see cref="RefreshToken"/>: table/index configuration, including the
-/// unique constraint on the token hash.
+/// Persistence mapping for refresh tokens.
 /// </summary>
 public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<RefreshToken>
 {

@@ -133,48 +133,16 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 - Tuple vẫn được phép cho: biến local ngắn hạn, deconstruction, pattern `TryParse`, hoặc thuật toán helper mà kết quả không đại diện cho một business concept băng qua API boundary (vd `Paging.Normalize` trả `(int Page, int PageSize)` — thuần clamp giá trị, giữ nguyên).
 - Ví dụ đã áp dụng trong solution: `OrderLineItem` (`Sales.Domain/ValueObjects/OrderLineItem.cs`) thay cho tuple `(ProductSnapshot Product, int Quantity, decimal DiscountPercent)` từng dùng ở `Order.Create`, `Order.ReplaceLines`, `Order.SetLines`, và `OrderCommandSupport.Materialize`.
 
-## 13. XML documentation comment cho mọi member public/internal/protected/interface
+## 13. XML Documentation
 
-- Mọi `class`/`interface`/`record`/`struct` và mọi member `public`, `internal`, `protected` của nó (method, property, constructor, cả member trên `interface`) phải có XML documentation comment (`///`) đầy đủ theo convention chuẩn của Microsoft — không chỉ `<summary>` sơ sài.
-- Bắt buộc có `<summary>` mô tả member đó **làm gì** (không lặp lại tên method bằng lời), cộng thêm các tag sau **khi áp dụng được**:
-  - `<typeparam name="...">` cho mỗi type parameter generic.
-  - `<param name="...">` cho mỗi tham số method/constructor.
-  - `<returns>` cho method có giá trị trả về khác `void`/`Task` (không cần cho `Task` non-generic thuần async void-like, nhưng nên có nếu `Task<T>`).
-  - `<exception cref="...">` cho mỗi exception method chủ đích ném ra (không cần liệt kê exception không kiểm soát được từ dependency).
-- Việc thêm/sửa comment này **không được đổi logic, tên, tham số, access modifier, hay format code** ngoài phần comment — đây thuần là tài liệu, không phải refactor.
-- `private` member không bắt buộc XML doc (thường tự rõ nghĩa qua tên + ngữ cảnh nội bộ class), nhưng vẫn có thể thêm nếu logic không hiển nhiên.
-- Ví dụ format chuẩn:
-
-  ```csharp
-  /// <summary>
-  /// Appends a new domain event to the event stream for the specified aggregate.
-  /// </summary>
-  /// <typeparam name="T">
-  /// The type of the domain event.
-  /// </typeparam>
-  /// <param name="aggregateId">
-  /// The unique identifier of the aggregate.
-  /// </param>
-  /// <param name="version">
-  /// The expected aggregate version.
-  /// </param>
-  /// <param name="data">
-  /// The event payload to persist.
-  /// </param>
-  /// <param name="actor">
-  /// The user or system responsible for the operation.
-  /// </param>
-  /// <param name="correlationId">
-  /// The correlation identifier used to trace the request across services.
-  /// </param>
-  /// <param name="causationId">
-  /// The identifier of the command or event that caused this operation.
-  /// </param>
-  /// <returns>
-  /// A task representing the asynchronous operation.
-  /// </returns>
-  ```
-
+- XML documentation chỉ áp dụng cho API `public` và `protected` cần giải thích intent hoặc business meaning. Không document `private`/`internal` member trừ khi logic đặc biệt phức tạp và không thể tự hiểu từ code.
+- Mọi member đã document phải có `<summary>` ngắn gọn, một đến hai câu ngắn, tập trung vào mục đích nghiệp vụ hoặc hành vi không hiển nhiên. Không lặp lại tên class/method/property và không mô tả chi tiết implementation.
+- Dùng `<param>` chỉ khi parameter cần làm rõ business meaning. Viết một dòng, ví dụ `/// <param name="version">Expected aggregate version.</param>`.
+- Không thêm `<typeparam>` nếu chỉ lặp lại generic type name, ví dụ "The type of ...". Chỉ giữ khi generic parameter có semantic đặc biệt không nhìn ra từ chữ ký.
+- Chỉ dùng `<returns>` khi giá trị trả về có ý nghĩa nghiệp vụ hoặc hành vi đặc biệt cần giải thích, ví dụ `bool`, identifier, domain object, DTO, result object. Không viết boilerplate như `A task representing the asynchronous operation.`
+- Chỉ dùng `<exception>` khi exception là một phần có chủ ý của public API contract. Không liệt kê framework/infrastructure exception bị rò từ dependency.
+- Không đưa implementation detail vào XML documentation: EF Core, LINQ, Kafka, SQL, repository usage, internal algorithm, hoặc framework-specific behavior chỉ nên xuất hiện trong code/comment nội bộ khi thật sự cần.
+- Việc thêm/sửa XML documentation không được đổi logic, method signature, public API, namespace, dependency, hoặc behavior hiện tại.
 - Áp dụng cho toàn bộ solution (Sales, Inventory, AuditLog, `BuildingBlocks.*`), trừ `<Service>.Infrastructure/Persistence/Migrations/` (sinh tự động bởi `dotnet ef migrations add`, không sửa tay — xem mục 6) và `tests/` (test method không phải public API surface, không cần XML doc theo convention chuẩn).
 
 ## 14. Program.cs

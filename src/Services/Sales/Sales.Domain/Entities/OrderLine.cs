@@ -60,50 +60,12 @@ public sealed class OrderLine : Entity<Guid>
     /// </summary>
     public Money LineTotal => Money.Vnd(UnitPrice.Amount * Quantity * (1 - DiscountPercent / 100m));
 
-    /// <summary>
-    /// Creates a new <see cref="OrderLine"/> for the given order.
-    /// </summary>
-    /// <param name="orderId">
-    /// The unique identifier of the owning order.
-    /// </param>
-    /// <param name="product">
-    /// The resolved product snapshot for this line.
-    /// </param>
-    /// <param name="quantity">
-    /// The quantity requested. Must be positive.
-    /// </param>
-    /// <param name="discountPercent">
-    /// The discount percentage to apply. Must be between 0 and 100.
-    /// </param>
-    /// <returns>
-    /// The new order line.
-    /// </returns>
-    /// <exception cref="DomainException">
-    /// Thrown when <paramref name="quantity"/> is not positive or <paramref name="discountPercent"/>
-    /// is outside the 0-100 range.
-    /// </exception>
     internal static OrderLine Create(Guid orderId, ProductSnapshot product, int quantity, decimal discountPercent)
     {
         Validate(quantity, discountPercent);
         return new OrderLine(orderId, product, quantity, discountPercent);
     }
 
-    /// <summary>
-    /// Replaces this line's product, quantity, and discount in place, keeping its identity and owning order.
-    /// </summary>
-    /// <param name="product">
-    /// The resolved product snapshot to replace the current one with.
-    /// </param>
-    /// <param name="quantity">
-    /// The new quantity. Must be positive.
-    /// </param>
-    /// <param name="discountPercent">
-    /// The new discount percentage. Must be between 0 and 100.
-    /// </param>
-    /// <exception cref="DomainException">
-    /// Thrown when <paramref name="quantity"/> is not positive or <paramref name="discountPercent"/>
-    /// is outside the 0-100 range.
-    /// </exception>
     internal void ReplaceWith(ProductSnapshot product, int quantity, decimal discountPercent)
     {
         Validate(quantity, discountPercent);

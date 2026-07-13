@@ -12,12 +12,8 @@ public static class DependencyInjection
     /// Registers FluentValidation validators and the MediatR pipeline behaviors (error logging,
     /// logging, then validation, in that wrapping order) used by every Sales command/query.
     /// </summary>
-    /// <param name="services">
-    /// The service collection to register into.
-    /// </param>
-    /// <returns>
-    /// The same service collection, to allow chaining.
-    /// </returns>
+    /// <param name="services">Service collection.</param>
+    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddSalesApplication(this IServiceCollection services)
     {
         services.AddValidatorsFromAssemblyContaining<CreateCustomerValidator>();

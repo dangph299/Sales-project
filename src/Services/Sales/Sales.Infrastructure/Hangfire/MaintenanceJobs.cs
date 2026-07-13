@@ -16,9 +16,6 @@ public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer re
     /// Deletes processed Inbox rows and processed Outbox rows older than 14 days. Coordinated by a
     /// Redis distributed lock so only one running instance performs the cleanup per scheduled run.
     /// </summary>
-    /// <returns>
-    /// A task representing the asynchronous operation.
-    /// </returns>
     public async Task CleanupAsync()
     {
         var cache = redis.GetDatabase();
@@ -41,12 +38,8 @@ public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer re
     /// <summary>
     /// Resets a single outbox message so the publisher will attempt to publish it again on its next cycle.
     /// </summary>
-    /// <param name="eventId">
-    /// The unique identifier of the outbox message to replay.
-    /// </param>
-    /// <returns>
-    /// <see langword="true"/> if a matching outbox row was found and reset; otherwise <see langword="false"/>.
-    /// </returns>
+    /// <param name="eventId">Outbox message to replay.</param>
+    /// <returns><see langword="true"/> if a matching outbox row was found and reset; otherwise <see langword="false"/>.</returns>
     public async Task<bool> ReplayOutboxMessageAsync(Guid eventId)
     {
         var row = await db.OutboxMessages.SingleOrDefaultAsync(x => x.Id == eventId);
@@ -61,12 +54,8 @@ public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer re
     /// Resets up to <paramref name="take"/> dead-lettered outbox messages so the publisher will
     /// attempt to publish them again on its next cycle.
     /// </summary>
-    /// <param name="take">
-    /// The maximum number of dead-lettered messages to reset. Clamped between 1 and 100.
-    /// </param>
-    /// <returns>
-    /// The number of outbox rows that were reset.
-    /// </returns>
+    /// <param name="take">Maximum number of dead-lettered messages to reset. Clamped between 1 and 100.</param>
+    /// <returns>Number of outbox rows that were reset.</returns>
     public async Task<int> ReplayDeadLettersAsync(int take = ReplayBatchLimit)
     {
         take = Math.Clamp(take, 1, ReplayBatchLimit);

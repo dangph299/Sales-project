@@ -5,17 +5,12 @@ using Sales.Domain;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// Generic EF Core implementation of <see cref="IRepository{T}"/>, providing the common CRUD
-/// operations shared by every aggregate. Concrete repositories inherit from this and add only
-/// their aggregate-specific queries.
+/// Shared persistence adapter for aggregate repositories.
 /// </summary>
-/// <typeparam name="T">
-/// The aggregate root type this repository persists.
-/// </typeparam>
 public class Repository<T>(SalesDbContext db) : IRepository<T> where T : AggregateRoot<Guid>
 {
     /// <summary>
-    /// The database context used by this repository and its derived classes.
+    /// Persistence context used by this adapter and its derived classes.
     /// </summary>
     protected readonly SalesDbContext Db = db;
 

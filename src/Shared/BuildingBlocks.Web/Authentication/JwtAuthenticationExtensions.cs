@@ -14,18 +14,10 @@ public static class JwtAuthenticationExtensions
     /// <summary>
     /// Registers JWT bearer authentication using the solution's shared <c>Jwt</c> configuration section.
     /// </summary>
-    /// <param name="services">
-    /// The service collection to register into.
-    /// </param>
-    /// <param name="configuration">
-    /// The application configuration.
-    /// </param>
-    /// <param name="clockSkew">
-    /// Optional token clock skew override. When omitted, ASP.NET Core's default is preserved.
-    /// </param>
-    /// <returns>
-    /// The same service collection, to allow chaining.
-    /// </returns>
+    /// <param name="services">Service collection.</param>
+    /// <param name="configuration">Application configuration.</param>
+    /// <param name="clockSkew">Optional token clock skew override. When omitted, ASP.NET Core's default is preserved.</param>
+    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddJwtAuthentication(
         this IServiceCollection services,
         IConfiguration configuration,

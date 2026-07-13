@@ -15,15 +15,9 @@ public readonly record struct Money
     /// <summary>
     /// Creates a <see cref="Money"/> value in VND, rounding to the nearest whole unit.
     /// </summary>
-    /// <param name="amount">
-    /// The amount to represent. Must not be negative.
-    /// </param>
-    /// <returns>
-    /// The rounded monetary value.
-    /// </returns>
-    /// <exception cref="DomainException">
-    /// Thrown when <paramref name="amount"/> is negative.
-    /// </exception>
+    /// <param name="amount">Amount to represent. Must not be negative.</param>
+    /// <returns>Rounded monetary value.</returns>
+    /// <exception cref="DomainException">Thrown when <paramref name="amount"/> is negative.</exception>
     public static Money Vnd(decimal amount)
     {
         if (amount < 0) throw new DomainException("Money cannot be negative.");
@@ -33,14 +27,8 @@ public readonly record struct Money
     /// <summary>
     /// Adds two monetary amounts.
     /// </summary>
-    /// <param name="left">
-    /// The first amount.
-    /// </param>
-    /// <param name="right">
-    /// The second amount.
-    /// </param>
-    /// <returns>
-    /// The sum of <paramref name="left"/> and <paramref name="right"/>.
-    /// </returns>
+    /// <param name="left">First amount.</param>
+    /// <param name="right">Second amount.</param>
+    /// <returns>Sum of <paramref name="left"/> and <paramref name="right"/>.</returns>
     public static Money operator +(Money left, Money right) => Vnd(left.Amount + right.Amount);
 }

@@ -5,8 +5,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 namespace Inventory.Infrastructure;
 
 /// <summary>
-/// EF Core mapping for <see cref="OutboxMessage"/>: table/index configuration supporting the
-/// publisher's polling queries (unpublished rows ready to retry, dead-lettered rows, locked rows).
+/// Persistence mapping for outgoing reliable messages.
 /// </summary>
 public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<OutboxMessage>
 {

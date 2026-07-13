@@ -21,18 +21,11 @@ namespace Sales.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers the Sales database context, repositories, read services, execution context,
-    /// caching, and Kafka messaging.
+    /// Registers Sales persistence, read services, execution context, caching, and messaging.
     /// </summary>
-    /// <param name="services">
-    /// The service collection to register into.
-    /// </param>
-    /// <param name="configuration">
-    /// The application configuration, used for connection strings and Kafka broker settings.
-    /// </param>
-    /// <returns>
-    /// The same service collection, to allow chaining.
-    /// </returns>
+    /// <param name="services">Service collection.</param>
+    /// <param name="configuration">Application configuration, used for connection strings and Kafka broker settings.</param>
+    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddSalesInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<SalesDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("Sales")));
@@ -45,11 +38,6 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Registers the Sales repositories and unit of work into the service collection.
-    /// </summary>
-    /// <param name="services"></param>
-    /// <returns></returns>
     private static IServiceCollection AddSalesRepositories(this IServiceCollection services)
     {
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -59,11 +47,6 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Registers the Sales read services into the service collection, including product, customer, and order read services.
-    /// </summary>
-    /// <param name="services"></param>
-    /// <returns></returns>
     private static IServiceCollection AddSalesReadServices(this IServiceCollection services)
     {
         services.AddScoped<ProductReadService>();
@@ -73,11 +56,6 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Registers the execution context for the Sales service, allowing access to the current HTTP context and user information.
-    /// </summary>
-    /// <param name="services"></param>
-    /// <returns></returns>
     private static IServiceCollection AddSalesExecutionContext(this IServiceCollection services)
     {
         services.AddHttpContextAccessor();
@@ -85,12 +63,6 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Registers caching services for the Sales service, including a product cache and Redis connection.
-    /// </summary>
-    /// <param name="services"></param>
-    /// <param name="configuration"></param>
-    /// <returns></returns>
     private static IServiceCollection AddSalesCaching(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IProductCache, ProductCache>();
@@ -99,12 +71,6 @@ public static class DependencyInjection
         return services;
     }
 
-    /// <summary>
-    /// Registers Kafka messaging for the Sales service, including an outbox publisher and consumers for inventory-related events.
-    /// </summary>
-    /// <param name="services"></param>
-    /// <param name="configuration"></param>
-    /// <returns></returns>
     private static IServiceCollection AddSalesMessaging(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(new ActivitySource(ObservabilityNames.SalesKafka));

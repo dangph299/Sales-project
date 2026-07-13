@@ -1,7 +1,7 @@
 namespace Inventory.Domain;
 
 /// <summary>
-/// The lifecycle status of a <see cref="Reservation"/>.
+/// lifecycle status of a <see cref="Reservation"/>.
 /// </summary>
 public enum ReservationStatus
 {

@@ -11,34 +11,16 @@ public interface IAuditWriter
     /// <summary>
     /// Upserts a consumed event, keyed by its event id so redeliveries do not create duplicates.
     /// </summary>
-    /// <param name="envelope">
-    /// The event envelope to store.
-    /// </param>
-    /// <param name="topic">
-    /// The Kafka topic the event was consumed from.
-    /// </param>
-    /// <param name="partition">
-    /// The Kafka partition the event was consumed from.
-    /// </param>
-    /// <param name="offset">
-    /// The Kafka offset the event was consumed from.
-    /// </param>
-    /// <param name="cancellationToken">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// A task representing the asynchronous operation.
-    /// </returns>
+    /// <param name="envelope">Event envelope to store.</param>
+    /// <param name="topic">Kafka topic the event was consumed from.</param>
+    /// <param name="partition">Kafka partition the event was consumed from.</param>
+    /// <param name="offset">Kafka offset the event was consumed from.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     Task UpsertAsync(EventEnvelope envelope, string topic, int partition, long offset, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Ensures the audit store's indexes exist, safe to call repeatedly.
     /// </summary>
-    /// <param name="cancellationToken">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// A task representing the asynchronous operation.
-    /// </returns>
+    /// <param name="cancellationToken">Cancellation token.</param>
     Task EnsureIndexesAsync(CancellationToken cancellationToken = default);
 }

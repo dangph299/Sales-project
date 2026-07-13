@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Inventory.Infrastructure;
 
 /// <summary>
-/// EF Core-backed implementation of <see cref="IInventoryService"/>.
+/// Inventory application service for stock snapshots and reservations.
 /// </summary>
 public sealed class InventoryService(InventoryDbContext db) : IInventoryService
 {

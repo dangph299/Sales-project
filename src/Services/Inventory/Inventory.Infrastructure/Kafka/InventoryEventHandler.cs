@@ -17,15 +17,9 @@ namespace Inventory.Infrastructure;
 /// <c>OrderCancellationRequested</c>), reserving or releasing stock accordingly with Inbox-based
 /// idempotency and a Serializable transaction to guard the stock invariant under concurrency.
 /// </summary>
-/// <param name="scopes">
-/// The scope factory used to resolve per-message scoped dependencies such as the database context.
-/// </param>
-/// <param name="logger">
-/// The logger used to record structured entries for each consumed message.
-/// </param>
-/// <param name="activitySource">
-/// The <see cref="ActivitySource"/> used to start the tracing span for each consumed message.
-/// </param>
+/// <param name="scopes">Scope factory for per-message dependencies.</param>
+/// <param name="logger">Logger used to record structured entries for each consumed message.</param>
+/// <param name="activitySource">The <see cref="ActivitySource"/> used to start the tracing span for each consumed message.</param>
 public sealed class InventoryEventHandler(
     IServiceScopeFactory scopes,
     ILogger<InventoryEventHandler> logger,
@@ -35,15 +29,8 @@ public sealed class InventoryEventHandler(
     /// Handles a single consumed message: opens a tracing span linked to the producer's trace,
     /// records the event in the Inbox for idempotency, and reserves or releases stock accordingly.
     /// </summary>
-    /// <param name="context">
-    /// The KafkaFlow message context, providing topic/partition/offset/headers.
-    /// </param>
-    /// <param name="envelope">
-    /// The deserialized event envelope.
-    /// </param>
-    /// <returns>
-    /// A task representing the asynchronous operation.
-    /// </returns>
+    /// <param name="context">KafkaFlow message context, providing topic/partition/offset/headers.</param>
+    /// <param name="envelope">Deserialized event envelope.</param>
     public async Task Handle(IMessageContext context, EventEnvelope envelope)
     {
         using var activity = KafkaConsumerActivity.Start(activitySource, context);

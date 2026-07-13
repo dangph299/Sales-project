@@ -12,15 +12,9 @@ public sealed class UndoConfirmOrderHandler(IOrderRepository orders, IUnitOfWork
     /// <summary>
     /// Loads the order, undoes its confirmation, and commits the unit of work.
     /// </summary>
-    /// <param name="request">
-    /// The command identifying the order to undo confirmation for and its expected version.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// The order with confirmation undone, mapped to an <see cref="OrderDto"/>.
-    /// </returns>
+    /// <param name="request">Command identifying the order to undo confirmation for and its expected version.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Order with confirmation undone, mapped to an <see cref="OrderDto"/>.</returns>
     public async Task<OrderDto> Handle(UndoConfirmOrder request, CancellationToken ct)
     {
         var order = await orders.LoadAndCheck(request.Id, request.ExpectedVersion, ct);

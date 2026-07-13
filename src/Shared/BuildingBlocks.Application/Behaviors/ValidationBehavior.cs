@@ -6,12 +6,6 @@ namespace BuildingBlocks.Application;
 /// <summary>
 /// Runs all registered FluentValidation validators for the request before invoking the next handler.
 /// </summary>
-/// <typeparam name="TRequest">
-/// The MediatR request type being validated.
-/// </typeparam>
-/// <typeparam name="TResponse">
-/// The response type returned by the request handler.
-/// </typeparam>
 public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators) : IPipelineBehavior<TRequest, TResponse>
     where TRequest : notnull
 {

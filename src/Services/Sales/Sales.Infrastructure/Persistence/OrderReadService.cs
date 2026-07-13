@@ -5,8 +5,7 @@ using Sales.Domain;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core-backed implementation of <see cref="IOrderReadService"/>, querying
-/// <see cref="SalesDbContext"/> directly without going through the command-side repository/aggregate.
+/// Read-side order lookup service for query handlers.
 /// Search filters are composed from <see cref="Specification{T}"/> rules.
 /// </summary>
 public sealed class OrderReadService(SalesDbContext db) : IOrderReadService

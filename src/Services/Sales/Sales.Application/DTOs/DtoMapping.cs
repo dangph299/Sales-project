@@ -13,34 +13,22 @@ public static class DtoMapping
     /// <summary>
     /// Maps a <see cref="Product"/> aggregate to a <see cref="ProductDto"/>.
     /// </summary>
-    /// <param name="product">
-    /// The product to map.
-    /// </param>
-    /// <returns>
-    /// The mapped DTO.
-    /// </returns>
+    /// <param name="product">Product to map.</param>
+    /// <returns>Mapped DTO.</returns>
     public static ProductDto ToDto(this Product product) => product.Adapt<ProductDto>(Config);
 
     /// <summary>
     /// Maps a <see cref="Customer"/> aggregate to a <see cref="CustomerDto"/>.
     /// </summary>
-    /// <param name="customer">
-    /// The customer to map.
-    /// </param>
-    /// <returns>
-    /// The mapped DTO.
-    /// </returns>
+    /// <param name="customer">Customer to map.</param>
+    /// <returns>Mapped DTO.</returns>
     public static CustomerDto ToDto(this Customer customer) => customer.Adapt<CustomerDto>(Config);
 
     /// <summary>
     /// Maps an <see cref="Order"/> aggregate, including its lines, to an <see cref="OrderDto"/>.
     /// </summary>
-    /// <param name="order">
-    /// The order to map.
-    /// </param>
-    /// <returns>
-    /// The mapped DTO.
-    /// </returns>
+    /// <param name="order">Order to map.</param>
+    /// <returns>Mapped DTO.</returns>
     public static OrderDto ToDto(this Order order)
     {
         var lines = order.Lines

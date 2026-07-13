@@ -16,21 +16,11 @@ public static class ApiDocumentationExtensions
     /// <summary>
     /// Registers Swagger generation with common API metadata, XML documentation, and JWT support.
     /// </summary>
-    /// <param name="services">
-    /// The service collection to register into.
-    /// </param>
-    /// <param name="title">
-    /// The API title displayed in Swagger.
-    /// </param>
-    /// <param name="description">
-    /// The API description displayed in Swagger.
-    /// </param>
-    /// <param name="version">
-    /// The API version document name and display value.
-    /// </param>
-    /// <returns>
-    /// The same service collection, to allow chaining.
-    /// </returns>
+    /// <param name="services">Service collection.</param>
+    /// <param name="title">API title displayed in Swagger.</param>
+    /// <param name="description">API description displayed in Swagger.</param>
+    /// <param name="version">API version document name and display value.</param>
+    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddApiDocumentation(
         this IServiceCollection services,
         string title,
@@ -67,22 +57,11 @@ public static class ApiDocumentationExtensions
     /// <summary>
     /// Enables Swagger and Swagger UI in Development only.
     /// </summary>
-    /// <param name="app">
-    /// The application builder.
-    /// </param>
-    /// <param name="title">
-    /// The API title displayed in Swagger UI.
-    /// </param>
-    /// <param name="version">
-    /// The API version document name and display value.
-    /// </param>
-    /// <param name="additionalDocuments">
-    /// Other Swagger/OpenAPI documents to list alongside this API's own document, e.g. another
-    /// service's document fetched directly by the browser. Omit to preserve single-document behavior.
-    /// </param>
-    /// <returns>
-    /// The same application builder, to allow chaining.
-    /// </returns>
+    /// <param name="app">Application builder.</param>
+    /// <param name="title">API title displayed in Swagger UI.</param>
+    /// <param name="version">API version document name and display value.</param>
+    /// <param name="additionalDocuments">Other Swagger/OpenAPI documents to list alongside this API's own document, e.g. another service's document fetched directly by the browser. Omit to preserve single-document behavior.</param>
+    /// <returns>Application builder for chaining.</returns>
     public static WebApplication UseApiDocumentation(
         this WebApplication app,
         string title,

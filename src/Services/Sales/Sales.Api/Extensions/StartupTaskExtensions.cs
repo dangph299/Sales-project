@@ -10,14 +10,9 @@ namespace Sales.Api.Extensions;
 public static class StartupTaskExtensions
 {
     /// <summary>
-    /// Starts Kafka, seeds Identity data, and schedules recurring maintenance jobs.
+    /// Runs Sales startup tasks before serving traffic.
     /// </summary>
-    /// <param name="app">
-    /// The Sales API application.
-    /// </param>
-    /// <returns>
-    /// A task representing the asynchronous startup work.
-    /// </returns>
+    /// <param name="app">Sales API application.</param>
     public static async Task RunStartupTasksAsync(this WebApplication app)
     {
         var kafkaBus = app.Services.CreateKafkaBus();

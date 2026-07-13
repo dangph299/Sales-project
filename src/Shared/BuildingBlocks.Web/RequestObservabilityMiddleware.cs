@@ -13,7 +13,7 @@ using Serilog.Context;
 namespace BuildingBlocks.Web;
 
 /// <summary>
-/// The one shared HTTP middleware every service uses instead of a per-service copy.
+/// one shared HTTP middleware every service uses instead of a per-service copy.
 /// Owns everything the single Serilog request-logging completion event needs:
 /// RequestId/CorrelationId/TraceId/UserId/ClientIp on <see cref="IDiagnosticContext"/> (so it
 /// reaches that one event regardless of middleware nesting) and on <see cref="LogContext"/>
@@ -29,16 +29,8 @@ public sealed class RequestObservabilityMiddleware(RequestDelegate next, IConfig
     /// Enriches the request's log scope and the request-logging summary event with correlation,
     /// trace, user, and (at Debug level) request/response body information.
     /// </summary>
-    /// <param name="context">
-    /// The current HTTP context.
-    /// </param>
-    /// <param name="diagnosticContext">
-    /// The Serilog diagnostic context that <c>RequestLoggingMiddleware</c> reads when it writes the
-    /// request summary event.
-    /// </param>
-    /// <returns>
-    /// A task representing the asynchronous operation.
-    /// </returns>
+    /// <param name="context">Current HTTP context.</param>
+    /// <param name="diagnosticContext">Serilog diagnostic context that <c>RequestLoggingMiddleware</c> reads when it writes the request summary event.</param>
     public async Task InvokeAsync(HttpContext context, IDiagnosticContext diagnosticContext)
     {
         var requestId = context.TraceIdentifier;

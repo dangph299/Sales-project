@@ -29,15 +29,9 @@ public sealed class AuthController : ControllerBase
     /// <summary>
     /// Initializes the controller with the services needed to authenticate users and issue tokens.
     /// </summary>
-    /// <param name="users">
-    /// The Identity user manager.
-    /// </param>
-    /// <param name="db">
-    /// The Sales database context, used to persist refresh tokens.
-    /// </param>
-    /// <param name="config">
-    /// The application configuration, used for JWT signing settings.
-    /// </param>
+    /// <param name="users">Identity user manager.</param>
+    /// <param name="db">Sales persistence context.</param>
+    /// <param name="config">Application configuration, used for JWT signing settings.</param>
     public AuthController(UserManager<ApplicationUser> users, SalesDbContext db, IConfiguration config)
     {
         _users = users;
@@ -48,15 +42,9 @@ public sealed class AuthController : ControllerBase
     /// <summary>
     /// Authenticates a user by username and password and issues a new access/refresh token pair.
     /// </summary>
-    /// <param name="body">
-    /// The username and password to authenticate.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with the issued tokens, or <c>401 Unauthorized</c> if the credentials are invalid.
-    /// </returns>
+    /// <param name="body">Username and password to authenticate.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the issued tokens, or <c>401 Unauthorized</c> if the credentials are invalid.</returns>
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest body, CancellationToken ct)
     {
@@ -73,16 +61,9 @@ public sealed class AuthController : ControllerBase
     /// Exchanges a valid, unrevoked refresh token for a new access/refresh token pair, revoking the
     /// used refresh token.
     /// </summary>
-    /// <param name="body">
-    /// The refresh token to exchange.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with the newly issued tokens, or <c>401 Unauthorized</c> if the refresh token
-    /// is missing, expired, revoked, or does not match a known user.
-    /// </returns>
+    /// <param name="body">Refresh token to exchange.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the newly issued tokens, or <c>401 Unauthorized</c> if the refresh token is missing, expired, revoked, or does not match a known user.</returns>
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest body, CancellationToken ct)
     {

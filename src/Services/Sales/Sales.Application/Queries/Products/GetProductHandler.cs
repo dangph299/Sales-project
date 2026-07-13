@@ -10,18 +10,10 @@ public sealed class GetProductHandler(IProductReadService readService) : IReques
     /// <summary>
     /// Loads the requested product.
     /// </summary>
-    /// <param name="request">
-    /// The query identifying the product to load.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// The product, mapped to a <see cref="ProductDto"/>.
-    /// </returns>
-    /// <exception cref="NotFoundException">
-    /// Thrown when no product exists with the given identifier.
-    /// </exception>
+    /// <param name="request">Query identifying the product.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Product, mapped to a <see cref="ProductDto"/>.</returns>
+    /// <exception cref="NotFoundException">Thrown when no product exists with the given identifier.</exception>
     public async Task<ProductDto> Handle(GetProduct request, CancellationToken ct)
     {
         return await readService.GetAsync(request.Id, ct) ??

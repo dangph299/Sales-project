@@ -6,9 +6,7 @@ using Sales.Domain;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core mapping for <see cref="Product"/>: table/index/column configuration, including the
-/// <see cref="Money"/> value converter and the unique SKU constraint, plus a trigram index on
-/// <c>Name</c> for fast substring search.
+/// Persistence mapping for catalog products.
 /// </summary>
 public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
 {

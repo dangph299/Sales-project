@@ -14,22 +14,11 @@ public sealed class CreateOrderHandler(IOrderRepository orders, IRepository<Cust
     /// <summary>
     /// Resolves the customer and requested product lines, creates the order, and commits the unit of work.
     /// </summary>
-    /// <param name="request">
-    /// The command describing the customer and requested lines.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// The newly created draft order, mapped to an <see cref="OrderDto"/>.
-    /// </returns>
-    /// <exception cref="NotFoundException">
-    /// Thrown when the customer or one of the requested products does not exist.
-    /// </exception>
-    /// <exception cref="Sales.Domain.DomainException">
-    /// Thrown when a requested product is inactive, or the requested lines are empty or contain a
-    /// repeated product.
-    /// </exception>
+    /// <param name="request">Command describing the customer and requested lines.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>Newly created draft order, mapped to an <see cref="OrderDto"/>.</returns>
+    /// <exception cref="NotFoundException">Thrown when the customer or one of the requested products does not exist.</exception>
+    /// <exception cref="Sales.Domain.DomainException">Thrown when a requested product is inactive, or the requested lines are empty or contain a repeated product.</exception>
     public async Task<OrderDto> Handle(CreateOrder request, CancellationToken ct)
     {
         var customer = await customers.GetByIdAsync(request.CustomerId, ct) ?? throw new NotFoundException(nameof(Customer), request.CustomerId);

@@ -5,8 +5,7 @@ using Inventory.Domain;
 namespace Inventory.Infrastructure;
 
 /// <summary>
-/// EF Core mapping for <see cref="InventoryItem"/>: table/index configuration, including the
-/// unique SKU constraint and optimistic concurrency token.
+/// Persistence mapping for inventory items.
 /// </summary>
 public sealed class InventoryItemConfiguration : IEntityTypeConfiguration<InventoryItem>
 {

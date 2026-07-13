@@ -12,18 +12,10 @@ public static class SerilogBootstrap
     /// One shared sink/enricher policy for every service: Console + Seq for human triage,
     /// OTLP so logs join the same trace/span as the existing traces+metrics pipeline in Kibana.
     /// </summary>
-    /// <param name="config">
-    /// The logger configuration to extend.
-    /// </param>
-    /// <param name="configuration">
-    /// The application configuration, used for service name, environment, OTLP endpoint, and Seq URL.
-    /// </param>
-    /// <param name="defaultServiceName">
-    /// The service name to use if <c>OTEL_SERVICE_NAME</c> is not configured.
-    /// </param>
-    /// <returns>
-    /// The logger configuration, to allow chaining.
-    /// </returns>
+    /// <param name="config">Logger configuration to extend.</param>
+    /// <param name="configuration">Application configuration, used for service name, environment, OTLP endpoint, and Seq URL.</param>
+    /// <param name="defaultServiceName">Service name to use if <c>OTEL_SERVICE_NAME</c> is not configured.</param>
+    /// <returns>Logger configuration, to allow chaining.</returns>
     public static LoggerConfiguration ConfigureSharedSinks(this LoggerConfiguration config, IConfiguration configuration, string defaultServiceName)
     {
         var serviceName = configuration["OTEL_SERVICE_NAME"] ?? defaultServiceName;

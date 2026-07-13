@@ -16,15 +16,9 @@ public static class DependencyInjection
     /// Registers AuditLog Infrastructure, the Kafka consumer for every audit/integration topic,
     /// and the hosted services that start the audit store and Kafka bus.
     /// </summary>
-    /// <param name="services">
-    /// The service collection to register into.
-    /// </param>
-    /// <param name="configuration">
-    /// The application configuration, used for Kafka broker/consumer group settings.
-    /// </param>
-    /// <returns>
-    /// The same service collection, to allow chaining.
-    /// </returns>
+    /// <param name="services">Service collection.</param>
+    /// <param name="configuration">Application configuration, used for Kafka broker/consumer group settings.</param>
+    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddAuditLogWorker(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddAuditLogInfrastructure(configuration);

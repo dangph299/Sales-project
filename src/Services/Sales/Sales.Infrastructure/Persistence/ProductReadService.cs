@@ -4,8 +4,7 @@ using Sales.Application;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core-backed implementation of <see cref="IProductReadService"/>, querying
-/// <see cref="SalesDbContext"/> directly without going through the command-side repository/aggregate.
+/// Read-side product lookup service for query handlers.
 /// Not cached itself — see <see cref="CachedProductReadService"/> for the cache-aside decorator
 /// registered as <see cref="IProductReadService"/>.
 /// </summary>

@@ -47,19 +47,10 @@ public sealed class Customer : AggregateRoot<Guid>
     /// <summary>
     /// Creates a new <see cref="Customer"/> aggregate and raises <see cref="CustomerCreatedDomainEvent"/>.
     /// </summary>
-    /// <param name="name">
-    /// The customer's name.
-    /// </param>
-    /// <param name="phone">
-    /// The customer's phone number, in any format containing 9 to 15 digits.
-    /// </param>
-    /// <returns>
-    /// The newly created customer.
-    /// </returns>
-    /// <exception cref="DomainException">
-    /// Thrown when <paramref name="name"/> is empty/whitespace or <paramref name="phone"/> does not
-    /// contain 9 to 15 digits.
-    /// </exception>
+    /// <param name="name">Customer's name.</param>
+    /// <param name="phone">Customer's phone number, in any format containing 9 to 15 digits.</param>
+    /// <returns>Newly created customer.</returns>
+    /// <exception cref="DomainException">Thrown when <paramref name="name"/> is empty/whitespace or <paramref name="phone"/> does not contain 9 to 15 digits.</exception>
     public static Customer Create(string name, string phone)
     {
         var customer = new Customer(Guid.NewGuid(), name, phone);
@@ -71,16 +62,9 @@ public sealed class Customer : AggregateRoot<Guid>
     /// Updates the customer's name and phone number. Raises <see cref="CustomerUpdatedDomainEvent"/>
     /// and increments <see cref="AggregateRoot.Version"/> only if a value actually changed.
     /// </summary>
-    /// <param name="name">
-    /// The customer's new name.
-    /// </param>
-    /// <param name="phone">
-    /// The customer's new phone number, in any format containing 9 to 15 digits.
-    /// </param>
-    /// <exception cref="DomainException">
-    /// Thrown when <paramref name="name"/> is empty/whitespace or <paramref name="phone"/> does not
-    /// contain 9 to 15 digits.
-    /// </exception>
+    /// <param name="name">Customer's new name.</param>
+    /// <param name="phone">Customer's new phone number, in any format containing 9 to 15 digits.</param>
+    /// <exception cref="DomainException">Thrown when <paramref name="name"/> is empty/whitespace or <paramref name="phone"/> does not contain 9 to 15 digits.</exception>
     public void Update(string name, string phone)
     {
         EnsureNotDeleted();
@@ -95,9 +79,7 @@ public sealed class Customer : AggregateRoot<Guid>
     /// <summary>
     /// Soft-deletes the customer and records the actor responsible for the deletion.
     /// </summary>
-    /// <param name="deleteByUser">
-    /// The user identifier responsible for the deletion.
-    /// </param>
+    /// <param name="deleteByUser">User identifier responsible for the deletion.</param>
     public void Delete(string deleteByUser)
     {
         if (IsDelete) return;
@@ -110,15 +92,9 @@ public sealed class Customer : AggregateRoot<Guid>
     /// <summary>
     /// Strips non-digit characters from a phone number and validates the resulting length.
     /// </summary>
-    /// <param name="phone">
-    /// The raw phone number, in any format.
-    /// </param>
-    /// <returns>
-    /// The digits-only phone number.
-    /// </returns>
-    /// <exception cref="DomainException">
-    /// Thrown when the resulting digit string is shorter than 9 or longer than 15 characters.
-    /// </exception>
+    /// <param name="phone">Raw phone number, in any format.</param>
+    /// <returns>Digits-only phone number.</returns>
+    /// <exception cref="DomainException">Thrown when the resulting digit string is shorter than 9 or longer than 15 characters.</exception>
     public static string NormalizePhone(string phone)
     {
         var normalized = new string((phone ?? string.Empty).Where(char.IsDigit).ToArray());

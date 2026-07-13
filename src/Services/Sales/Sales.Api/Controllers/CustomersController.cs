@@ -20,9 +20,7 @@ public sealed class CustomersController : ControllerBase
     /// <summary>
     /// Initializes the controller with the MediatR sender used to dispatch commands and queries.
     /// </summary>
-    /// <param name="sender">
-    /// The MediatR sender.
-    /// </param>
+    /// <param name="sender">MediatR sender.</param>
     public CustomersController(ISender sender)
     {
         _sender = sender;
@@ -31,15 +29,9 @@ public sealed class CustomersController : ControllerBase
     /// <summary>
     /// Creates a new customer.
     /// </summary>
-    /// <param name="command">
-    /// The customer to create.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>201 Created</c> with the created customer.
-    /// </returns>
+    /// <param name="command">Customer to create.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>201 Created</c> with the created customer.</returns>
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCustomer command, CancellationToken ct)
     {
@@ -50,27 +42,13 @@ public sealed class CustomersController : ControllerBase
     /// <summary>
     /// Searches customers by name and/or phone number.
     /// </summary>
-    /// <param name="name">
-    /// An optional substring to match against the customer's name.
-    /// </param>
-    /// <param name="phone">
-    /// An optional value to match against the customer's phone number.
-    /// </param>
-    /// <param name="phoneMatch">
-    /// How <paramref name="phone"/> should be matched (prefix or suffix). Defaults to prefix.
-    /// </param>
-    /// <param name="page">
-    /// The 1-based page number to return. Defaults to 1.
-    /// </param>
-    /// <param name="pageSize">
-    /// The maximum number of items per page. Defaults to 20.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with a page of matching customers.
-    /// </returns>
+    /// <param name="name">An optional substring to match against the customer's name.</param>
+    /// <param name="phone">An optional value to match against the customer's phone number.</param>
+    /// <param name="phoneMatch">How <paramref name="phone"/> should be matched (prefix or suffix). Defaults to prefix.</param>
+    /// <param name="page">1-based page number. Defaults to 1.</param>
+    /// <param name="pageSize">Maximum page size. Defaults to 20.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with a page of matching customers.</returns>
     [HttpGet]
     public async Task<IActionResult> Search(
         [FromQuery] string? name,
@@ -86,15 +64,9 @@ public sealed class CustomersController : ControllerBase
     /// <summary>
     /// Loads a single customer by its identifier.
     /// </summary>
-    /// <param name="id">
-    /// The unique identifier of the customer to load.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with the customer, and an <c>ETag</c> response header set to its version.
-    /// </returns>
+    /// <param name="id">Customer identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the customer, and an <c>ETag</c> response header set to its version.</returns>
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Get(Guid id, CancellationToken ct)
     {
@@ -106,18 +78,10 @@ public sealed class CustomersController : ControllerBase
     /// <summary>
     /// Updates an existing customer's name and phone number.
     /// </summary>
-    /// <param name="id">
-    /// The unique identifier of the customer to update, from the route.
-    /// </param>
-    /// <param name="body">
-    /// The customer's new name and phone number.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>200 OK</c> with the updated customer.
-    /// </returns>
+    /// <param name="id">Customer to update, from the route.</param>
+    /// <param name="body">Customer's new name and phone number.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the updated customer.</returns>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCustomerRequest body, CancellationToken ct)
     {
@@ -127,15 +91,9 @@ public sealed class CustomersController : ControllerBase
     /// <summary>
     /// Soft-deletes an existing customer.
     /// </summary>
-    /// <param name="id">
-    /// The unique identifier of the customer to delete.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <c>204 No Content</c> after the customer has been soft-deleted.
-    /// </returns>
+    /// <param name="id">Customer identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>204 No Content</c> after the customer has been soft-deleted.</returns>
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {

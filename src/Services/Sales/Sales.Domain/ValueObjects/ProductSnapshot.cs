@@ -32,28 +32,13 @@ public sealed record ProductSnapshot
     /// <summary>
     /// Creates a validated <see cref="ProductSnapshot"/> for an active product.
     /// </summary>
-    /// <param name="id">
-    /// The unique identifier of the product.
-    /// </param>
-    /// <param name="sku">
-    /// The product's SKU.
-    /// </param>
-    /// <param name="name">
-    /// The product's name.
-    /// </param>
-    /// <param name="unitPrice">
-    /// The product's unit price.
-    /// </param>
-    /// <param name="isActive">
-    /// Whether the product is currently active. Must be <see langword="true"/>.
-    /// </param>
-    /// <returns>
-    /// The validated snapshot.
-    /// </returns>
-    /// <exception cref="DomainException">
-    /// Thrown when <paramref name="isActive"/> is <see langword="false"/>, <paramref name="id"/> is
-    /// empty, or <paramref name="sku"/>/<paramref name="name"/> is empty/whitespace.
-    /// </exception>
+    /// <param name="id">Product identifier.</param>
+    /// <param name="sku">Product's SKU.</param>
+    /// <param name="name">Product's name.</param>
+    /// <param name="unitPrice">Product's unit price.</param>
+    /// <param name="isActive">Whether the product is currently active. Must be <see langword="true"/>.</param>
+    /// <returns>Validated snapshot.</returns>
+    /// <exception cref="DomainException">Thrown when <paramref name="isActive"/> is <see langword="false"/>, <paramref name="id"/> is empty, or <paramref name="sku"/>/<paramref name="name"/> is empty/whitespace.</exception>
     public static ProductSnapshot Create(Guid id, string sku, string name, Money unitPrice, bool isActive)
     {
         if (!isActive) throw new DomainException("Inactive products cannot be ordered.");

@@ -17,12 +17,7 @@ public sealed class InventoryOutboxPublisher(IServiceScopeFactory scopes, IOutbo
     /// <summary>
     /// Runs the outbox publish loop until the host requests a stop.
     /// </summary>
-    /// <param name="ct">
-    /// A token that signals when the host is shutting down.
-    /// </param>
-    /// <returns>
-    /// A task representing the long-running background operation.
-    /// </returns>
+    /// <param name="ct">Host shutdown token.</param>
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
         while (!ct.IsCancellationRequested)

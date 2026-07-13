@@ -12,31 +12,13 @@ public static class EventEnvelopeFactory
     /// <summary>
     /// Creates an <see cref="EventEnvelope"/> wrapping a serialized event payload.
     /// </summary>
-    /// <typeparam name="T">
-    /// The type of the event payload.
-    /// </typeparam>
-    /// <param name="aggregateId">
-    /// The unique identifier of the aggregate the event relates to.
-    /// </param>
-    /// <param name="version">
-    /// The aggregate's version when the event was raised.
-    /// </param>
-    /// <param name="data">
-    /// The event payload to serialize.
-    /// </param>
-    /// <param name="actor">
-    /// The user or system responsible for the operation. Defaults to <c>"system"</c>.
-    /// </param>
-    /// <param name="correlationId">
-    /// The correlation identifier used to trace the request across services. A new one is
-    /// generated if not supplied.
-    /// </param>
-    /// <param name="causationId">
-    /// The identifier of the event that caused this one, if any.
-    /// </param>
-    /// <returns>
-    /// The populated envelope, ready to be persisted to the outbox and published.
-    /// </returns>
+    /// <param name="aggregateId">Aggregate identifier.</param>
+    /// <param name="version">Aggregate version when the event was raised.</param>
+    /// <param name="data">Event payload.</param>
+    /// <param name="actor">User or system performing the operation. Defaults to <c>"system"</c>.</param>
+    /// <param name="correlationId">Correlation identifier. A new one is generated if not supplied.</param>
+    /// <param name="causationId">Causation identifier.</param>
+    /// <returns>Envelope ready for publication.</returns>
     public static EventEnvelope Create<T>(
         Guid aggregateId,
         long version,

@@ -5,7 +5,7 @@ using MongoDB.Driver;
 namespace AuditLog.Infrastructure;
 
 /// <summary>
-/// MongoDB implementation of <see cref="IAuditWriter"/>, storing events in the <c>events</c> collection.
+/// Audit writer that stores consumed events for later inspection.
 /// </summary>
 public sealed class MongoAuditWriter(IMongoDatabase database) : IAuditWriter
 {

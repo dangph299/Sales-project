@@ -4,17 +4,14 @@ using Sales.Application;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// Cache-aside implementation of <see cref="IProductCache"/>, storing entries under the
-/// <c>catalog:product</c> key prefix.
+/// Product cache for catalog read models.
 /// </summary>
 public sealed class ProductCache : CacheService<ProductDto>, IProductCache
 {
     /// <summary>
     /// Initializes the product cache with its backing distributed cache.
     /// </summary>
-    /// <param name="cache">
-    /// The distributed cache to read/write through.
-    /// </param>
+    /// <param name="cache">Distributed cache.</param>
     public ProductCache(IDistributedCache cache) : base(cache)
     {
     }

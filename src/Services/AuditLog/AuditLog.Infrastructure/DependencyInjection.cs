@@ -13,15 +13,9 @@ public static class DependencyInjection
     /// <summary>
     /// Registers <see cref="MongoOptions"/>, the MongoDB client/database, and <see cref="IAuditWriter"/>.
     /// </summary>
-    /// <param name="services">
-    /// The service collection to register into.
-    /// </param>
-    /// <param name="configuration">
-    /// The application configuration, used for the Mongo connection string and database name.
-    /// </param>
-    /// <returns>
-    /// The same service collection, to allow chaining.
-    /// </returns>
+    /// <param name="services">Service collection.</param>
+    /// <param name="configuration">Application configuration, used for the Mongo connection string and database name.</param>
+    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddAuditLogInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<MongoOptions>(options =>

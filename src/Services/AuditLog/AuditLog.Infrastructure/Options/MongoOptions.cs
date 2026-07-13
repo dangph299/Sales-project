@@ -7,7 +7,7 @@ namespace AuditLog.Infrastructure;
 public sealed class MongoOptions
 {
     /// <summary>
-    /// The configuration section name this options class binds to.
+    /// configuration section name this options class binds to.
     /// </summary>
     public const string SectionName = "Mongo";
 

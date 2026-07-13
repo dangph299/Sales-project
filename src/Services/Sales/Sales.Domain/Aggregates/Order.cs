@@ -69,18 +69,10 @@ public sealed class Order : AggregateRoot<Guid>
     /// Creates a new <see cref="Order"/> aggregate in the <see cref="OrderStatus.Draft"/> status and
     /// raises <see cref="OrderCreatedDomainEvent"/>.
     /// </summary>
-    /// <param name="customer">
-    /// A snapshot of the customer the order is placed for.
-    /// </param>
-    /// <param name="lines">
-    /// The initial lines to add. Must contain at least one line, with no product repeated.
-    /// </param>
-    /// <returns>
-    /// The newly created draft order.
-    /// </returns>
-    /// <exception cref="DomainException">
-    /// Thrown when <paramref name="lines"/> is empty or contains the same product more than once.
-    /// </exception>
+    /// <param name="customer">A snapshot of the customer the order is placed for.</param>
+    /// <param name="lines">Initial lines to add. Must contain at least one line, with no product repeated.</param>
+    /// <returns>Newly created draft order.</returns>
+    /// <exception cref="DomainException">Thrown when <paramref name="lines"/> is empty or contains the same product more than once.</exception>
     public static Order Create(CustomerSnapshot customer, IEnumerable<OrderLineItem> lines)
     {
         var order = new Order(Guid.NewGuid(), customer);
@@ -93,13 +85,8 @@ public sealed class Order : AggregateRoot<Guid>
     /// Replaces this order's lines with a new set. Only allowed while the order is
     /// <see cref="OrderStatus.Draft"/>. Raises <see cref="OrderLinesReplacedDomainEvent"/>.
     /// </summary>
-    /// <param name="lines">
-    /// The new lines to set. Must contain at least one line, with no product repeated.
-    /// </param>
-    /// <exception cref="DomainException">
-    /// Thrown when the order is not in the <see cref="OrderStatus.Draft"/> status, or
-    /// <paramref name="lines"/> is empty or contains the same product more than once.
-    /// </exception>
+    /// <param name="lines">New lines to set. Must contain at least one line, with no product repeated.</param>
+    /// <exception cref="DomainException">Thrown when the order is not in the <see cref="OrderStatus.Draft"/> status, or <paramref name="lines"/> is empty or contains the same product more than once.</exception>
     public void ReplaceLines(IEnumerable<OrderLineItem> lines)
     {
         EnsureDraft();
@@ -131,9 +118,7 @@ public sealed class Order : AggregateRoot<Guid>
     /// Moves the order from <see cref="OrderStatus.Draft"/> to <see cref="OrderStatus.PendingInventory"/>
     /// and raises <see cref="OrderConfirmationRequestedDomainEvent"/> so Inventory can reserve stock.
     /// </summary>
-    /// <exception cref="DomainException">
-    /// Thrown when the order is not in the <see cref="OrderStatus.Draft"/> status.
-    /// </exception>
+    /// <exception cref="DomainException">Thrown when the order is not in the <see cref="OrderStatus.Draft"/> status.</exception>
     public void RequestConfirmation()
     {
         EnsureDraft();
@@ -147,9 +132,7 @@ public sealed class Order : AggregateRoot<Guid>
     /// Moves the order from <see cref="OrderStatus.PendingInventory"/> to <see cref="OrderStatus.Confirmed"/>
     /// after Inventory reserves stock, and raises <see cref="OrderConfirmedDomainEvent"/>.
     /// </summary>
-    /// <exception cref="DomainException">
-    /// Thrown when the order is not in the <see cref="OrderStatus.PendingInventory"/> status.
-    /// </exception>
+    /// <exception cref="DomainException">Thrown when the order is not in the <see cref="OrderStatus.PendingInventory"/> status.</exception>
     public void MarkReserved()
     {
         if (Status != OrderStatus.PendingInventory) throw new DomainException("Order is not awaiting inventory.");
@@ -162,12 +145,8 @@ public sealed class Order : AggregateRoot<Guid>
     /// Moves the order from <see cref="OrderStatus.PendingInventory"/> to <see cref="OrderStatus.InventoryRejected"/>
     /// after Inventory rejects the reservation, and raises <see cref="OrderInventoryRejectedDomainEvent"/>.
     /// </summary>
-    /// <param name="reason">
-    /// The reason Inventory rejected the reservation.
-    /// </param>
-    /// <exception cref="DomainException">
-    /// Thrown when the order is not in the <see cref="OrderStatus.PendingInventory"/> status.
-    /// </exception>
+    /// <param name="reason">Reason Inventory rejected the reservation.</param>
+    /// <exception cref="DomainException">Thrown when the order is not in the <see cref="OrderStatus.PendingInventory"/> status.</exception>
     public void RejectInventory(string reason)
     {
         if (Status != OrderStatus.PendingInventory) throw new DomainException("Order is not awaiting inventory.");
@@ -181,9 +160,7 @@ public sealed class Order : AggregateRoot<Guid>
     /// Moves a confirmed order back to <see cref="OrderStatus.Draft"/> and raises <see cref="OrderUndoComfirmedDomainEvent"/>
     /// so Inventory can release any reserved stock.
     /// </summary>
-    /// <exception cref="DomainException">
-    /// Thrown when the order is <see cref="OrderStatus.Confirmed"/> or <see cref="OrderStatus.PendingInventory"/>.
-    /// </exception>
+    /// <exception cref="DomainException">Thrown when the order is <see cref="OrderStatus.Confirmed"/> or <see cref="OrderStatus.PendingInventory"/>.</exception>
     public void Cancel()
     {
         if (Status == OrderStatus.Confirmed || Status == OrderStatus.PendingInventory) throw new DomainException("Confirmed or pending inventory orders cannot be cancelled.");

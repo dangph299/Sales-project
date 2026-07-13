@@ -5,7 +5,7 @@ using Inventory.Domain;
 namespace Inventory.Infrastructure;
 
 /// <summary>
-/// EF Core mapping for <see cref="ReservationLine"/>: table configuration.
+/// Persistence mapping for reservation lines.
 /// </summary>
 public sealed class ReservationLineConfiguration : IEntityTypeConfiguration<ReservationLine>
 {

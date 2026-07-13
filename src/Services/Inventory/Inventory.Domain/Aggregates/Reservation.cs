@@ -38,18 +38,10 @@ public sealed class Reservation : AggregateRoot<Guid>
     /// <summary>
     /// Creates a new active reservation for an order.
     /// </summary>
-    /// <param name="orderId">
-    /// The unique identifier of the Sales order the reservation is for.
-    /// </param>
-    /// <param name="lines">
-    /// The product/quantity lines to reserve. Must contain at least one line, all with positive quantities.
-    /// </param>
-    /// <returns>
-    /// The newly created reservation.
-    /// </returns>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when <paramref name="lines"/> is empty or contains a non-positive quantity.
-    /// </exception>
+    /// <param name="orderId">Sales order the reservation is for.</param>
+    /// <param name="lines">Product/quantity lines to reserve. Must contain at least one line, all with positive quantities.</param>
+    /// <returns>Newly created reservation.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when <paramref name="lines"/> is empty or contains a non-positive quantity.</exception>
     public static Reservation Create(Guid orderId, long orderVersion, IEnumerable<ReservationRequestLine> lines)
     {
         var reservation = new Reservation { Id = Guid.NewGuid(), OrderId = orderId, CreatedAt = DateTimeOffset.UtcNow, LastOrderVersion = orderVersion };
@@ -61,13 +53,8 @@ public sealed class Reservation : AggregateRoot<Guid>
     /// Records a newer confirmation event while the reservation is already active. This can happen
     /// when a reconfirm event overtakes a delayed release event from an earlier order version.
     /// </summary>
-    /// <param name="orderVersion">
-    /// The Sales order version carried by the confirmation event.
-    /// </param>
-    /// <returns>
-    /// <see langword="true"/> when this event advanced the reservation version; otherwise
-    /// <see langword="false"/> because it was duplicate or stale.
-    /// </returns>
+    /// <param name="orderVersion">Sales order version carried by the confirmation event.</param>
+    /// <returns><see langword="true"/> when this event advanced the reservation version; otherwise <see langword="false"/> because it was duplicate or stale.</returns>
     public bool AcknowledgeActive(long orderVersion)
     {
         if (Status != ReservationStatus.Active) throw new InvalidOperationException("Only active reservations can be acknowledged.");
@@ -79,12 +66,8 @@ public sealed class Reservation : AggregateRoot<Guid>
     /// <summary>
     /// Reactivates a previously released reservation with the current requested order lines.
     /// </summary>
-    /// <param name="lines">
-    /// The product/quantity lines to reserve. Must contain at least one line, all with positive quantities.
-    /// </param>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the reservation is not released, or when <paramref name="lines"/> is invalid.
-    /// </exception>
+    /// <param name="lines">Product/quantity lines to reserve. Must contain at least one line, all with positive quantities.</param>
+    /// <exception cref="InvalidOperationException">Thrown when the reservation is not released, or when <paramref name="lines"/> is invalid.</exception>
     public bool Reactivate(long orderVersion, IEnumerable<ReservationRequestLine> lines)
     {
         if (Status != ReservationStatus.Released) throw new InvalidOperationException("Only released reservations can be reactivated.");
@@ -99,9 +82,7 @@ public sealed class Reservation : AggregateRoot<Guid>
     /// <summary>
     /// Marks the reservation as released, so its stock can be returned to <see cref="InventoryItem.Available"/>.
     /// </summary>
-    /// <exception cref="InvalidOperationException">
-    /// Thrown when the reservation is not currently <see cref="ReservationStatus.Active"/>.
-    /// </exception>
+    /// <exception cref="InvalidOperationException">Thrown when the reservation is not currently <see cref="ReservationStatus.Active"/>.</exception>
     public bool Release(long orderVersion)
     {
         if (Status != ReservationStatus.Active) throw new InvalidOperationException("Reservation is already released.");

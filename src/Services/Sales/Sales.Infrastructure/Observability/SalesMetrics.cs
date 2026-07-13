@@ -3,12 +3,6 @@ using BuildingBlocks.Observability;
 
 namespace Sales.Infrastructure;
 
-/// <summary>
-/// Custom OpenTelemetry metrics for Sales' outbox/inbox pipeline. Registered into the metrics
-/// provider via <c>AddMeter("Sales.Infrastructure")</c>. Forwards to the shared
-/// <see cref="BuildingBlocks.Observability.OutboxMetrics"/>/<see cref="BuildingBlocks.Observability.InboxMetrics"/>
-/// instruments so the metric names and call sites are unchanged.
-/// </summary>
 internal static class SalesMetrics
 {
     private static readonly OutboxMetrics Outbox = new("Sales.Infrastructure", "sales");
@@ -32,11 +26,7 @@ internal static class SalesMetrics
     /// <summary>
     /// Updates the observable gauges reporting the current outbox backlog and dead-letter counts.
     /// </summary>
-    /// <param name="backlog">
-    /// The number of outbox rows not yet successfully published or dead-lettered.
-    /// </param>
-    /// <param name="deadLetters">
-    /// The number of outbox rows currently dead-lettered.
-    /// </param>
+    /// <param name="backlog">Number of outbox rows not yet successfully published or dead-lettered.</param>
+    /// <param name="deadLetters">Number of outbox rows currently dead-lettered.</param>
     public static void SetOutboxSnapshot(long backlog, long deadLetters) => Outbox.SetSnapshot(backlog, deadLetters);
 }

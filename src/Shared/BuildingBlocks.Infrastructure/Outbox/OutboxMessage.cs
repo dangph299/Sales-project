@@ -11,7 +11,7 @@ namespace BuildingBlocks.Infrastructure;
 public sealed class OutboxMessage
 {
     /// <summary>
-    /// The maximum number of publish attempts before a message is dead-lettered.
+    /// maximum number of publish attempts before a message is dead-lettered.
     /// </summary>
     public const int MaxAttempts = 10;
 
@@ -75,15 +75,9 @@ public sealed class OutboxMessage
     /// <summary>
     /// Creates a new, unpublished <see cref="OutboxMessage"/> wrapping the given event envelope.
     /// </summary>
-    /// <param name="envelope">
-    /// The event envelope to persist as the message payload.
-    /// </param>
-    /// <param name="topic">
-    /// The Kafka topic the message must be published to.
-    /// </param>
-    /// <returns>
-    /// A new <see cref="OutboxMessage"/> ready to be added to the outbox table.
-    /// </returns>
+    /// <param name="envelope">Event envelope payload.</param>
+    /// <param name="topic">Kafka topic the message must be published to.</param>
+    /// <returns>A new <see cref="OutboxMessage"/> ready to be added to the outbox table.</returns>
     public static OutboxMessage From(EventEnvelope envelope, string topic) => new()
     {
         Id = envelope.EventId,

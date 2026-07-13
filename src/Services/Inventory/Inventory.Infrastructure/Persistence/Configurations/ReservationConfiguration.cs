@@ -5,9 +5,7 @@ using Inventory.Domain;
 namespace Inventory.Infrastructure;
 
 /// <summary>
-/// EF Core mapping for <see cref="Reservation"/>: table/index/column configuration, including the
-/// unique constraint on <c>OrderId</c> (one reservation per order) and the owned
-/// <see cref="ReservationLine"/> collection.
+/// Persistence mapping for reservations and their lines.
 /// </summary>
 public sealed class ReservationConfiguration : IEntityTypeConfiguration<Reservation>
 {

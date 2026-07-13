@@ -8,9 +8,7 @@ namespace Sales.Infrastructure;
 /// Matches orders whose customer name contains the given substring, or whose customer phone
 /// contains the given value's digits.
 /// </summary>
-/// <param name="customer">
-/// The search value, matched against both name and phone.
-/// </param>
+/// <param name="customer">Search value, matched against both name and phone.</param>
 public sealed class OrderCustomerMatchesSpecification(string customer) : Specification<Order>
 {
     /// <inheritdoc/>

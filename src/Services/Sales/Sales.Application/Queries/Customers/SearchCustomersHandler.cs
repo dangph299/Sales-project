@@ -10,15 +10,9 @@ public sealed class SearchCustomersHandler(ICustomerReadService readService) : I
     /// <summary>
     /// Searches customers matching the given criteria.
     /// </summary>
-    /// <param name="request">
-    /// The query describing the search criteria and paging.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// A page of matching customers.
-    /// </returns>
+    /// <param name="request">Query describing the search criteria and paging.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>A page of matching customers.</returns>
     public async Task<PagedResult<CustomerDto>> Handle(SearchCustomers request, CancellationToken ct)
     {
         return await readService.SearchAsync(request.Name, request.Phone, request.PhoneMatch, request.Page, request.PageSize, ct);

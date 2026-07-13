@@ -15,12 +15,8 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registers all services required by the Inventory API host.
     /// </summary>
-    /// <param name="builder">
-    /// The Inventory API web application builder.
-    /// </param>
-    /// <returns>
-    /// The same builder, to allow chaining.
-    /// </returns>
+    /// <param name="builder">Inventory API web application builder.</param>
+    /// <returns>Builder for chaining.</returns>
     public static WebApplicationBuilder AddApplicationServices(this WebApplicationBuilder builder)
     {
         builder.Host.UseSerilog((context, config) =>

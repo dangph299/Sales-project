@@ -10,14 +10,9 @@ namespace Inventory.Api.Extensions;
 public static class StartupTaskExtensions
 {
     /// <summary>
-    /// Applies Inventory database migrations and starts the Kafka bus.
+    /// Runs Inventory startup tasks before serving traffic.
     /// </summary>
-    /// <param name="app">
-    /// The Inventory API application.
-    /// </param>
-    /// <returns>
-    /// A task representing the asynchronous startup work.
-    /// </returns>
+    /// <param name="app">Inventory API application.</param>
     public static async Task RunStartupTasksAsync(this WebApplication app)
     {
         await using (var scope = app.Services.CreateAsyncScope())

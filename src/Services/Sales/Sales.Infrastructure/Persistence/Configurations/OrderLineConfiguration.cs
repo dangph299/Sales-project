@@ -6,8 +6,7 @@ using Sales.Domain;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core mapping for <see cref="OrderLine"/>: table/index/column configuration, including the
-/// <see cref="Money"/> value converter and the unique (OrderId, ProductId) constraint.
+/// Persistence mapping for order lines.
 /// </summary>
 public sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLine>
 {

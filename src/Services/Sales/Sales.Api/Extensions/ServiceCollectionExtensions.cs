@@ -23,12 +23,8 @@ public static class ServiceCollectionExtensions
     /// <summary>
     /// Registers all services required by the Sales API host.
     /// </summary>
-    /// <param name="builder">
-    /// The Sales API web application builder.
-    /// </param>
-    /// <returns>
-    /// The same builder, to allow chaining.
-    /// </returns>
+    /// <param name="builder">Sales API web application builder.</param>
+    /// <returns>Builder for chaining.</returns>
     public static WebApplicationBuilder AddApplicationServices(this WebApplicationBuilder builder)
     {
         builder.Host.UseSerilog((context, config) =>

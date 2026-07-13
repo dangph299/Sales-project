@@ -19,18 +19,11 @@ namespace Inventory.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers the Inventory database context, application service, outbox publisher, and Kafka
-    /// consumer for Sales order events.
+    /// Registers Inventory persistence, application services, and messaging.
     /// </summary>
-    /// <param name="services">
-    /// The service collection to register into.
-    /// </param>
-    /// <param name="configuration">
-    /// The application configuration, used for connection strings and Kafka broker settings.
-    /// </param>
-    /// <returns>
-    /// The same service collection, to allow chaining.
-    /// </returns>
+    /// <param name="services">Service collection.</param>
+    /// <param name="configuration">Application configuration, used for connection strings and Kafka broker settings.</param>
+    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddInventoryInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<InventoryDbContext>(x => x.UseNpgsql(configuration.GetConnectionString("Inventory")));

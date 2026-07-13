@@ -55,22 +55,11 @@ public sealed class Product : AggregateRoot<Guid>
     /// Creates a new <see cref="Product"/> aggregate, active by default, and raises
     /// <see cref="ProductCreatedDomainEvent"/>.
     /// </summary>
-    /// <param name="sku">
-    /// The product's SKU.
-    /// </param>
-    /// <param name="name">
-    /// The product's name.
-    /// </param>
-    /// <param name="price">
-    /// The product's unit price in VND.
-    /// </param>
-    /// <returns>
-    /// The newly created product.
-    /// </returns>
-    /// <exception cref="DomainException">
-    /// Thrown when <paramref name="sku"/>/<paramref name="name"/> is empty/whitespace or
-    /// <paramref name="price"/> is negative.
-    /// </exception>
+    /// <param name="sku">Product's SKU.</param>
+    /// <param name="name">Product's name.</param>
+    /// <param name="price">Product's unit price in VND.</param>
+    /// <returns>Newly created product.</returns>
+    /// <exception cref="DomainException">Thrown when <paramref name="sku"/>/<paramref name="name"/> is empty/whitespace or <paramref name="price"/> is negative.</exception>
     public static Product Create(string sku, string name, decimal price)
     {
         var product = new Product(Guid.NewGuid(), sku, name, Money.Vnd(price));
@@ -82,18 +71,10 @@ public sealed class Product : AggregateRoot<Guid>
     /// Updates the product's name, price, and active flag. Raises <see cref="ProductUpdatedDomainEvent"/>
     /// and increments <see cref="AggregateRoot.Version"/> only if a value actually changed.
     /// </summary>
-    /// <param name="name">
-    /// The product's new name.
-    /// </param>
-    /// <param name="price">
-    /// The product's new unit price in VND.
-    /// </param>
-    /// <param name="isActive">
-    /// Whether the product should be active after the update.
-    /// </param>
-    /// <exception cref="DomainException">
-    /// Thrown when <paramref name="name"/> is empty/whitespace or <paramref name="price"/> is negative.
-    /// </exception>
+    /// <param name="name">Product's new name.</param>
+    /// <param name="price">Product's new unit price in VND.</param>
+    /// <param name="isActive">Whether the product should be active after the update.</param>
+    /// <exception cref="DomainException">Thrown when <paramref name="name"/> is empty/whitespace or <paramref name="price"/> is negative.</exception>
     public void Update(string name, decimal price, bool isActive)
     {
         EnsureNotDeleted();
@@ -111,9 +92,7 @@ public sealed class Product : AggregateRoot<Guid>
     /// <summary>
     /// Soft-deletes the product and records the actor responsible for the deletion.
     /// </summary>
-    /// <param name="deleteByUser">
-    /// The user identifier responsible for the deletion.
-    /// </param>
+    /// <param name="deleteByUser">User identifier responsible for the deletion.</param>
     public void Delete(string deleteByUser)
     {
         if (IsDelete) return;

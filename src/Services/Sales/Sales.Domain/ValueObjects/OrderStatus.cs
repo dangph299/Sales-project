@@ -1,7 +1,7 @@
 namespace Sales.Domain;
 
 /// <summary>
-/// The lifecycle status of an <see cref="Order"/>.
+/// lifecycle status of an <see cref="Order"/>.
 /// </summary>
 public enum OrderStatus
 {

@@ -19,9 +19,7 @@ public sealed class ExceptionHandlingMiddleware : IExceptionHandler
     /// <summary>
     /// Initializes the middleware with the service used to write <see cref="ProblemDetails"/> responses.
     /// </summary>
-    /// <param name="problemDetails">
-    /// The problem details service.
-    /// </param>
+    /// <param name="problemDetails">Problem details service.</param>
     public ExceptionHandlingMiddleware(IProblemDetailsService problemDetails)
     {
         _problemDetails = problemDetails;
@@ -30,18 +28,10 @@ public sealed class ExceptionHandlingMiddleware : IExceptionHandler
     /// <summary>
     /// Maps an unhandled exception to an HTTP status code and writes a <see cref="ProblemDetails"/> response.
     /// </summary>
-    /// <param name="context">
-    /// The current HTTP context.
-    /// </param>
-    /// <param name="exception">
-    /// The unhandled exception.
-    /// </param>
-    /// <param name="ct">
-    /// A token to observe while waiting for the operation to complete.
-    /// </param>
-    /// <returns>
-    /// <see langword="true"/> to indicate the exception was handled and a response was written.
-    /// </returns>
+    /// <param name="context">Current HTTP context.</param>
+    /// <param name="exception">Unhandled exception.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><see langword="true"/> to indicate the exception was handled and a response was written.</returns>
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
         var (status, title) = exception switch

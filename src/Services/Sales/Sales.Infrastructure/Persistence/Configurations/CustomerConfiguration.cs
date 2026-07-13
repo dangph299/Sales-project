@@ -5,9 +5,7 @@ using Sales.Domain;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core mapping for <see cref="Customer"/>: table/index/column configuration, including a
-/// trigram index on <c>Name</c> for fast substring search and the reversed-phone column for
-/// suffix search.
+/// Persistence mapping for customers and lookup-friendly phone data.
 /// </summary>
 public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
 {

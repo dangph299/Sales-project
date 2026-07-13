@@ -8,8 +8,6 @@ public interface IApplicationExceptionClassifier
     /// <summary>
     /// Returns <see langword="true"/> when the exception should be logged as an expected rejection.
     /// </summary>
-    /// <param name="exception">
-    /// The exception to classify.
-    /// </param>
+    /// <param name="exception">Exception to classify.</param>
     bool IsExpected(Exception exception);
 }

@@ -4,8 +4,7 @@ using Sales.Application;
 namespace Sales.Infrastructure;
 
 /// <summary>
-/// EF Core-backed implementation of <see cref="ICustomerReadService"/>, querying
-/// <see cref="SalesDbContext"/> directly without going through the command-side repository/aggregate.
+/// Read-side customer lookup service for query handlers.
 /// </summary>
 public sealed class CustomerReadService(SalesDbContext db) : ICustomerReadService
 {
