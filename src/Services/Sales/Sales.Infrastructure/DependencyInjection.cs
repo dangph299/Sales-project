@@ -4,10 +4,8 @@ using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Sales.Application;
 using KafkaFlow;
-using KafkaFlow.Producers;
 using KafkaFlow.Serializer;
 using StackExchange.Redis;
 using Sales.Domain;
@@ -27,6 +25,7 @@ public static class DependencyInjection
     /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddSalesInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddBuildingBlocksInfrastructure(configuration);
         services.AddDbContext<SalesDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("Sales")));
         services.AddSalesRepositories();
         services.AddSalesReadServices();
@@ -73,11 +72,8 @@ public static class DependencyInjection
     private static IServiceCollection AddSalesMessaging(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(new ActivitySource(SalesObservability.KafkaActivitySourceName));
-        services.AddSingleton<IOutboxSignal, OutboxSignal>();
-        services.AddSingleton<IMessageLogContext, SerilogMessageLogContext>();
-        services.AddSingleton<IOutboxPublisher>(sp => new KafkaOutboxPublisher(
-            sp.GetRequiredService<IProducerAccessor>(), sp.GetRequiredService<ILogger<KafkaOutboxPublisher>>(),
-            sp.GetRequiredService<ActivitySource>(), "sales-outbox"));
+        services.AddScoped<IIntegrationEventProcessor, SalesInventoryEventProcessor>();
+        services.AddKafkaOutboxPublisher("sales-outbox");
         var brokers = configuration.GetSection("Kafka:Brokers").GetChildren().Select(x => x.Value!).Where(x => x is not null).ToArray();
         if (brokers.Length == 0) brokers = ["kafka:9092"];
         services.AddKafka(kafka => kafka

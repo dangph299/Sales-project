@@ -1,3 +1,4 @@
+using BuildingBlocks.Infrastructure;
 using KafkaFlow;
 
 namespace AuditLog.Worker;
@@ -13,10 +14,9 @@ public sealed class KafkaBusService(IServiceProvider services) : IHostedService
     /// <inheritdoc/>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _bus = services.CreateKafkaBus();
-        await _bus.StartAsync(cancellationToken);
+        _bus = await KafkaBusLifecycle.StartAsync(services, cancellationToken);
     }
 
     /// <inheritdoc/>
-    public Task StopAsync(CancellationToken cancellationToken) => _bus?.StopAsync() ?? Task.CompletedTask;
+    public Task StopAsync(CancellationToken cancellationToken) => KafkaBusLifecycle.StopAsync(_bus, cancellationToken);
 }

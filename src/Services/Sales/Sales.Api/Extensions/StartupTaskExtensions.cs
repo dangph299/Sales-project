@@ -1,5 +1,5 @@
 using Hangfire;
-using KafkaFlow;
+using BuildingBlocks.Infrastructure;
 using Sales.Infrastructure;
 
 namespace Sales.Api.Extensions;
@@ -15,9 +15,8 @@ public static class StartupTaskExtensions
     /// <param name="app">Sales API application.</param>
     public static async Task RunStartupTasksAsync(this WebApplication app)
     {
-        var kafkaBus = app.Services.CreateKafkaBus();
-        await kafkaBus.StartAsync();
-        app.Lifetime.ApplicationStopping.Register(() => kafkaBus.StopAsync().GetAwaiter().GetResult());
+        var kafkaBus = await KafkaBusLifecycle.StartAsync(app.Services);
+        app.Lifetime.ApplicationStopping.Register(() => KafkaBusLifecycle.StopAsync(kafkaBus).GetAwaiter().GetResult());
 
         await app.Services.SeedIdentityAsync();
         RecurringJob.AddOrUpdate<MaintenanceJobs>("sales-cleanup", "maintenance", x => x.CleanupAsync(), Cron.Daily);

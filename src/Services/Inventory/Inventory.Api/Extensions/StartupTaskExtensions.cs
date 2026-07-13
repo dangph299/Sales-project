@@ -1,5 +1,5 @@
+using BuildingBlocks.Infrastructure;
 using Inventory.Infrastructure;
-using KafkaFlow;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inventory.Api.Extensions;
@@ -20,8 +20,7 @@ public static class StartupTaskExtensions
             await scope.ServiceProvider.GetRequiredService<InventoryDbContext>().Database.MigrateAsync();
         }
 
-        var bus = app.Services.CreateKafkaBus();
-        await bus.StartAsync();
-        app.Lifetime.ApplicationStopping.Register(() => bus.StopAsync().GetAwaiter().GetResult());
+        var bus = await KafkaBusLifecycle.StartAsync(app.Services);
+        app.Lifetime.ApplicationStopping.Register(() => KafkaBusLifecycle.StopAsync(bus).GetAwaiter().GetResult());
     }
 }

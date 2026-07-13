@@ -4,12 +4,10 @@ using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
 using Inventory.Application;
 using KafkaFlow;
-using KafkaFlow.Producers;
 using KafkaFlow.Serializer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace Inventory.Infrastructure;
 
@@ -26,15 +24,13 @@ public static class DependencyInjection
     /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddInventoryInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddBuildingBlocksInfrastructure(configuration);
         services.AddDbContext<InventoryDbContext>(x => x.UseNpgsql(configuration.GetConnectionString("Inventory")));
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<IInventoryService, InventoryService>();
+        services.AddScoped<IIntegrationEventProcessor, InventoryOrderEventProcessor>();
         services.AddSingleton(new ActivitySource(InventoryObservability.KafkaActivitySourceName));
-        services.AddSingleton<IOutboxSignal, OutboxSignal>();
-        services.AddSingleton<IMessageLogContext, SerilogMessageLogContext>();
-        services.AddSingleton<IOutboxPublisher>(sp => new KafkaOutboxPublisher(
-            sp.GetRequiredService<IProducerAccessor>(), sp.GetRequiredService<ILogger<KafkaOutboxPublisher>>(),
-            sp.GetRequiredService<ActivitySource>(), "inventory-outbox"));
+        services.AddKafkaOutboxPublisher("inventory-outbox");
         services.AddHostedService<InventoryOutboxPublisher>();
         var brokers = configuration.GetSection("Kafka:Brokers").GetChildren().Select(x => x.Value!).Where(x => x is not null).ToArray();
         if (brokers.Length == 0) brokers = ["kafka:9092"];

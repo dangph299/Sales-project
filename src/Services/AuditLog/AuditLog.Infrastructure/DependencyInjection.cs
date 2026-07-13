@@ -19,6 +19,7 @@ public static class DependencyInjection
     /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddAuditLogInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddBuildingBlocksInfrastructure(configuration);
         services.Configure<MongoOptions>(options =>
         {
             options.ConnectionString = configuration.GetConnectionString("Mongo") ?? options.ConnectionString;
@@ -27,7 +28,6 @@ public static class DependencyInjection
         services.AddSingleton<IMongoClient>(sp => new MongoClient(sp.GetRequiredService<IOptions<MongoOptions>>().Value.ConnectionString));
         services.AddSingleton(sp => sp.GetRequiredService<IMongoClient>().GetDatabase(sp.GetRequiredService<IOptions<MongoOptions>>().Value.Database));
         services.AddSingleton<IAuditWriter, MongoAuditWriter>();
-        services.AddSingleton<IMessageLogContext, SerilogMessageLogContext>();
         return services;
     }
 }
