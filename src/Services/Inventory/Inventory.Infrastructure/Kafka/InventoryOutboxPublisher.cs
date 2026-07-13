@@ -17,6 +17,7 @@ public sealed class InventoryOutboxPublisher(
     IOutboxPublisher publisher,
     ILogger<InventoryOutboxPublisher> logger,
     IClock clock,
+    IOutboxSignal signal,
     IConfiguration configuration) : BackgroundService
 {
     private static readonly TimeSpan LockDuration = TimeSpan.FromSeconds(30);
@@ -38,7 +39,7 @@ public sealed class InventoryOutboxPublisher(
                 await UpdateMetrics(db, ct);
             }
             catch (Exception ex) when (!ct.IsCancellationRequested) { logger.LogError(ex, "Inventory outbox cycle failed"); }
-            await Task.Delay(pollInterval, ct);
+            await signal.WaitAsync(pollInterval, ct);
         }
     }
 

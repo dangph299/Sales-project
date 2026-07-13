@@ -8,7 +8,9 @@ namespace Inventory.Infrastructure;
 /// <summary>
 /// Persistence state for Inventory stock, reservations, and reliable messaging.
 /// </summary>
-public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> options) : DbContext(options)
+public sealed class InventoryDbContext(
+    DbContextOptions<InventoryDbContext> options,
+    IOutboxSignal? outboxSignal = null) : DbContext(options)
 {
     private readonly List<OutboxMessage> _pending = [];
 
@@ -36,10 +38,13 @@ public sealed class InventoryDbContext(DbContextOptions<InventoryDbContext> opti
     /// </summary>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>Number of state entries written to the database.</returns>
-    public override Task<int> SaveChangesAsync(CancellationToken ct = default)
+    public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {
-        if (_pending.Count > 0) { Outbox.AddRange(_pending); _pending.Clear(); }
-        return base.SaveChangesAsync(ct);
+        var hasOutboxMessages = _pending.Count > 0;
+        if (hasOutboxMessages) { Outbox.AddRange(_pending); _pending.Clear(); }
+        var result = await base.SaveChangesAsync(ct);
+        if (hasOutboxMessages) outboxSignal?.Notify();
+        return result;
     }
 
     /// <summary>

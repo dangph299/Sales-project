@@ -17,6 +17,7 @@ public sealed class SalesOutboxPublisher(
     IOutboxPublisher publisher,
     ILogger<SalesOutboxPublisher> logger,
     IClock clock,
+    IOutboxSignal signal,
     IConfiguration configuration) : BackgroundService
 {
     private static readonly TimeSpan LockDuration = TimeSpan.FromSeconds(30);
@@ -41,7 +42,7 @@ public sealed class SalesOutboxPublisher(
             {
                 logger.LogError(ex, "Sales outbox cycle failed");
             }
-            await Task.Delay(pollInterval, stoppingToken);
+            await signal.WaitAsync(pollInterval, stoppingToken);
         }
     }
 

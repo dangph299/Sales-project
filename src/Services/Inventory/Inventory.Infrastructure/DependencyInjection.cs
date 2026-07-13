@@ -30,6 +30,7 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<IInventoryService, InventoryService>();
         services.AddSingleton(new ActivitySource(InventoryObservability.KafkaActivitySourceName));
+        services.AddSingleton<IOutboxSignal, OutboxSignal>();
         services.AddSingleton<IMessageLogContext, SerilogMessageLogContext>();
         services.AddSingleton<IOutboxPublisher>(sp => new KafkaOutboxPublisher(
             sp.GetRequiredService<IProducerAccessor>(), sp.GetRequiredService<ILogger<KafkaOutboxPublisher>>(),

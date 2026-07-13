@@ -73,6 +73,7 @@ public static class DependencyInjection
     private static IServiceCollection AddSalesMessaging(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSingleton(new ActivitySource(SalesObservability.KafkaActivitySourceName));
+        services.AddSingleton<IOutboxSignal, OutboxSignal>();
         services.AddSingleton<IMessageLogContext, SerilogMessageLogContext>();
         services.AddSingleton<IOutboxPublisher>(sp => new KafkaOutboxPublisher(
             sp.GetRequiredService<IProducerAccessor>(), sp.GetRequiredService<ILogger<KafkaOutboxPublisher>>(),

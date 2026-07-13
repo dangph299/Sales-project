@@ -12,7 +12,10 @@ namespace Sales.Infrastructure;
 /// <summary>
 /// Persistence state for Sales aggregates, identity data, and reliable messaging.
 /// </summary>
-public sealed class SalesDbContext(DbContextOptions<SalesDbContext> options, IExecutionContext executionContext) : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IUnitOfWork
+public sealed class SalesDbContext(
+    DbContextOptions<SalesDbContext> options,
+    IExecutionContext executionContext,
+    IOutboxSignal? outboxSignal = null) : IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>(options), IUnitOfWork
 {
     /// <summary>Products in the sales catalog.</summary>
     public DbSet<Product> Products => Set<Product>();
@@ -55,6 +58,7 @@ public sealed class SalesDbContext(DbContextOptions<SalesDbContext> options, IEx
 
         var result = await base.SaveChangesAsync(cancellationToken);
         foreach (var aggregate in aggregates) aggregate.ClearDomainEvents();
+        if (aggregates.Length > 0) outboxSignal?.Notify();
         return result;
     }
 
