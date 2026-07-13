@@ -6,4 +6,4 @@ namespace Sales.Application;
 /// Query to load a single order by its identifier.
 /// </summary>
 /// <param name="Id">Order identifier.</param>
-public sealed record GetOrder(Guid Id) : IRequest<OrderDto>;
+public sealed record GetOrder(Guid Id) : IQuery<OrderDto>;

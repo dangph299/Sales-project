@@ -1,4 +1,5 @@
 using BuildingBlocks.Infrastructure;
+using BuildingBlocks.Application;
 using Microsoft.EntityFrameworkCore;
 using Sales.Application;
 using Sales.Infrastructure;
@@ -35,7 +36,7 @@ public sealed class OutboxReliabilityTests
         db.OutboxMessages.Add(row);
         await db.SaveChangesAsync();
 
-        var jobs = new MaintenanceJobs(db, null!);
+        var jobs = new MaintenanceJobs(db, null!, new SystemClock());
         Assert.True(await jobs.ReplayOutboxMessageAsync(row.Id));
 
         var reloaded = await db.OutboxMessages.SingleAsync(x => x.Id == row.Id);

@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using KafkaFlow;
 using Microsoft.Extensions.Logging;
-using Serilog.Context;
 using ContractHeaders = BuildingBlocks.Contracts.MessageHeaders;
 
 namespace AuditLog.Infrastructure;
@@ -11,7 +11,10 @@ namespace AuditLog.Infrastructure;
 /// Kafka consumer handler for every audit/integration topic AuditLog subscribes to, upserting each
 /// consumed event into MongoDB via <see cref="IAuditWriter"/>.
 /// </summary>
-public sealed class AuditEventHandler(IAuditWriter writer, ILogger<AuditEventHandler> logger) : IMessageHandler<EventEnvelope>
+public sealed class AuditEventHandler(
+    IAuditWriter writer,
+    ILogger<AuditEventHandler> logger,
+    IMessageLogContext messageLogContext) : IMessageHandler<EventEnvelope>
 {
     /// <summary>
     /// Handles a single consumed message: opens a tracing span linked to the producer's trace, and
@@ -28,10 +31,7 @@ public sealed class AuditEventHandler(IAuditWriter writer, ILogger<AuditEventHan
         activity?.SetTag("messaging.destination.name", context.ConsumerContext.Topic);
         activity?.SetTag("messaging.kafka.consumer.group", context.ConsumerContext.GroupId);
 
-        using (LogContext.PushProperty("EventId", envelope.EventId))
-        using (LogContext.PushProperty("EventType", envelope.EventType))
-        using (LogContext.PushProperty("CorrelationId", envelope.CorrelationId))
-        using (LogContext.PushProperty("TraceId", activity?.TraceId.ToHexString()))
+        using (messageLogContext.Push(EventEnvelopeLogContext.From(envelope, activity)))
         {
             var sw = Stopwatch.StartNew();
             try

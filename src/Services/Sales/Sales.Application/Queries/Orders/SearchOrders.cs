@@ -10,4 +10,4 @@ namespace Sales.Application;
 /// <param name="Customer">An optional substring to match against the order's customer name or phone.</param>
 /// <param name="Page">1-based page number. Defaults to 1.</param>
 /// <param name="PageSize">Maximum page size. Defaults to 20.</param>
-public sealed record SearchOrders(DateTimeOffset? From, DateTimeOffset? To, string? Customer, int Page = 1, int PageSize = 20) : IRequest<PagedResult<OrderDto>>;
+public sealed record SearchOrders(DateTimeOffset? From, DateTimeOffset? To, string? Customer, int Page = 1, int PageSize = 20) : IQuery<PagedResult<OrderDto>>;

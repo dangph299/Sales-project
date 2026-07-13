@@ -1,3 +1,4 @@
+using BuildingBlocks.Application;
 using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +11,11 @@ namespace Sales.Infrastructure;
 /// Background service that polls the Sales outbox every 2 seconds, claims ready rows via a
 /// lock/lease, publishes them to Kafka, and tracks retry/backoff/dead-lettering and outbox metrics.
 /// </summary>
-public sealed class SalesOutboxPublisher(IServiceScopeFactory scopes, IOutboxPublisher publisher, ILogger<SalesOutboxPublisher> logger) : BackgroundService
+public sealed class SalesOutboxPublisher(
+    IServiceScopeFactory scopes,
+    IOutboxPublisher publisher,
+    ILogger<SalesOutboxPublisher> logger,
+    IClock clock) : BackgroundService
 {
     private static readonly TimeSpan LockDuration = TimeSpan.FromSeconds(30);
 
@@ -39,7 +44,7 @@ public sealed class SalesOutboxPublisher(IServiceScopeFactory scopes, IOutboxPub
 
     private async Task PublishReadyMessages(SalesDbContext db, CancellationToken ct)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         var lockId = Guid.NewGuid();
         var ids = await db.OutboxMessages
             .Where(x => x.ProcessedAt == null &&
@@ -65,7 +70,7 @@ public sealed class SalesOutboxPublisher(IServiceScopeFactory scopes, IOutboxPub
             try
             {
                 await publisher.PublishAsync(row, ct);
-                row.ProcessedAt = DateTimeOffset.UtcNow;
+                row.ProcessedAt = clock.UtcNow;
                 row.Attempts++;
                 row.LastError = null;
                 row.LockId = null;
@@ -74,7 +79,7 @@ public sealed class SalesOutboxPublisher(IServiceScopeFactory scopes, IOutboxPub
             }
             catch (Exception ex)
             {
-                MarkFailed(row, ex);
+                MarkFailed(row, ex, clock.UtcNow);
                 SalesMetrics.OutboxFailed.Add(1);
                 logger.LogError(ex, "Publish failed {EventId} {RetryCount}", row.Id, row.Attempts);
             }
@@ -83,7 +88,7 @@ public sealed class SalesOutboxPublisher(IServiceScopeFactory scopes, IOutboxPub
         }
     }
 
-    private static void MarkFailed(OutboxMessage row, Exception ex)
+    private static void MarkFailed(OutboxMessage row, Exception ex, DateTimeOffset now)
     {
         row.Attempts++;
         row.LastError = ex.Message[..Math.Min(2000, ex.Message.Length)];
@@ -92,13 +97,13 @@ public sealed class SalesOutboxPublisher(IServiceScopeFactory scopes, IOutboxPub
 
         if (row.Attempts >= OutboxMessage.MaxAttempts)
         {
-            row.DeadLetteredAt = DateTimeOffset.UtcNow;
+            row.DeadLetteredAt = now;
             row.NextAttemptAt = null;
             SalesMetrics.OutboxDeadLettered.Add(1);
             return;
         }
 
-        row.NextAttemptAt = DateTimeOffset.UtcNow.Add(Backoff(row.Attempts));
+        row.NextAttemptAt = now.Add(Backoff(row.Attempts));
     }
 
     private static TimeSpan Backoff(int attempts)

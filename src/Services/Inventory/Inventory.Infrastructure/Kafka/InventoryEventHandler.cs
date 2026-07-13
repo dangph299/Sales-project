@@ -1,6 +1,7 @@
 using System.Data;
 using System.Diagnostics;
 using System.Text.Json;
+using BuildingBlocks.Application;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
 using Inventory.Domain;
@@ -8,7 +9,6 @@ using KafkaFlow;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Serilog.Context;
 
 namespace Inventory.Infrastructure;
 
@@ -23,7 +23,9 @@ namespace Inventory.Infrastructure;
 public sealed class InventoryEventHandler(
     IServiceScopeFactory scopes,
     ILogger<InventoryEventHandler> logger,
-    ActivitySource activitySource) : IMessageHandler<EventEnvelope>
+    ActivitySource activitySource,
+    IMessageLogContext messageLogContext,
+    IClock clock) : IMessageHandler<EventEnvelope>
 {
     /// <summary>
     /// Handles a single consumed message: opens a tracing span linked to the producer's trace,
@@ -35,10 +37,7 @@ public sealed class InventoryEventHandler(
     {
         using var activity = KafkaConsumerActivity.Start(activitySource, context);
 
-        using (LogContext.PushProperty("EventId", envelope.EventId))
-        using (LogContext.PushProperty("EventType", envelope.EventType))
-        using (LogContext.PushProperty("CorrelationId", envelope.CorrelationId))
-        using (LogContext.PushProperty("TraceId", activity?.TraceId.ToHexString()))
+        using (messageLogContext.Push(EventEnvelopeLogContext.From(envelope, activity)))
         {
             var sw = Stopwatch.StartNew();
             try
@@ -69,7 +68,7 @@ public sealed class InventoryEventHandler(
 
         try
         {
-            db.Inbox.Add(new InboxRow { EventId = envelope.EventId, ProcessedAt = DateTimeOffset.UtcNow });
+            db.Inbox.Add(new InboxRow { EventId = envelope.EventId, ProcessedAt = clock.UtcNow });
             await db.SaveChangesAsync();
         }
         catch (DbUpdateException ex) when (PostgresExceptions.IsUniqueViolation(ex))

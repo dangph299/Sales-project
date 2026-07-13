@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
-using BuildingBlocks.Observability;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,7 +72,8 @@ public static class DependencyInjection
 
     private static IServiceCollection AddSalesMessaging(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSingleton(new ActivitySource(ObservabilityNames.SalesKafka));
+        services.AddSingleton(new ActivitySource(SalesObservability.KafkaActivitySourceName));
+        services.AddSingleton<IMessageLogContext, SerilogMessageLogContext>();
         services.AddSingleton<IOutboxPublisher>(sp => new KafkaOutboxPublisher(
             sp.GetRequiredService<IProducerAccessor>(), sp.GetRequiredService<ILogger<KafkaOutboxPublisher>>(),
             sp.GetRequiredService<ActivitySource>(), "sales-outbox"));

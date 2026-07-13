@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using BuildingBlocks.Application;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +26,7 @@ public sealed class AuthController : ControllerBase
     private readonly UserManager<ApplicationUser> _users;
     private readonly SalesDbContext _db;
     private readonly IConfiguration _config;
+    private readonly IClock _clock;
 
     /// <summary>
     /// Initializes the controller with the services needed to authenticate users and issue tokens.
@@ -32,11 +34,13 @@ public sealed class AuthController : ControllerBase
     /// <param name="users">Identity user manager.</param>
     /// <param name="db">Sales persistence context.</param>
     /// <param name="config">Application configuration, used for JWT signing settings.</param>
-    public AuthController(UserManager<ApplicationUser> users, SalesDbContext db, IConfiguration config)
+    /// <param name="clock">Clock used to stamp token expiration and revocation times.</param>
+    public AuthController(UserManager<ApplicationUser> users, SalesDbContext db, IConfiguration config, IClock clock)
     {
         _users = users;
         _db = db;
         _config = config;
+        _clock = clock;
     }
 
     /// <summary>
@@ -70,21 +74,21 @@ public sealed class AuthController : ControllerBase
         var stored = await _db.RefreshTokens.SingleOrDefaultAsync(x =>
             x.TokenHash == Hash(body.RefreshToken) &&
             x.RevokedAt == null &&
-            x.ExpiresAt > DateTimeOffset.UtcNow, ct);
+            x.ExpiresAt > _clock.UtcNow, ct);
 
         if (stored is null)
         {
             return Unauthorized();
         }
 
-        stored.RevokedAt = DateTimeOffset.UtcNow;
+        stored.RevokedAt = _clock.UtcNow;
         var user = await _users.FindByIdAsync(stored.UserId.ToString());
         return user is null ? Unauthorized() : Ok(await IssueTokenAsync(user, ct));
     }
 
     private async Task<object> IssueTokenAsync(ApplicationUser user, CancellationToken ct)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = _clock.UtcNow;
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),

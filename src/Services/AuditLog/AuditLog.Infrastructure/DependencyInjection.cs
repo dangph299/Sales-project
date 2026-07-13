@@ -2,6 +2,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
+using BuildingBlocks.Infrastructure;
 
 namespace AuditLog.Infrastructure;
 
@@ -26,6 +27,7 @@ public static class DependencyInjection
         services.AddSingleton<IMongoClient>(sp => new MongoClient(sp.GetRequiredService<IOptions<MongoOptions>>().Value.ConnectionString));
         services.AddSingleton(sp => sp.GetRequiredService<IMongoClient>().GetDatabase(sp.GetRequiredService<IOptions<MongoOptions>>().Value.Database));
         services.AddSingleton<IAuditWriter, MongoAuditWriter>();
+        services.AddSingleton<IMessageLogContext, SerilogMessageLogContext>();
         return services;
     }
 }

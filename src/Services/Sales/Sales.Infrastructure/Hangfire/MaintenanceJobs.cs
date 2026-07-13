@@ -1,3 +1,4 @@
+using BuildingBlocks.Application;
 using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using StackExchange.Redis;
@@ -8,7 +9,7 @@ namespace Sales.Infrastructure;
 /// Hangfire recurring/on-demand jobs for maintaining Sales data: cleaning up old Inbox/Outbox rows,
 /// and replaying outbox messages that failed or were dead-lettered.
 /// </summary>
-public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer redis)
+public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer redis, IClock clock)
 {
     private const int ReplayBatchLimit = 100;
 
@@ -24,7 +25,7 @@ public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer re
         if (!await cache.StringSetAsync(key, token, TimeSpan.FromMinutes(5), When.NotExists)) return;
         try
         {
-            var cutoff = DateTimeOffset.UtcNow.AddDays(-14);
+            var cutoff = clock.UtcNow.AddDays(-14);
             await db.InboxMessages.Where(x => x.ProcessedAt < cutoff).ExecuteDeleteAsync();
             await db.OutboxMessages.Where(x => x.ProcessedAt != null && x.ProcessedAt < cutoff).ExecuteDeleteAsync();
         }
@@ -70,11 +71,11 @@ public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer re
         return rows.Count;
     }
 
-    private static void ResetForReplay(OutboxMessage row)
+    private void ResetForReplay(OutboxMessage row)
     {
         row.Attempts = 0;
         row.LastError = null;
-        row.NextAttemptAt = DateTimeOffset.UtcNow;
+        row.NextAttemptAt = clock.UtcNow;
         row.DeadLetteredAt = null;
         row.LockId = null;
         row.LockedUntil = null;

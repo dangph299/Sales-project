@@ -1,3 +1,4 @@
+using BuildingBlocks.Application;
 using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
@@ -10,7 +11,11 @@ namespace Inventory.Infrastructure;
 /// Background service that polls the Inventory outbox every 2 seconds, claims ready rows via a
 /// lock/lease, publishes them to Kafka, and tracks retry/backoff/dead-lettering and outbox metrics.
 /// </summary>
-public sealed class InventoryOutboxPublisher(IServiceScopeFactory scopes, IOutboxPublisher publisher, ILogger<InventoryOutboxPublisher> logger) : BackgroundService
+public sealed class InventoryOutboxPublisher(
+    IServiceScopeFactory scopes,
+    IOutboxPublisher publisher,
+    ILogger<InventoryOutboxPublisher> logger,
+    IClock clock) : BackgroundService
 {
     private static readonly TimeSpan LockDuration = TimeSpan.FromSeconds(30);
 
@@ -36,7 +41,7 @@ public sealed class InventoryOutboxPublisher(IServiceScopeFactory scopes, IOutbo
 
     private async Task PublishReadyMessages(InventoryDbContext db, CancellationToken ct)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = clock.UtcNow;
         var lockId = Guid.NewGuid();
         var ids = await db.Outbox
             .Where(x => x.ProcessedAt == null &&
@@ -62,7 +67,7 @@ public sealed class InventoryOutboxPublisher(IServiceScopeFactory scopes, IOutbo
             try
             {
                 await publisher.PublishAsync(row, ct);
-                row.ProcessedAt = DateTimeOffset.UtcNow;
+                row.ProcessedAt = clock.UtcNow;
                 row.Attempts++;
                 row.LastError = null;
                 row.LockId = null;
@@ -71,7 +76,7 @@ public sealed class InventoryOutboxPublisher(IServiceScopeFactory scopes, IOutbo
             }
             catch (Exception ex)
             {
-                MarkFailed(row, ex);
+                MarkFailed(row, ex, clock.UtcNow);
                 InventoryMetrics.OutboxFailed.Add(1);
                 logger.LogError(ex, "Publish failed {EventId} {RetryCount}", row.Id, row.Attempts);
             }
@@ -79,7 +84,7 @@ public sealed class InventoryOutboxPublisher(IServiceScopeFactory scopes, IOutbo
         }
     }
 
-    private static void MarkFailed(OutboxMessage row, Exception ex)
+    private static void MarkFailed(OutboxMessage row, Exception ex, DateTimeOffset now)
     {
         row.Attempts++;
         row.LastError = ex.Message[..Math.Min(2000, ex.Message.Length)];
@@ -88,13 +93,13 @@ public sealed class InventoryOutboxPublisher(IServiceScopeFactory scopes, IOutbo
 
         if (row.Attempts >= OutboxMessage.MaxAttempts)
         {
-            row.DeadLetteredAt = DateTimeOffset.UtcNow;
+            row.DeadLetteredAt = now;
             row.NextAttemptAt = null;
             InventoryMetrics.OutboxDeadLettered.Add(1);
             return;
         }
 
-        row.NextAttemptAt = DateTimeOffset.UtcNow.Add(Backoff(row.Attempts));
+        row.NextAttemptAt = now.Add(Backoff(row.Attempts));
     }
 
     private static TimeSpan Backoff(int attempts)

@@ -10,4 +10,4 @@ namespace Sales.Application;
 /// <param name="PhoneMatch">How <paramref name="Phone"/> should be matched (prefix or suffix). Defaults to prefix.</param>
 /// <param name="Page">1-based page number. Defaults to 1.</param>
 /// <param name="PageSize">Maximum page size. Defaults to 20.</param>
-public sealed record SearchCustomers(string? Name, string? Phone, PhoneMatch PhoneMatch = PhoneMatch.Prefix, int Page = 1, int PageSize = 20) : IRequest<PagedResult<CustomerDto>>;
+public sealed record SearchCustomers(string? Name, string? Phone, PhoneMatch PhoneMatch = PhoneMatch.Prefix, int Page = 1, int PageSize = 20) : IQuery<PagedResult<CustomerDto>>;

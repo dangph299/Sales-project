@@ -1,7 +1,7 @@
 using System.Diagnostics;
+using BuildingBlocks.Application;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
-using BuildingBlocks.Observability;
 using Inventory.Application;
 using KafkaFlow;
 using KafkaFlow.Producers;
@@ -27,8 +27,10 @@ public static class DependencyInjection
     public static IServiceCollection AddInventoryInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddDbContext<InventoryDbContext>(x => x.UseNpgsql(configuration.GetConnectionString("Inventory")));
+        services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<IInventoryService, InventoryService>();
-        services.AddSingleton(new ActivitySource(ObservabilityNames.InventoryKafka));
+        services.AddSingleton(new ActivitySource(InventoryObservability.KafkaActivitySourceName));
+        services.AddSingleton<IMessageLogContext, SerilogMessageLogContext>();
         services.AddSingleton<IOutboxPublisher>(sp => new KafkaOutboxPublisher(
             sp.GetRequiredService<IProducerAccessor>(), sp.GetRequiredService<ILogger<KafkaOutboxPublisher>>(),
             sp.GetRequiredService<ActivitySource>(), "inventory-outbox"));

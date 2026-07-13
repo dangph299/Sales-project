@@ -1,12 +1,12 @@
 using System.Diagnostics;
 using System.Text.Json;
+using BuildingBlocks.Application;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
 using KafkaFlow;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Serilog.Context;
 
 namespace Sales.Infrastructure;
 
@@ -21,7 +21,9 @@ namespace Sales.Infrastructure;
 public sealed class SalesIntegrationEventHandler(
     IServiceScopeFactory scopes,
     ILogger<SalesIntegrationEventHandler> logger,
-    ActivitySource activitySource) : IMessageHandler<EventEnvelope>
+    ActivitySource activitySource,
+    IMessageLogContext messageLogContext,
+    IClock clock) : IMessageHandler<EventEnvelope>
 {
     /// <summary>
     /// Handles a single consumed message: opens a tracing span linked to the producer's trace,
@@ -33,10 +35,7 @@ public sealed class SalesIntegrationEventHandler(
     {
         using var activity = KafkaConsumerActivity.Start(activitySource, context);
 
-        using (LogContext.PushProperty("EventId", envelope.EventId))
-        using (LogContext.PushProperty("EventType", envelope.EventType))
-        using (LogContext.PushProperty("CorrelationId", envelope.CorrelationId))
-        using (LogContext.PushProperty("TraceId", activity?.TraceId.ToHexString()))
+        using (messageLogContext.Push(EventEnvelopeLogContext.From(envelope, activity)))
         {
             var sw = Stopwatch.StartNew();
             try
@@ -67,7 +66,7 @@ public sealed class SalesIntegrationEventHandler(
 
         try
         {
-            db.InboxMessages.Add(new InboxMessage { EventId = envelope.EventId, ProcessedAt = DateTimeOffset.UtcNow, Consumer = "sales-v1" });
+            db.InboxMessages.Add(new InboxMessage { EventId = envelope.EventId, ProcessedAt = clock.UtcNow, Consumer = "sales-v1" });
             await db.SaveChangesAsync();
         }
         catch (DbUpdateException ex) when (PostgresExceptions.IsUniqueViolation(ex))

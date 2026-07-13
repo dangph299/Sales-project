@@ -8,4 +8,4 @@ namespace Sales.Application;
 /// <param name="Id">Customer identifier.</param>
 /// <param name="Name">Customer's new name.</param>
 /// <param name="Phone">Customer's new phone number.</param>
-public sealed record UpdateCustomer(Guid Id, string Name, string Phone) : IRequest<CustomerDto>;
+public sealed record UpdateCustomer(Guid Id, string Name, string Phone) : ICommand<CustomerDto>;

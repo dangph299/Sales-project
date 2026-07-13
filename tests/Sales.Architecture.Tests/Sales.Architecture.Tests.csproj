@@ -15,5 +15,9 @@
     <ProjectReference Include="..\..\src\Services\AuditLog\AuditLog.Infrastructure\AuditLog.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Shared\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\src\Shared\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\src\Shared\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Shared\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Shared\BuildingBlocks.Observability\BuildingBlocks.Observability.csproj" />
+    <ProjectReference Include="..\..\src\Shared\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
   </ItemGroup>
 </Project>

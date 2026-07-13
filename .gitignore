@@ -1,4 +1,5 @@
-docs/
+docs/*
+!docs/shared-building-blocks-refactor-plan.md
 bin/
 obj/
 .playwright-mcp

@@ -7,4 +7,4 @@ namespace Sales.Application;
 /// to the database.
 /// </summary>
 /// <param name="Id">Product identifier.</param>
-public sealed record GetProduct(Guid Id) : IRequest<ProductDto>;
+public sealed record GetProduct(Guid Id) : IQuery<ProductDto>;

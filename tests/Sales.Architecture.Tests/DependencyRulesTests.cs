@@ -102,4 +102,78 @@ public sealed class DependencyRulesTests
                 "Microsoft.AspNetCore").GetResult();
         Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
     }
+
+    [Fact]
+    public void BuildingBlocks_contracts_are_transport_and_framework_independent()
+    {
+        var result = Types.InAssembly(typeof(BuildingBlocks.Contracts.EventEnvelope).Assembly).ShouldNot()
+            .HaveDependencyOnAny(
+                "BuildingBlocks.Domain",
+                "BuildingBlocks.Application",
+                "BuildingBlocks.Infrastructure",
+                "BuildingBlocks.Web",
+                "Sales",
+                "Inventory",
+                "AuditLog",
+                "Microsoft.EntityFrameworkCore",
+                "KafkaFlow",
+                "Microsoft.AspNetCore").GetResult();
+        Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void BuildingBlocks_contracts_do_not_contain_trace_parsing_behavior()
+    {
+        var traceParserTypes = Types.InAssembly(typeof(BuildingBlocks.Contracts.EventEnvelope).Assembly)
+            .That()
+            .HaveName("TraceContextParser")
+            .GetTypes();
+
+        Assert.Empty(traceParserTypes);
+    }
+
+    [Fact]
+    public void BuildingBlocks_infrastructure_does_not_depend_on_services()
+    {
+        var result = Types.InAssembly(typeof(BuildingBlocks.Infrastructure.OutboxMessage).Assembly).ShouldNot()
+            .HaveDependencyOnAny(
+                "Sales",
+                "Inventory",
+                "AuditLog",
+                "BuildingBlocks.Web",
+                "Microsoft.AspNetCore").GetResult();
+        Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void BuildingBlocks_web_does_not_depend_on_services_or_infrastructure()
+    {
+        var result = Types.InAssembly(typeof(BuildingBlocks.Web.RequestObservabilityMiddleware).Assembly).ShouldNot()
+            .HaveDependencyOnAny(
+                "Sales",
+                "Inventory",
+                "AuditLog",
+                "BuildingBlocks.Domain",
+                "BuildingBlocks.Infrastructure",
+                "KafkaFlow",
+                "Hangfire").GetResult();
+        Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void BuildingBlocks_observability_does_not_depend_on_services_or_web_hosts()
+    {
+        var result = Types.InAssembly(typeof(BuildingBlocks.Observability.OutboxMetrics).Assembly).ShouldNot()
+            .HaveDependencyOnAny(
+                "Sales",
+                "Inventory",
+                "AuditLog",
+                "BuildingBlocks.Domain",
+                "BuildingBlocks.Application",
+                "BuildingBlocks.Infrastructure",
+                "BuildingBlocks.Web",
+                "Microsoft.AspNetCore",
+                "KafkaFlow").GetResult();
+        Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
+    }
 }
