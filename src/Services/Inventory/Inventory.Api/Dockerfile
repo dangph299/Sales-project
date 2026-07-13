@@ -12,9 +12,9 @@ COPY src/Services/Inventory/Inventory.Domain/Inventory.Domain.csproj src/Service
 COPY src/Services/Inventory/Inventory.Application/Inventory.Application.csproj src/Services/Inventory/Inventory.Application/
 COPY src/Services/Inventory/Inventory.Infrastructure/Inventory.Infrastructure.csproj src/Services/Inventory/Inventory.Infrastructure/
 COPY src/Services/Inventory/Inventory.Api/Inventory.Api.csproj src/Services/Inventory/Inventory.Api/
-RUN --mount=type=cache,id=nuget,target=/root/.nuget/packages dotnet restore src/Services/Inventory/Inventory.Api/Inventory.Api.csproj
+RUN --mount=type=cache,id=inventory-api-nuget,target=/root/.nuget/packages,sharing=locked dotnet restore src/Services/Inventory/Inventory.Api/Inventory.Api.csproj
 COPY . .
-RUN --mount=type=cache,target=/root/.nuget/packages dotnet publish src/Services/Inventory/Inventory.Api/Inventory.Api.csproj -c Release -o /app --no-restore
+RUN --mount=type=cache,id=inventory-api-nuget,target=/root/.nuget/packages,sharing=locked dotnet publish src/Services/Inventory/Inventory.Api/Inventory.Api.csproj -c Release -o /app --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app
 COPY --from=build /app .
