@@ -315,7 +315,7 @@ OrderConfirmationRequestedDomainEvent e =>
             e.Lines.Select(x => new OrderLineIntegration(x.ProductId, x.Sku, x.Quantity)).ToArray()))
 ```
 
-Sau đó `SalesOutboxPublisher` (background service polling mỗi 2 giây, mục 15) đọc outbox và gọi `IOutboxPublisher.PublishAsync`, implementation thật (`KafkaOutboxPublisher.cs`) mới thực sự produce:
+Sau đó `SalesOutboxPublisher` (background service polling mỗi 2 giây, mục 15) đọc outbox và gọi `IOutboxPublisher.PublishAsync`; implementation thật dùng chung nằm ở `src/Shared/BuildingBlocks.Infrastructure/Kafka/KafkaOutboxPublisher.cs` mới thực sự produce:
 
 ```csharp
 var producer = producers.GetProducer("sales-outbox");
@@ -868,7 +868,7 @@ Local MVP đang ổn cho bài thực hành, nhưng production nên thêm:
 | Sales Kafka registration | `src/Services/Sales/Sales.Infrastructure/DependencyInjection.cs` |
 | Sales bus startup | `src/Services/Sales/Sales.Api/Program.cs` |
 | Sales outbox publish loop | `src/Services/Sales/Sales.Infrastructure/Kafka/SalesOutboxPublisher.cs` |
-| Sales Kafka produce + tracing | `src/Services/Sales/Sales.Infrastructure/Kafka/KafkaOutboxPublisher.cs` |
+| Shared Kafka produce + tracing | `src/Shared/BuildingBlocks.Infrastructure/Kafka/KafkaOutboxPublisher.cs` |
 | Sales integration consumer | `src/Services/Sales/Sales.Infrastructure/Kafka/SalesIntegrationEventHandler.cs` |
 | Sales domain event mapper | `src/Services/Sales/Sales.Infrastructure/Kafka/DomainEventMapper.cs` |
 | Sales outbox/inbox tables | `src/Services/Sales/Sales.Infrastructure/Persistence/SalesDbContext.cs` |

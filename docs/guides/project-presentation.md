@@ -193,7 +193,7 @@ public OrdersController(ISender sender)
 | CQRS | Command/query tách riêng, MediatR | `Sales.Application/Commands`, `Sales.Application/Queries` |
 | Factory Method | Static factory tạo aggregate/value object | `Product.Create`, `Customer.Create`, `Order.Create`, `Money.Vnd` |
 | Repository | Interface ở Domain, implement ở Infrastructure | `Repositories.cs` |
-| Unit of Work | `SalesDbContext` implement `IUnitOfWork` (`Shared/BuildingBlocks.Application`) | `SalesDbContext.cs` |
+| Unit of Work | Shared `IUnitOfWork`; Sales wrapper delegates to `SalesDbContext.SaveChangesAsync` | `UnitOfWork.cs`, `SalesDbContext.cs` |
 | Mapster | Mapping domain sang DTO | `DTOs/Models.cs` |
 | Redis cache | Cache-aside cho product detail, Redis lock cho cleanup job | `ProductCache.cs`, `MaintenanceJobs.cs` |
 | Hangfire | Scheduled cleanup/replay job | `Program.cs`, `MaintenanceJobs.cs` |
@@ -585,8 +585,8 @@ Các phần chính:
 | Project | Vai trò |
 |---|---|
 | `Inventory.Domain` | `InventoryItem`, `Reservation`, invariant tồn kho |
-| `Inventory.Application` | Interface/DTO `IInventoryService` |
-| `Inventory.Infrastructure` | EF Core, Kafka consumer, Outbox publisher |
+| `Inventory.Application` | CQRS commands/queries, validators, DTOs, application ports, transaction behavior |
+| `Inventory.Infrastructure` | EF Core repositories/read service, Kafka consumer, Outbox publisher, maintenance worker |
 | `Inventory.Api` | HTTP API adjust/get stock |
 
 API ví dụ:
@@ -1123,6 +1123,10 @@ Test projects:
 |---|---|
 | `Sales.Domain.Tests` | Invariant aggregate, money, state transition |
 | `Sales.Application.Tests` | Mapping/application behavior |
+| `Sales.Api.Tests` | API host/controller/error behavior |
+| `BuildingBlocks.Contracts.Tests` | Shared error/catalog contract behavior |
+| `BuildingBlocks.Web.Tests` | Shared API response/web helper behavior |
+| `Inventory.Api.Tests` | Inventory API host/controller behavior |
 | `Inventory.Tests` | Stock/reservation invariant |
 | `AuditLog.Tests` | Audit document/Mongo dedup opt-in |
 | `Sales.Architecture.Tests` | Dependency rule |

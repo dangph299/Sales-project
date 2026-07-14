@@ -150,24 +150,29 @@ ASP.NET Core/HttpClient instrumentation (mục 3) tự tạo span cho HTTP, như
 
 ### 5.1 `ActivitySource` mỗi service
 
-`src/Services/Sales/Sales.Infrastructure/Observability/SalesActivitySource.cs` (Inventory/AuditLog tương tự, khác tên):
+Sales và Inventory hiện dùng `ActivitySource` singleton đăng ký qua DI. Tên source nằm trong class observability riêng của từng bounded context:
 
 ```csharp
-internal static class SalesActivitySource
+public static class SalesObservability
 {
-    public const string Name = "Sales.Infrastructure.Kafka";
-    public static readonly ActivitySource Instance = new(Name);
+    public const string KafkaActivitySourceName = "Sales.Infrastructure.Kafka";
 }
 ```
 
-`Name` phải khớp chuỗi truyền vào `AddSource(...)` ở mục 3 — cùng nguyên tắc với `Meter` ở mục 4.
+```csharp
+services.AddSingleton(new ActivitySource(SalesObservability.KafkaActivitySourceName));
+```
+
+Inventory dùng cùng pattern với `InventoryObservability.KafkaActivitySourceName = "Inventory.Infrastructure.Kafka"`. AuditLog hiện vẫn dùng static `AuditActivitySource` trong `AuditLog.Infrastructure/Observability/AuditActivitySource.cs`.
+
+Tên source phải khớp chuỗi truyền vào `AddSource(...)` ở mục 3 — cùng nguyên tắc với `Meter` ở mục 4.
 
 ### 5.2 Producer — mở span, ghi header W3C
 
-`Sales.Infrastructure/Kafka/KafkaOutboxPublisher.cs` (Inventory tương tự, khác tên `ActivitySource`/producer):
+Producer chung nằm ở `src/Shared/BuildingBlocks.Infrastructure/Kafka/KafkaOutboxPublisher.cs`. Sales/Inventory chỉ đăng ký producer name khác nhau qua `AddKafkaOutboxPublisher("sales-outbox")` hoặc `AddKafkaOutboxPublisher("inventory-outbox")`.
 
 ```csharp
-using var activity = SalesActivitySource.Instance.StartActivity($"kafka.publish {message.Topic}", ActivityKind.Producer);
+using var activity = activitySource.StartActivity($"kafka.publish {message.Topic}", ActivityKind.Producer);
 activity?.SetTag("messaging.system", "kafka");
 activity?.SetTag("messaging.destination.name", message.Topic);
 
@@ -177,7 +182,7 @@ if (traceParent is not null) headers.SetString(ContractHeaders.TraceParent, trac
 var traceState = activity?.TraceStateString ?? Activity.Current?.TraceStateString;
 if (!string.IsNullOrEmpty(traceState)) headers.SetString(ContractHeaders.TraceState, traceState);
 
-var producer = producers.GetProducer("sales-outbox");
+var producer = producers.GetProducer(producerName);
 await producer.ProduceAsync(message.Topic, envelope.AggregateId.ToString(), envelope, headers);
 ```
 
@@ -185,9 +190,9 @@ await producer.ProduceAsync(message.Topic, envelope.AggregateId.ToString(), enve
 
 ### 5.3 Consumer — đọc header, nối span con qua helper dùng chung
 
-Trước đây mỗi handler (`SalesIntegrationEventHandler`, `InventoryEventHandler`, `AuditEventHandler`) tự viết riêng 1 hàm parse `traceparent`. Giờ cả 3 dùng chung 1 helper:
+Trước đây mỗi handler (`SalesIntegrationEventHandler`, `InventoryEventHandler`, `AuditEventHandler`) tự viết riêng 1 hàm parse `traceparent`. Giờ dùng chung 1 helper:
 
-`src/Shared/BuildingBlocks.Contracts/Messaging/TraceContextParser.cs`:
+`src/Shared/BuildingBlocks.Infrastructure/Tracing/TraceContextParser.cs`:
 
 ```csharp
 public static class TraceContextParser
@@ -206,7 +211,7 @@ Gọi ở đầu mỗi handler, ví dụ `SalesIntegrationEventHandler.Handle`:
 var parentContext = TraceContextParser.Parse(
     context.Headers.GetString(ContractHeaders.TraceParent),
     context.Headers.GetString(ContractHeaders.TraceState));
-using var activity = SalesActivitySource.Instance.StartActivity(
+using var activity = activitySource.StartActivity(
     $"kafka.consume {context.ConsumerContext.Topic}", ActivityKind.Consumer, parentContext);
 activity?.SetTag("messaging.system", "kafka");
 activity?.SetTag("messaging.destination.name", context.ConsumerContext.Topic);
@@ -341,9 +346,9 @@ Vì `Meter("Sales.Infrastructure")` đã được đăng ký từ trước (mụ
 
 ### Nếu cần `ActivitySource` mới cho 1 luồng khác Kafka
 
-1. Tạo class tương tự `SalesActivitySource` (`internal static class`, `Name` là chuỗi định danh, `Instance` là `ActivitySource`).
+1. Tạo tên source rõ nghĩa trong class observability của service, hoặc đăng ký một `ActivitySource` singleton riêng qua DI nếu cần nhiều source.
 2. Thêm `.AddSource("Tên.ActivitySource")` vào `.WithTracing(...)` ở `Program.cs` — thiếu bước này thì span tạo ra không bao giờ tới Kibana.
-3. Gọi `Instance.StartActivity(...)` bọc quanh đoạn code cần trace, set tag theo [semantic convention của OTel](https://opentelemetry.io/docs/specs/semconv/) nếu có (ví dụ `messaging.system`, `db.system`) để field hiển thị nhất quán trong Kibana.
+3. Inject `ActivitySource` hoặc dùng static source hiện có, rồi gọi `StartActivity(...)` bọc quanh đoạn code cần trace. Set tag theo [semantic convention của OTel](https://opentelemetry.io/docs/specs/semconv/) nếu có (ví dụ `messaging.system`, `db.system`) để field hiển thị nhất quán trong Kibana.
 
 ## 10. Nên cải thiện trong production
 
@@ -365,12 +370,12 @@ Local MVP đang ổn cho bài thực hành, nhưng production nên thêm:
 | Header W3C traceparent/tracestate | `src/Shared/BuildingBlocks.Contracts/Messaging/MessageHeaders.cs` |
 | Sales OTel init (traces+metrics) | `src/Services/Sales/Sales.Api/Program.cs` |
 | Sales custom metric | `src/Services/Sales/Sales.Infrastructure/Observability/SalesMetrics.cs` |
-| Sales ActivitySource | `src/Services/Sales/Sales.Infrastructure/Observability/SalesActivitySource.cs` |
-| Sales Kafka producer tracing | `src/Services/Sales/Sales.Infrastructure/Kafka/KafkaOutboxPublisher.cs` |
+| Sales ActivitySource name | `src/Services/Sales/Sales.Infrastructure/Observability/SalesObservability.cs` |
+| Shared Kafka producer tracing | `src/Shared/BuildingBlocks.Infrastructure/Kafka/KafkaOutboxPublisher.cs` |
 | Sales Kafka consumer tracing | `src/Services/Sales/Sales.Infrastructure/Kafka/SalesIntegrationEventHandler.cs` |
 | Inventory OTel init | `src/Services/Inventory/Inventory.Api/Program.cs` |
 | Inventory custom metric | `src/Services/Inventory/Inventory.Infrastructure/Observability/InventoryMetrics.cs` |
-| Inventory ActivitySource | `src/Services/Inventory/Inventory.Infrastructure/Observability/InventoryActivitySource.cs` |
+| Inventory ActivitySource name | `src/Services/Inventory/Inventory.Infrastructure/Observability/InventoryObservability.cs` |
 | AuditLog OTel init | `src/Services/AuditLog/AuditLog.Worker/Program.cs` |
 | AuditLog ActivitySource + consumer tracing | `src/Services/AuditLog/AuditLog.Infrastructure/Observability/AuditActivitySource.cs`, `Mongo/AuditEventHandler.cs` |
 | OTel Collector pipeline config | `docker/otel-collector-config.yaml` |

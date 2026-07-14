@@ -178,15 +178,16 @@ using (LogContext.PushProperty("TraceId", activity?.TraceId.ToHexString()))
 
 ## 7. MediatR pipeline behavior — shared behaviors plus service-specific extensions
 
-**Cập nhật 2026-07-10**: cả 3 behavior chuyển từ `Sales.Application/Services/Behaviors/` sang `Shared/BuildingBlocks.Application/Behaviors/` (namespace `BuildingBlocks.Application`), dùng chung cho các service CQRS. `Sales.Application/DependencyInjection.cs` (`AddSalesApplication()`) đăng ký `SalesApplicationExceptionClassifier` của riêng Sales rồi gọi `BuildingBlocks.Application.DependencyInjection.AddApplicationBuildingBlocks()`. `Inventory.Application/DependencyInjection.cs` (`AddInventoryApplication()`) cũng gọi `AddApplicationBuildingBlocks()` và đăng ký thêm `InventoryTransactionBehavior` cho idempotent commands. Extension shared đăng ký 3 pipeline behavior theo đúng thứ tự cũ:
+**Cập nhật 2026-07-10**: các shared behavior chuyển từ `Sales.Application/Services/Behaviors/` sang `Shared/BuildingBlocks.Application/Behaviors/` (namespace `BuildingBlocks.Application`), dùng chung cho các service CQRS. `Sales.Application/DependencyInjection.cs` (`AddSalesApplication()`) đăng ký `SalesApplicationExceptionClassifier` của riêng Sales rồi gọi `BuildingBlocks.Application.DependencyInjection.AddApplicationBuildingBlocks()`. `Inventory.Application/DependencyInjection.cs` (`AddInventoryApplication()`) cũng gọi `AddApplicationBuildingBlocks()` và đăng ký thêm `InventoryTransactionBehavior` cho idempotent commands. Extension shared đăng ký 4 pipeline behavior theo thứ tự:
 
 ```csharp
 services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ErrorLoggingBehavior<,>));
 services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+services.AddScoped(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
 services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 ```
 
-Thứ tự đăng ký = thứ tự bọc từ ngoài vào trong: `ErrorLoggingBehavior` bọc ngoài cùng (thấy được exception từ cả `LoggingBehavior` lẫn `ValidationBehavior`), rồi mới tới `LoggingBehavior`, rồi `ValidationBehavior`.
+Thứ tự đăng ký = thứ tự bọc từ ngoài vào trong: `ErrorLoggingBehavior` bọc ngoài cùng (thấy được exception từ các behavior phía trong), rồi `LoggingBehavior`, `PerformanceBehavior`, và `ValidationBehavior`.
 
 ### 7.1 `LoggingBehavior` — theo dõi tiến trình, mức Debug
 

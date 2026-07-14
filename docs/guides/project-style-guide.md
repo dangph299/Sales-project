@@ -12,17 +12,17 @@ Solution hiện tại là .NET 10 sample gồm:
 - Sales bounded context: API + Application + Domain + Infrastructure.
 - Inventory bounded context: API + Application + Domain + Infrastructure.
 - AuditLog bounded context: Worker + Infrastructure.
-- Shared building blocks: contracts, observability, web middleware.
+- Shared building blocks: domain/application base types, contracts, infrastructure helpers, observability, web middleware.
 - Angular test client để test thủ công API.
 
 Các pattern chính đang dùng:
 
 - DDD cho aggregate, value object, domain event và invariant.
 - Clean Architecture theo hướng dependency vào trong.
-- CQRS + MediatR trong Sales Application.
+- CQRS + MediatR trong Sales và Inventory Application.
 - Repository + Unit of Work cho command-side aggregate persistence.
 - Read-service ports cho query-side EF projections.
-- Specification Pattern cho filter có thể tái sử dụng.
+- Specification Pattern cho filter Sales có thể tái sử dụng.
 - Outbox/Inbox Pattern cho Kafka at-least-once delivery và idempotency.
 - KafkaFlow cho integration event publish/consume.
 - Hangfire cho scheduled/maintenance jobs của Sales.
@@ -43,7 +43,7 @@ Client
   -> PostgreSQL + Sales outbox
   -> SalesOutboxPublisher hosted service
   -> KafkaFlow
-  -> InventoryEventHandler + Inventory inbox
+  -> InventoryEventHandler/InventoryIntegrationEventProcessor + Inventory inbox
   -> Inventory.Domain reservation
   -> Inventory PostgreSQL + Inventory outbox
   -> KafkaFlow
@@ -78,6 +78,7 @@ Project references hiện tại:
 Sales.Api
   -> Sales.Application
   -> Sales.Infrastructure
+  -> BuildingBlocks.Contracts
   -> BuildingBlocks.Infrastructure
   -> BuildingBlocks.Web
 
@@ -85,20 +86,37 @@ Sales.Infrastructure
   -> Sales.Application
   -> Sales.Domain
   -> BuildingBlocks.Contracts
+  -> BuildingBlocks.Infrastructure
 
 Sales.Application
   -> Sales.Domain
+  -> BuildingBlocks.Application
+
+Sales.Domain
+  -> BuildingBlocks.Domain
 
 Inventory.Api
   -> Inventory.Application
   -> Inventory.Infrastructure
+  -> BuildingBlocks.Contracts
   -> BuildingBlocks.Infrastructure
   -> BuildingBlocks.Web
 
 Inventory.Infrastructure
   -> Inventory.Application
   -> Inventory.Domain
+  -> BuildingBlocks.Application
   -> BuildingBlocks.Contracts
+  -> BuildingBlocks.Domain
+  -> BuildingBlocks.Infrastructure
+
+Inventory.Application
+  -> Inventory.Domain
+  -> BuildingBlocks.Application
+  -> BuildingBlocks.Contracts
+
+Inventory.Domain
+  -> BuildingBlocks.Domain
 
 AuditLog.Worker
   -> AuditLog.Infrastructure
@@ -129,6 +147,8 @@ src/
 │       ├── AuditLog.Worker/
 │       └── AuditLog.Infrastructure/
 ├── Shared/
+│   ├── BuildingBlocks.Domain/
+│   ├── BuildingBlocks.Application/
 │   ├── BuildingBlocks.Contracts/
 │   ├── BuildingBlocks.Infrastructure/
 │   └── BuildingBlocks.Web/
@@ -136,8 +156,12 @@ src/
     └── Sales.TestClient/
 
 tests/
+├── BuildingBlocks.Contracts.Tests/
+├── BuildingBlocks.Web.Tests/
+├── Inventory.Api.Tests/
 ├── Sales.Domain.Tests/
 ├── Sales.Application.Tests/
+├── Sales.Api.Tests/
 ├── Sales.Infrastructure.Tests/
 ├── Sales.Architecture.Tests/
 ├── Inventory.Tests/
@@ -189,6 +213,10 @@ Inventory.Domain/
 ├── Entities/
 │   ├── InventoryItem.cs (IEntity<Guid>)
 │   └── ReservationLine.cs
+├── Events/              (.gitkeep — chưa có domain event riêng)
+├── Exceptions/          (.gitkeep — chưa có DomainException con riêng)
+├── Repositories/
+├── Services/            (.gitkeep — chưa có domain service riêng)
 └── ValueObjects/
 ```
 
@@ -242,7 +270,27 @@ Sales.Application/
 └── DependencyInjection.cs
 ```
 
-`Services/Behaviors/` không còn tồn tại — 3 pipeline behavior (`ErrorLoggingBehavior`, `LoggingBehavior`, `ValidationBehavior`) đã chuyển sang `Shared/BuildingBlocks.Application/Behaviors/` từ 2026-07-10 (dùng chung nếu sau này có CQRS service khác). `IUnitOfWork` và `PagedResult`/`Paging` cũng chuyển sang `Shared/BuildingBlocks.Application/Persistence/` và `Pagination/` — không còn trong `Sales.Application/Interfaces/` hay `DTOs/`.
+Inventory.Application hiện tại:
+
+```text
+Inventory.Application/
+├── Abstractions/
+├── Commands/
+│   ├── AdjustInventory/
+│   ├── ReleaseStock/
+│   └── ReserveStock/
+├── Queries/
+│   ├── GetInventoryByProduct/
+│   └── GetReservationByOrder/
+├── DTOs/
+├── Mappings/
+├── Services/Behaviors/
+│   └── InventoryTransactionBehavior.cs
+├── Validators/
+└── DependencyInjection.cs
+```
+
+Shared pipeline behavior (`ErrorLoggingBehavior`, `LoggingBehavior`, `PerformanceBehavior`, `ValidationBehavior`) nằm ở `Shared/BuildingBlocks.Application/Behaviors/`. `IUnitOfWork` và `PagedResult`/`Paging` cũng nằm ở `Shared/BuildingBlocks.Application/Persistence/` và `Pagination/` — không còn trong `Sales.Application/Interfaces/` hay `DTOs/`.
 
 Rules:
 
@@ -252,6 +300,7 @@ Rules:
 - Validator đặt trong `Validators/<Area>`, ví dụ `CreateOrderValidator`.
 - DTO/read models đặt trong `DTOs/<Area>`.
 - Ports đặt trong `Interfaces`, ví dụ `IOrderReadService`, `IProductCache`, `IExecutionContext`. `IUnitOfWork` là port dùng chung, nay nằm ở `BuildingBlocks.Application` thay vì `Sales.Application/Interfaces/`.
+- Inventory-specific ports đặt trong `Inventory.Application/Abstractions`, ví dụ `IInventoryReadService`, `IInventoryInbox`, `IInventoryEventOutbox`, `IInventoryTransactionManager`.
 - Handler không chứa domain rule phức tạp; gọi aggregate/domain service để xử lý nghiệp vụ.
 - Handler command không gọi `DbContext` trực tiếp; dùng repository/read port/unit of work.
 - Query handler gọi read-service port; EF projection nằm trong Infrastructure.
@@ -260,15 +309,16 @@ Rules:
 - Không publish Kafka trực tiếp trong handler; thay đổi business data và outbox phải đi cùng transaction.
 - Exception nào được coi là "expected rejection" (log Warning thay vì Error) khai báo qua `IApplicationExceptionClassifier`; mỗi service extend `BuildingBlocks.Application.DefaultApplicationExceptionClassifier` thay vì sửa thẳng `ErrorLoggingBehavior`, ví dụ `SalesApplicationExceptionClassifier` thêm `NotFoundException`/`ConflictException`.
 
-MediatR pipeline hiện tại (đăng ký qua `BuildingBlocks.Application.DependencyInjection.AddApplicationBuildingBlocks()`, được `Sales.Application.AddSalesApplication()` gọi lại):
+MediatR pipeline hiện tại (đăng ký qua `BuildingBlocks.Application.DependencyInjection.AddApplicationBuildingBlocks()`, được `Sales.Application.AddSalesApplication()` và `Inventory.Application.AddInventoryApplication()` gọi lại):
 
 ```text
 ErrorLoggingBehavior
 LoggingBehavior
+PerformanceBehavior
 ValidationBehavior
 ```
 
-Nếu thêm behavior mới dùng chung cho mọi CQRS service, đăng ký trong `Shared/BuildingBlocks.Application/DependencyInjection.cs`; nếu chỉ riêng Sales cần, đăng ký trong `Sales.Application/DependencyInjection.cs` sau lời gọi `AddApplicationBuildingBlocks()` và cân nhắc thứ tự wrapping.
+Nếu thêm behavior mới dùng chung cho mọi CQRS service, đăng ký trong `Shared/BuildingBlocks.Application/DependencyInjection.cs`; nếu chỉ riêng một bounded context cần, đăng ký trong Application project của bounded context đó sau lời gọi `AddApplicationBuildingBlocks()` và cân nhắc thứ tự wrapping.
 
 ---
 
@@ -371,7 +421,6 @@ Sales.Infrastructure/Persistence/
 ├── Configurations/
 ├── Migrations/
 ├── Inbox/
-├── Outbox/
 ├── CustomerReadService.cs
 ├── OrderReadService.cs
 ├── ProductReadService.cs
@@ -386,7 +435,9 @@ Inventory.Infrastructure/Persistence/
 ├── Configurations/
 ├── Migrations/
 ├── Inbox/
-└── Outbox/
+├── InventoryInbox.cs
+├── InventoryReadService.cs
+└── Repositories/
 ```
 
 Rules:
@@ -409,35 +460,43 @@ Mục tiêu: DB commit thành công thì integration event không bị mất.
 Sales:
 
 ```text
-Sales.Infrastructure/Persistence/Outbox/
-├── OutboxMessage.cs
-└── IOutboxPublisher.cs
-
 Sales.Infrastructure/Kafka/
 ├── DomainEventMapper.cs
-├── EventEnvelopeFactory.cs
-├── KafkaOutboxPublisher.cs
+├── SalesIntegrationEventHandler.cs
+├── SalesInventoryEventProcessor.cs
 └── SalesOutboxPublisher.cs
 ```
 
 Inventory:
 
 ```text
-Inventory.Infrastructure/Persistence/Outbox/
-├── OutboxRow.cs
-└── IOutboxPublisher.cs
-
 Inventory.Infrastructure/Kafka/
-├── EventEnvelopeFactory.cs
-├── KafkaOutboxPublisher.cs
+├── InventoryEventHandler.cs
+├── InventoryEventOutbox.cs
+├── InventoryIntegrationEventProcessor.cs
 └── InventoryOutboxPublisher.cs
+```
+
+Shared outbox/integration infrastructure:
+
+```text
+BuildingBlocks.Infrastructure/Outbox/
+├── OutboxMessage.cs
+├── IOutboxPublisher.cs
+├── OutboxPublisherService.cs
+└── OutboxSignal.cs
+
+BuildingBlocks.Infrastructure/Events/EventEnvelopeFactory.cs
+BuildingBlocks.Infrastructure/Kafka/KafkaOutboxPublisher.cs
+BuildingBlocks.Infrastructure/Kafka/IntegrationEventHandler.cs
+BuildingBlocks.Infrastructure/Processing/IIntegrationEventProcessor.cs
 ```
 
 Rules:
 
 - Domain event được map thành integration event trong Infrastructure.
-- Integration event được lưu vào outbox cùng transaction với business data.
-- Hosted service publisher đọc outbox chưa xử lý và publish qua KafkaFlow.
+- Integration event được lưu vào outbox cùng transaction với business data. Outbox row dùng shared `OutboxMessage`; từng service tự mapping EF/table riêng qua `OutboxMessageConfiguration`.
+- Hosted service publisher đọc outbox chưa xử lý và publish qua KafkaFlow. Flow dùng shared outbox abstractions/service, còn service-specific publisher vẫn nằm gần bounded context.
 - Publish thành công thì mark processed.
 - Publish lỗi thì lưu lỗi/retry metadata theo schema hiện có.
 - Publisher phải retry-safe và idempotent.
@@ -466,7 +525,8 @@ Inventory.Infrastructure/Persistence/Inbox/
 └── InboxRow.cs
 
 Inventory.Infrastructure/Kafka/
-└── InventoryEventHandler.cs
+├── InventoryEventHandler.cs
+└── InventoryIntegrationEventProcessor.cs
 ```
 
 Rules:
@@ -485,6 +545,7 @@ Contracts chung nằm trong:
 
 ```text
 src/Shared/BuildingBlocks.Contracts/
+├── Errors/
 ├── IntegrationEvents/
 │   ├── Common/
 │   ├── Inventory/
@@ -493,9 +554,10 @@ src/Shared/BuildingBlocks.Contracts/
     ├── ContractVersions.cs
     ├── KafkaConsumerGroups.cs
     ├── KafkaTopics.cs
-    ├── MessageHeaders.cs
-    └── TraceContextParser.cs
+    └── MessageHeaders.cs
 ```
+
+Trace parsing helper nằm trong `src/Shared/BuildingBlocks.Infrastructure/Tracing/TraceContextParser.cs` vì đây là concern xử lý hạ tầng, không phải public contract.
 
 Rules:
 
@@ -601,20 +663,27 @@ Rules:
 ## 16. Shared Building Blocks
 
 ```text
+BuildingBlocks.Domain
+  framework-independent aggregate/entity/domain-event/domain-exception base types
+
+BuildingBlocks.Application
+  CQRS markers, MediatR pipeline behaviors, pagination, IUnitOfWork, exception classification
+
 BuildingBlocks.Contracts
-  versioned integration event envelopes/contracts and messaging constants
+  public error codes, versioned integration event contracts, and messaging constants
 
 BuildingBlocks.Infrastructure
-  shared infrastructure, SerilogBootstrap.ConfigureSharedSinks, and shared metrics
+  shared outbox/Kafka plumbing, audit-change detection, Postgres exception helpers, Serilog bootstrap, metrics, tracing helpers
 
 BuildingBlocks.Web
-  JWT auth helpers, OpenAPI helpers, request logging/observability middleware
+  JWT auth helpers, OpenAPI helpers, OpenTelemetry registration, request logging/observability middleware
 ```
 
 Rules:
 
 - Chỉ đưa code vào Shared khi có ít nhất hai host/project cần dùng chung hoặc đó là contract cross-process.
 - Không đưa bounded-context business rule vào Shared.
+- `BuildingBlocks.Domain` và `BuildingBlocks.Application` phải giữ framework/host concern ở ngoài.
 - Shared web middleware không được reference worker-only concern.
 - Shared contracts không reference Domain/Application/Infrastructure.
 
@@ -758,12 +827,16 @@ Rules:
 Test projects hiện tại:
 
 ```text
-Sales.Domain.Tests
-Sales.Application.Tests
-Sales.Infrastructure.Tests
-Sales.Architecture.Tests
-Inventory.Tests
+BuildingBlocks.Contracts.Tests
+BuildingBlocks.Web.Tests
+Inventory.Api.Tests
 Inventory.Infrastructure.Tests
+Inventory.Tests
+Sales.Api.Tests
+Sales.Application.Tests
+Sales.Architecture.Tests
+Sales.Domain.Tests
+Sales.Infrastructure.Tests
 AuditLog.Tests
 tests/Playwright
 ```
@@ -772,7 +845,9 @@ Rules:
 
 - Domain tests kiểm tra invariant và state transitions.
 - Application tests kiểm tra command/query orchestration với mocked/fake ports.
+- API tests kiểm tra controller/host behavior, auth, error handling hoặc contract HTTP khi phù hợp.
 - Infrastructure tests kiểm tra reliability, outbox/inbox, concurrency, persistence behavior.
+- BuildingBlocks tests kiểm tra shared contracts/web helper behavior để tránh regression cross-service.
 - Architecture tests kiểm tra dependency rule và ngăn EF/Kafka leakage vào Domain/Application.
 - AuditLog tests kiểm tra Mongo idempotency và mapping/storage behavior.
 - Playwright tests kiểm tra API flow end-to-end khi services chạy.
