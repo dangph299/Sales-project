@@ -27,6 +27,5 @@
   <ItemGroup>
     <ProjectReference Include="..\AuditLog.Infrastructure\AuditLog.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Observability\BuildingBlocks.Observability.csproj" />
   </ItemGroup>
 </Project>

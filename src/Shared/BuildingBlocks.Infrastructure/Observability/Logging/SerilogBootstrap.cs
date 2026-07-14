@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
-namespace BuildingBlocks.Observability;
+namespace BuildingBlocks.Infrastructure.Observability.Logging;
 
 /// <summary>
 /// Shared Serilog bootstrap used by every service instead of a per-service copy.

@@ -1,6 +1,6 @@
 using System.Diagnostics.Metrics;
 
-namespace BuildingBlocks.Observability;
+namespace BuildingBlocks.Infrastructure.Observability.Metrics;
 
 /// <summary>
 /// Shared OpenTelemetry instruments for a service's inbox deduplication pipeline. Each service

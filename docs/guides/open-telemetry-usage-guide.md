@@ -5,7 +5,7 @@ Tài liệu này giải thích riêng phần **code trong solution** dùng OpenT
 ## Tóm tắt nhanh
 
 - 3 service (`Sales.Api`, `Inventory.Api`, `AuditLog.Worker`) đều bật `AddOpenTelemetry()` cho **traces** và **metrics**, export qua OTLP gRPC tới `otel-collector:4317` (mục 2–3).
-- **Log cũng đi qua OTLP rồi**, không chỉ Console/Seq — Serilog dùng chung 1 helper (`BuildingBlocks.Observability.SerilogBootstrap.ConfigureSharedSinks`) có thêm `WriteTo.OpenTelemetry(...)` (mục 6). Đây là điểm nhiều người dễ tưởng nhầm là "log tách biệt hoàn toàn với OTel" — không còn đúng.
+- **Log cũng đi qua OTLP rồi**, không chỉ Console/Seq — Serilog dùng chung 1 helper (`BuildingBlocks.Infrastructure.Observability.Logging.SerilogBootstrap.ConfigureSharedSinks`) có thêm `WriteTo.OpenTelemetry(...)` (mục 6). Đây là điểm nhiều người dễ tưởng nhầm là "log tách biệt hoàn toàn với OTel" — không còn đúng.
 - Kafka publish/consume có tracing thủ công qua `ActivitySource` riêng của từng service, propagate W3C `traceparent`/`tracestate` qua Kafka header thật (mục 5) — nối được span HTTP request ban đầu với span Kafka consumer ở service khác.
 - Custom metric nghiệp vụ (`sales.outbox.*`, `inventory.reservation.*`...) nằm ở `SalesMetrics`/`InventoryMetrics` (mục 4).
 - Muốn xem danh sách panel Kibana cần dựng, xem [observability.md](observability.md). Muốn hiểu APM Server/Elasticsearch/Kibana pipeline, xem [Elastic-usage-guide.md](Elastic-usage-guide.md).
@@ -226,7 +226,7 @@ activity?.SetTag("messaging.kafka.consumer.group", context.ConsumerContext.Group
 
 Đây là điểm dễ nhầm nhất nếu chỉ đọc code cũ hoặc tài liệu cũ: **log không còn tách biệt hoàn toàn khỏi OTel nữa.**
 
-`src/Shared/BuildingBlocks.Observability/SerilogBootstrap.cs`:
+`src/Shared/BuildingBlocks.Infrastructure/Observability/Logging/SerilogBootstrap.cs`:
 
 ```csharp
 public static LoggerConfiguration ConfigureSharedSinks(this LoggerConfiguration config, IConfiguration configuration, string defaultServiceName)
@@ -253,7 +253,7 @@ public static LoggerConfiguration ConfigureSharedSinks(this LoggerConfiguration 
 
 Cả 3 service gọi đúng 1 helper này (`Sales.Api`/`Inventory.Api` qua `builder.Host.UseSerilog((ctx, cfg) => cfg.ConfigureSharedSinks(...))`, `AuditLog.Worker` qua `builder.Services.AddSerilog((_, cfg) => cfg.ConfigureSharedSinks(...))` vì dùng `HostApplicationBuilder` không có `.Host`) — không còn 3 block cấu hình Serilog copy/paste riêng như trước.
 
-Package: `Serilog.Sinks.OpenTelemetry` `4.2.0`, khai trong `BuildingBlocks.Observability.csproj` — đóng gói cùng `Serilog`, `Serilog.Sinks.Console`, `Serilog.Sinks.Seq`.
+Package: `Serilog.Sinks.OpenTelemetry` `4.2.0`, khai trong `BuildingBlocks.Infrastructure.csproj` — đóng gói cùng `Serilog`, `Serilog.Sinks.Console`, `Serilog.Sinks.Seq`.
 
 Hệ quả:
 
@@ -359,9 +359,9 @@ Local MVP đang ổn cho bài thực hành, nhưng production nên thêm:
 
 | Mục | File |
 |---|---|
-| Serilog + OTLP log sink dùng chung | `src/Shared/BuildingBlocks.Observability/SerilogBootstrap.cs` |
+| Serilog + OTLP log sink dùng chung | `src/Shared/BuildingBlocks.Infrastructure/Observability/Logging/SerilogBootstrap.cs` |
 | HTTP request logging middleware dùng chung | `src/Shared/BuildingBlocks.Web/RequestObservabilityMiddleware.cs`, `RequestLoggingDefaults.cs` |
-| Trace context parser dùng chung (Kafka consumer) | `src/Shared/BuildingBlocks.Contracts/Messaging/TraceContextParser.cs` |
+| Trace context parser dùng chung (Kafka consumer) | `src/Shared/BuildingBlocks.Infrastructure/Tracing/TraceContextParser.cs` |
 | Header W3C traceparent/tracestate | `src/Shared/BuildingBlocks.Contracts/Messaging/MessageHeaders.cs` |
 | Sales OTel init (traces+metrics) | `src/Services/Sales/Sales.Api/Program.cs` |
 | Sales custom metric | `src/Services/Sales/Sales.Infrastructure/Observability/SalesMetrics.cs` |

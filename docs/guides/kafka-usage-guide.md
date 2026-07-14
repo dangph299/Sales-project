@@ -822,7 +822,7 @@ Hiện Sales và Inventory có code OutboxPublisher khá giống nhau. Khi phát
 BuildingBlocks.Messaging
 BuildingBlocks.Outbox
 BuildingBlocks.Inbox
-BuildingBlocks.Observability
+BuildingBlocks.Infrastructure/Observability
 ```
 
 Có thể tạo abstraction:

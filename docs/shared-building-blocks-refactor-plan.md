@@ -11,8 +11,7 @@ The solution currently contains these real Shared projects:
 | `BuildingBlocks.Domain` | Entity, aggregate root, domain event, domain exception | none beyond BCL |
 | `BuildingBlocks.Application` | MediatR pipeline behaviors, validation, pagination, `IUnitOfWork` | `BuildingBlocks.Domain`, MediatR, FluentValidation, logging abstractions |
 | `BuildingBlocks.Contracts` | Integration event payloads, event envelope, Kafka names/headers, trace parser | BCL only |
-| `BuildingBlocks.Infrastructure` | Outbox row, Kafka publisher adapter, Kafka consumer tracing helper, audit diff, Postgres exception helper | `BuildingBlocks.Contracts`, KafkaFlow, EF Core, Npgsql, logging abstractions |
-| `BuildingBlocks.Observability` | Serilog bootstrap, common metric instruments/names | Serilog, configuration abstractions |
+| `BuildingBlocks.Infrastructure` | Outbox row, Kafka publisher adapter, Kafka consumer tracing helper, audit diff, Postgres exception helper, Serilog bootstrap, common metric instruments/names | `BuildingBlocks.Contracts`, KafkaFlow, EF Core, Npgsql, Serilog, logging abstractions |
 | `BuildingBlocks.Web` | ASP.NET Core JWT, Swagger/OpenAPI, request observability, OpenTelemetry | ASP.NET Core framework reference, Serilog.AspNetCore, OpenTelemetry, Swashbuckle |
 
 The stale `obj/`-only folders that previously existed under `src/Shared` (`BuildingBlocks.Auditing`, `BuildingBlocks.Messaging`, `BuildingBlocks.Outbox`, `BuildingBlocks.Persistence`) have been deleted during cleanup.
@@ -29,7 +28,6 @@ BuildingBlocks.Contracts
   <- BuildingBlocks.Infrastructure
 
 BuildingBlocks.Web
-BuildingBlocks.Observability
 ```
 
 Service usage:
@@ -38,20 +36,20 @@ Service usage:
 Sales.Domain       -> BuildingBlocks.Domain
 Sales.Application  -> Sales.Domain, BuildingBlocks.Application
 Sales.Infrastructure -> Sales.Application, Sales.Domain, BuildingBlocks.Contracts,
-                        BuildingBlocks.Infrastructure, BuildingBlocks.Observability
+                        BuildingBlocks.Infrastructure
 Sales.Api          -> Sales.Application, Sales.Infrastructure,
-                      BuildingBlocks.Observability, BuildingBlocks.Web
+                      BuildingBlocks.Infrastructure, BuildingBlocks.Web
 
 Inventory.Domain   -> BuildingBlocks.Domain
 Inventory.Application -> Inventory.Domain
 Inventory.Infrastructure -> Inventory.Domain, Inventory.Application,
                             BuildingBlocks.Contracts, BuildingBlocks.Domain,
-                            BuildingBlocks.Infrastructure, BuildingBlocks.Observability
+                            BuildingBlocks.Infrastructure
 Inventory.Api      -> Inventory.Application, Inventory.Infrastructure,
-                      BuildingBlocks.Observability, BuildingBlocks.Web
+                      BuildingBlocks.Infrastructure, BuildingBlocks.Web
 
 AuditLog.Infrastructure -> BuildingBlocks.Contracts
-AuditLog.Worker    -> AuditLog.Infrastructure, BuildingBlocks.Observability
+AuditLog.Worker    -> AuditLog.Infrastructure, BuildingBlocks.Infrastructure
 ```
 
 No Shared project references Sales, Inventory, or AuditLog.
@@ -94,7 +92,7 @@ No Shared project references Sales, Inventory, or AuditLog.
 ### Over-abstraction
 
 - No excessive generic repository was added to Shared. Sales has a local generic `IRepository<T>` and implementation; this should stay service-local until Inventory has the same need.
-- `BuildingBlocks.Observability` is small, but it isolates Serilog package cost from Domain/Application/Contracts. Keep it unless build cost becomes measurable.
+- Observability has been folded into `BuildingBlocks.Infrastructure/Observability` because it only contained infrastructure-level Serilog and metric helpers.
 
 ### Under-abstraction
 
@@ -140,7 +138,6 @@ src/Shared/
   BuildingBlocks.Application/
   BuildingBlocks.Contracts/
   BuildingBlocks.Infrastructure/
-  BuildingBlocks.Observability/
   BuildingBlocks.Web/
 ```
 
@@ -163,9 +160,6 @@ BuildingBlocks.Infrastructure
 
 BuildingBlocks.Web
   -> ASP.NET Core packages only
-
-BuildingBlocks.Observability
-  -> Serilog/configuration only
 ```
 
 Strict rules:

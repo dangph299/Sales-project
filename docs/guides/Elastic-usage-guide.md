@@ -25,7 +25,7 @@ kibana:5601
 
 Đây là pipeline **thuần OTLP end-to-end**. Project **không** dùng Elastic APM native agent (`Elastic.Apm.NetCoreAll`/`Elastic.Apm.AspNetCore`) — không có package đó trong bất kỳ `.csproj` nào. APM Server 9.1.0 tự hiểu giao thức OTLP nên đóng vai trò "translator" từ OTLP sang Elasticsearch data stream, không phải nhận traffic từ Elastic APM agent kiểu cũ.
 
-**Cả 3 signal (traces, metrics, logs) đều đi qua pipeline này.** Serilog (Console + Seq, xem [Seqlog-usage-guide.md](Seqlog-usage-guide.md)) vẫn là kênh log chính để tra cứu thủ công hằng ngày, nhưng từ khi `BuildingBlocks.Observability.SerilogBootstrap` thêm `WriteTo.OpenTelemetry(...)`, mỗi log event cũng được gửi song song qua OTLP → collector → APM Server → Elasticsearch. Chi tiết SDK phía app nằm ở [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 6.
+**Cả 3 signal (traces, metrics, logs) đều đi qua pipeline này.** Serilog (Console + Seq, xem [Seqlog-usage-guide.md](Seqlog-usage-guide.md)) vẫn là kênh log chính để tra cứu thủ công hằng ngày, nhưng từ khi `BuildingBlocks.Infrastructure.Observability.Logging.SerilogBootstrap` thêm `WriteTo.OpenTelemetry(...)`, mỗi log event cũng được gửi song song qua OTLP → collector → APM Server → Elasticsearch. Chi tiết SDK phía app nằm ở [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 6.
 
 ## 2. OpenTelemetry SDK khởi tạo trong từng service
 

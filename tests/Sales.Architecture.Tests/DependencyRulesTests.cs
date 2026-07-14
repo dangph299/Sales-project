@@ -161,16 +161,18 @@ public sealed class DependencyRulesTests
     }
 
     [Fact]
-    public void BuildingBlocks_observability_does_not_depend_on_services_or_web_hosts()
+    public void BuildingBlocks_infrastructure_observability_does_not_depend_on_services_or_web_hosts()
     {
-        var result = Types.InAssembly(typeof(BuildingBlocks.Observability.OutboxMetrics).Assembly).ShouldNot()
+        var result = Types.InAssembly(typeof(BuildingBlocks.Infrastructure.Observability.Metrics.OutboxMetrics).Assembly)
+            .That()
+            .ResideInNamespaceStartingWith("BuildingBlocks.Infrastructure.Observability")
+            .ShouldNot()
             .HaveDependencyOnAny(
                 "Sales",
                 "Inventory",
                 "AuditLog",
                 "BuildingBlocks.Domain",
                 "BuildingBlocks.Application",
-                "BuildingBlocks.Infrastructure",
                 "BuildingBlocks.Web",
                 "Microsoft.AspNetCore",
                 "KafkaFlow").GetResult();

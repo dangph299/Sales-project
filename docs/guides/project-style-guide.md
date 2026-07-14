@@ -78,7 +78,7 @@ Project references hiện tại:
 Sales.Api
   -> Sales.Application
   -> Sales.Infrastructure
-  -> BuildingBlocks.Observability
+  -> BuildingBlocks.Infrastructure
   -> BuildingBlocks.Web
 
 Sales.Infrastructure
@@ -92,7 +92,7 @@ Sales.Application
 Inventory.Api
   -> Inventory.Application
   -> Inventory.Infrastructure
-  -> BuildingBlocks.Observability
+  -> BuildingBlocks.Infrastructure
   -> BuildingBlocks.Web
 
 Inventory.Infrastructure
@@ -102,7 +102,7 @@ Inventory.Infrastructure
 
 AuditLog.Worker
   -> AuditLog.Infrastructure
-  -> BuildingBlocks.Observability
+  -> BuildingBlocks.Infrastructure
 
 AuditLog.Infrastructure
   -> BuildingBlocks.Contracts
@@ -130,7 +130,7 @@ src/
 │       └── AuditLog.Infrastructure/
 ├── Shared/
 │   ├── BuildingBlocks.Contracts/
-│   ├── BuildingBlocks.Observability/
+│   ├── BuildingBlocks.Infrastructure/
 │   └── BuildingBlocks.Web/
 └── Web/
     └── Sales.TestClient/
@@ -604,8 +604,8 @@ Rules:
 BuildingBlocks.Contracts
   versioned integration event envelopes/contracts and messaging constants
 
-BuildingBlocks.Observability
-  SerilogBootstrap.ConfigureSharedSinks and shared sink policy
+BuildingBlocks.Infrastructure
+  shared infrastructure, SerilogBootstrap.ConfigureSharedSinks, and shared metrics
 
 BuildingBlocks.Web
   JWT auth helpers, OpenAPI helpers, request logging/observability middleware
@@ -743,7 +743,7 @@ Rules:
 Rules:
 
 - Log structured bằng Serilog.
-- Shared sink policy dùng `BuildingBlocks.Observability/SerilogBootstrap.cs`.
+- Shared sink policy dùng `BuildingBlocks.Infrastructure/Observability/Logging/SerilogBootstrap.cs`.
 - HTTP request observability dùng `BuildingBlocks.Web` middleware/extensions.
 - Không log password/token/raw sensitive payload.
 - Exception phải được log ở boundary phù hợp.

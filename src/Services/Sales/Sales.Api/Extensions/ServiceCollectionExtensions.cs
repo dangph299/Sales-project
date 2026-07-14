@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using BuildingBlocks.Contracts;
-using BuildingBlocks.Observability;
+using BuildingBlocks.Infrastructure.Observability.Logging;
 using BuildingBlocks.Web.Authentication;
 using BuildingBlocks.Web.Extensions;
 using BuildingBlocks.Web.Observability;

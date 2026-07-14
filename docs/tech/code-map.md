@@ -25,7 +25,6 @@ src/
     BuildingBlocks.Application/
     BuildingBlocks.Contracts/
     BuildingBlocks.Infrastructure/
-    BuildingBlocks.Observability/
     BuildingBlocks.Web/
 ```
 

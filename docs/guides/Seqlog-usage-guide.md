@@ -4,7 +4,7 @@ Tài liệu này giải thích riêng cách project đang dùng Serilog + Seq: c
 
 ## Tóm tắt nhanh
 
-- Cả 3 service (Sales.Api, Inventory.Api, AuditLog.Worker) dùng **chung 1 helper** để cấu hình Serilog: `BuildingBlocks.Observability.SerilogBootstrap.ConfigureSharedSinks(...)` — không còn 3 block cấu hình copy/paste riêng (mục 4).
+- Cả 3 service (Sales.Api, Inventory.Api, AuditLog.Worker) dùng **chung 1 helper** để cấu hình Serilog: `BuildingBlocks.Infrastructure.Observability.Logging.SerilogBootstrap.ConfigureSharedSinks(...)` — không còn 3 block cấu hình copy/paste riêng (mục 4).
 - Middleware log HTTP request cũng dùng chung 1 class: `BuildingBlocks.Web.RequestObservabilityMiddleware` — không còn `CorrelationLoggingMiddleware`/`HttpLoggingMiddleware` riêng cho từng service (mục 6, 8).
 - MediatR pipeline của Sales có **2 behavior** phụ trách log: `LoggingBehavior` (Debug, theo dõi tiến trình) và `ErrorLoggingBehavior` (Warning/Error, nơi duy nhất log lỗi command/query) — cả 2 giờ nằm ở `Shared/BuildingBlocks.Application/Behaviors/` dùng chung skeleton, không còn trong `Sales.Application` — mục 7.
 - Log body request/response chỉ được đọc/ghi khi log level `Debug` đang bật, không phải luôn luôn — mục 8.
@@ -34,7 +34,7 @@ Serilog.Sinks.Console          6.1.1
 Serilog.Sinks.Seq              9.0.0
 ```
 
-Cả 3 project còn có `ProjectReference` tới `Shared/BuildingBlocks.Observability` — project này khai `Serilog` 4.3.0, `Serilog.Settings.Configuration`, `Serilog.Sinks.Console`, `Serilog.Sinks.Seq`, và thêm **`Serilog.Sinks.OpenTelemetry` 4.2.0** (package mới, phục vụ nhánh log OTLP — xem [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 6). `Sales.Api`/`Inventory.Api` còn `ProjectReference` tới `Shared/BuildingBlocks.Web` (chứa middleware HTTP logging dùng chung, mục 8); `AuditLog.Worker` không cần vì không có HTTP.
+Cả 3 project còn có `ProjectReference` tới `Shared/BuildingBlocks.Infrastructure` — project này khai `Serilog` 4.3.0, `Serilog.Settings.Configuration`, `Serilog.Sinks.Console`, `Serilog.Sinks.Seq`, và thêm **`Serilog.Sinks.OpenTelemetry` 4.2.0** (package phục vụ nhánh log OTLP — xem [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 6). `Sales.Api`/`Inventory.Api` còn `ProjectReference` tới `Shared/BuildingBlocks.Web` (chứa middleware HTTP logging dùng chung, mục 8); `AuditLog.Worker` không cần vì không có HTTP.
 
 ## 3. Seq broker nằm ở đâu?
 
@@ -58,7 +58,7 @@ seq:
 
 Trước đây mỗi service tự viết 1 block `UseSerilog(...)` gần giống hệt nhau (copy/paste). Giờ cả 3 gọi chung 1 extension method.
 
-`src/Shared/BuildingBlocks.Observability/SerilogBootstrap.cs`:
+`src/Shared/BuildingBlocks.Infrastructure/Observability/Logging/SerilogBootstrap.cs`:
 
 ```csharp
 public static LoggerConfiguration ConfigureSharedSinks(this LoggerConfiguration config, IConfiguration configuration, string defaultServiceName)
@@ -371,7 +371,7 @@ Environment = 'Development'
 
 Đã fix trong code (không còn là khuyến nghị):
 
-- ✅ Serilog bootstrap dùng chung `BuildingBlocks.Observability.SerilogBootstrap.ConfigureSharedSinks(...)` cho cả 3 service — không còn 3 block copy/paste (mục 4).
+- ✅ Serilog bootstrap dùng chung `BuildingBlocks.Infrastructure.Observability.Logging.SerilogBootstrap.ConfigureSharedSinks(...)` cho cả 3 service — không còn 3 block copy/paste (mục 4).
 - ✅ HTTP request logging dùng chung `BuildingBlocks.Web.RequestObservabilityMiddleware` + `RequestLoggingDefaults` — không còn `CorrelationLoggingMiddleware`/`HttpLoggingMiddleware` riêng per-service (mục 8).
 - ✅ Log giờ có thêm nhánh OTLP (`WriteTo.OpenTelemetry(...)`), nối được `TraceId` giữa Seq và Kibana APM (mục 6, xem [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 6).
 - ✅ Enricher `Environment` (`Enrich.WithProperty("Environment", ...)`) đã có, đọc từ `ASPNETCORE_ENVIRONMENT`/`DOTNET_ENVIRONMENT`.

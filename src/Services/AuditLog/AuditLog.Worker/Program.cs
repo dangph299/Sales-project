@@ -1,5 +1,5 @@
 using AuditLog.Worker;
-using BuildingBlocks.Observability;
+using BuildingBlocks.Infrastructure.Observability.Logging;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 using Serilog;

@@ -1,5 +1,5 @@
 using System.Diagnostics.Metrics;
-using BuildingBlocks.Observability;
+using BuildingBlocks.Infrastructure.Observability.Metrics;
 
 namespace Sales.Infrastructure;
 
@@ -28,5 +28,8 @@ internal static class SalesMetrics
     /// </summary>
     /// <param name="backlog">Number of outbox rows not yet successfully published or dead-lettered.</param>
     /// <param name="deadLetters">Number of outbox rows currently dead-lettered.</param>
-    public static void SetOutboxSnapshot(long backlog, long deadLetters) => Outbox.SetSnapshot(backlog, deadLetters);
+    public static void SetOutboxSnapshot(long backlog, long deadLetters)
+    {
+        Outbox.SetSnapshot(backlog, deadLetters);
+    }
 }

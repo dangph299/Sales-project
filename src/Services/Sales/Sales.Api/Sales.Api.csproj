@@ -30,7 +30,6 @@
     <ProjectReference Include="..\Sales.Infrastructure\Sales.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
     <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Infrastructure\BuildingBlocks.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Observability\BuildingBlocks.Observability.csproj" />
     <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
   </ItemGroup>
 
