@@ -176,9 +176,9 @@ using (LogContext.PushProperty("TraceId", activity?.TraceId.ToHexString()))
 
 `SalesIntegrationEventHandler`, `InventoryEventHandler`, `AuditEventHandler` đều log 3 mốc qua `ILogger<T>` — start (`LogInformation "Consumed..."` sau khi xử lý xong) và fail (`LogError "Consume failed..."`), không log `envelope.Data` (payload).
 
-## 7. MediatR pipeline behavior (chỉ Sales) — 2 behavior, 2 trách nhiệm khác nhau
+## 7. MediatR pipeline behavior — shared behaviors plus service-specific extensions
 
-**Cập nhật 2026-07-10**: cả 3 behavior chuyển từ `Sales.Application/Services/Behaviors/` sang `Shared/BuildingBlocks.Application/Behaviors/` (namespace `BuildingBlocks.Application`), dùng chung skeleton cho mọi CQRS service tương lai — hiện chỉ Sales dùng vì Inventory không có MediatR pipeline. `Sales.Application/DependencyInjection.cs` (`AddSalesApplication()`) đăng ký `SalesApplicationExceptionClassifier` của riêng Sales rồi gọi `BuildingBlocks.Application.DependencyInjection.AddApplicationBuildingBlocks()`, extension này đăng ký 3 pipeline behavior theo đúng thứ tự cũ:
+**Cập nhật 2026-07-10**: cả 3 behavior chuyển từ `Sales.Application/Services/Behaviors/` sang `Shared/BuildingBlocks.Application/Behaviors/` (namespace `BuildingBlocks.Application`), dùng chung cho các service CQRS. `Sales.Application/DependencyInjection.cs` (`AddSalesApplication()`) đăng ký `SalesApplicationExceptionClassifier` của riêng Sales rồi gọi `BuildingBlocks.Application.DependencyInjection.AddApplicationBuildingBlocks()`. `Inventory.Application/DependencyInjection.cs` (`AddInventoryApplication()`) cũng gọi `AddApplicationBuildingBlocks()` và đăng ký thêm `InventoryTransactionBehavior` cho idempotent commands. Extension shared đăng ký 3 pipeline behavior theo đúng thứ tự cũ:
 
 ```csharp
 services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ErrorLoggingBehavior<,>));
@@ -255,7 +255,7 @@ public sealed class ErrorLoggingBehavior<TRequest, TResponse>(
 
 **Vì sao tách riêng 2 behavior thay vì gộp vào 1**: `LoggingBehavior` trả lời "tiến trình đang chạy tới đâu" (cần khi trace 1 request đang treo/chậm), `ErrorLoggingBehavior` trả lời "cái gì vừa thất bại và tại sao" (cần khi có lỗi thật). Gộp chung sẽ ép cùng 1 log level cho 2 mục đích khác nhau — tách ra cho phép bật Debug để xem tiến trình mà không kéo theo log ồn ào ở mức Warning/Error.
 
-Inventory **không có** behavior tương đương — Inventory dùng Minimal API gọi thẳng `IInventoryService`, không qua MediatR pipeline (xem `ARCHITECTURE_CHECKLIST.md`), nên không có log tự động tương tự cho mỗi thao tác.
+Inventory dùng các behavior shared tương tự qua `AddInventoryApplication()`. Ngoài ra `InventoryTransactionBehavior` mở serializable transaction, ghi Inbox cho idempotent commands, gọi handler, `IUnitOfWork.SaveChangesAsync`, rồi commit; behavior này không log thay cho `ErrorLoggingBehavior`.
 
 ## 8. HTTP request logging — dùng chung `RequestObservabilityMiddleware`
 

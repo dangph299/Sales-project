@@ -56,6 +56,25 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server kafka:9092 >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  kafka-init:
+    image: apache/kafka:4.1.1
+    depends_on:
+      kafka: { condition: service_healthy }
+    environment:
+      KAFKA_BOOTSTRAP_SERVER: kafka:9092
+      KAFKA_TOPIC_PARTITIONS: 3
+      KAFKA_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TOPICS_SOURCE: /opt/kafka-init/KafkaTopics.cs
+    volumes:
+      - ./kafka-init-topics.sh:/opt/kafka-init/kafka-init-topics.sh:ro
+      - ../src/Shared/BuildingBlocks.Contracts/Messaging/KafkaTopics.cs:/opt/kafka-init/KafkaTopics.cs:ro
+    entrypoint: ["/bin/bash", "/opt/kafka-init/kafka-init-topics.sh"]
 
   seq:
     image: datalust/seq:2025.2
@@ -115,7 +134,7 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
-      kafka: { condition: service_started }
+      kafka-init: { condition: service_completed_successfully }
 
   inventory-api:
     mem_limit: 512m
@@ -131,7 +150,7 @@ services:
     ports: ["5001:8080"]
     depends_on:
       postgres: { condition: service_healthy }
-      kafka: { condition: service_started }
+      kafka-init: { condition: service_completed_successfully }
 
   audit-worker:
     mem_limit: 512m
@@ -144,7 +163,7 @@ services:
     restart: unless-stopped
     depends_on:
       mongo: { condition: service_healthy }
-      kafka: { condition: service_started }
+      kafka-init: { condition: service_completed_successfully }
 
 volumes:
   postgres-data:

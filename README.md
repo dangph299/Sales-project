@@ -1,12 +1,9 @@
 # Sales Management DDD practice
 
+Start with [docs/tech/README.md](docs/tech/README.md) if you want a beginner-friendly explanation of the project requirements, patterns, code locations, and review notes.
 See [docs/architecture.md](docs/architecture.md) for dependency rules and folder responsibilities.
-Use [docs/project-presentation.md](docs/project-presentation.md) to present the project, requirements mapping, Kafka flow, reliability patterns and demo flows.
-Use [docs/Sumaries-guide.md](docs/Sumaries-guide.md) as the single entry point: requirements-vs-implementation status and known observability gaps.
-Use [docs/kafka-usage-guide.md](docs/kafka-usage-guide.md) for a deeper explanation of KafkaFlow setup, producers, consumers, Outbox/Inbox and future reuse.
-Use [docs/Redis-cache-usage-guide.md](docs/Redis-cache-usage-guide.md) for cache-aside and the distributed lock behind the Hangfire cleanup job.
-Use [docs/Seqlog-usage-guide.md](docs/Seqlog-usage-guide.md) for Serilog/Seq setup per service, including where it's missing.
-Use [docs/Elastic-usage-guide.md](docs/Elastic-usage-guide.md) for the OpenTelemetry -> OTel Collector -> APM Server -> Elasticsearch/Kibana pipeline.
+See [docs/CODING_RULES.md](docs/CODING_RULES.md) for coding and placement rules.
+See [docs/ARCHITECTURE_CHECKLIST.md](docs/ARCHITECTURE_CHECKLIST.md) for the current architecture checklist.
 
 Greenfield .NET 10 sample with a Sales modular monolith, an Inventory service and an Audit worker. Commands use MediatR and aggregate repositories; reads use EF Core projections. Order/inventory integration is delivered at least once through transactional Outbox/Inbox records and KafkaFlow.
 
@@ -22,7 +19,7 @@ docker compose -f docker/docker-compose.yml up --build
 - Kibana: `http://localhost:5601`
 - Kafka host endpoint: `localhost:9094`
 
-Observability dashboard metrics are documented in [docs/observability.md](docs/observability.md).
+Observability and monitoring entry points are summarized in [docs/tech/requirements-map.md](docs/tech/requirements-map.md); use [docs/tech/monitoring-demo.md](docs/tech/monitoring-demo.md) for the demo flow.
 
 The development admin is `admin` / `Admin123!`. Change this and the JWT key outside local development.
 

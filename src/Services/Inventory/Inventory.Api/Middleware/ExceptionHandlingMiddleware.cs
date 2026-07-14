@@ -34,20 +34,31 @@ public sealed class ExceptionHandlingMiddleware : IExceptionHandler
     /// <returns><see langword="true"/> to indicate the exception was handled and a response was written.</returns>
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
-        var (status, title) = exception switch
+        var (status, title, retryable) = exception switch
         {
-            // A concurrent request changed the same aggregate (EF Core's optimistic concurrency
-            // check failed), or two requests raced to create/record the same not-yet-existing row
-            // (Postgres unique-key violation). Both mean "retry the request". Any other
+            // Another request already committed a change to this exact row (EF Core's optimistic
+            // concurrency check failed), or two requests raced to create/record the same
+            // not-yet-existing row (Postgres unique-key violation). The caller must re-fetch
+            // current state before retrying — blindly resubmitting the same payload can silently
+            // clobber the other change.
+            DbUpdateConcurrencyException => (409, "Concurrent update detected", false),
+            DbUpdateException ex when PostgresExceptions.IsUniqueViolation(ex) => (409, "Concurrent update detected", false),
+            ValidationException => (400, "Validation failed", false),
+            DomainException => (400, "Domain rule violated", false),
+            BadHttpRequestException bad => (bad.StatusCode, "Invalid request", false),
+            // Inventory's SERIALIZABLE transaction was aborted by a serialization failure or
+            // deadlock. This is the only conflict guard for AdjustInventoryCommand, the one
+            // Inventory command dispatched over HTTP — nothing was persisted, so the identical
+            // request is safe to retry immediately, no re-fetch needed (unlike the concurrency
+            // cases above). ReserveStockCommand/ReleaseStockCommand also run inside this kind of
+            // transaction but are dispatched only from Kafka via InventoryIntegrationEventProcessor
+            // and never reach this middleware; a conflict there is instead retried transparently by
+            // Kafka's own at-least-once redelivery, independent of this mapping. Any other
             // DbUpdateException (FK violation, NOT NULL violation, etc.) is a genuine data/schema
             // defect, not a transient conflict, so it falls through to the 500 case below instead
             // of being reported as retryable.
-            DbUpdateConcurrencyException => (409, "Concurrent update detected"),
-            DbUpdateException ex when PostgresExceptions.IsUniqueViolation(ex) => (409, "Concurrent update detected"),
-            ValidationException => (400, "Validation failed"),
-            DomainException => (400, "Domain rule violated"),
-            BadHttpRequestException bad => (bad.StatusCode, "Invalid request"),
-            _ => (500, "Unexpected server error")
+            _ when PostgresExceptions.IsSerializationConflict(exception) => (409, "Transient write conflict, retry the request", true),
+            _ => (500, "Unexpected server error", false)
         };
         context.Response.StatusCode = status;
         var details = new ProblemDetails { Status = status, Title = title, Detail = exception.Message, Instance = context.Request.Path };
@@ -55,6 +66,7 @@ public sealed class ExceptionHandlingMiddleware : IExceptionHandler
             details.Extensions["errors"] = validation.Errors
                 .GroupBy(x => x.PropertyName)
                 .ToDictionary(g => g.Key, g => g.Select(x => x.ErrorMessage).ToArray());
+        if (status == 409) details.Extensions["retryable"] = retryable;
         details.Extensions["traceId"] = context.TraceIdentifier;
         return await _problemDetails.TryWriteAsync(new() { HttpContext = context, ProblemDetails = details });
     }

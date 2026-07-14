@@ -79,7 +79,7 @@ kafka:
 - Trong Docker network, app dùng broker `kafka:9092`.
 - Từ máy host, có thể dùng `localhost:9094`.
 - Kafka chạy KRaft mode, không cần ZooKeeper.
-- Local MVP bật auto-create topic để giảm setup thủ công.
+- Local vẫn bật auto-create topic như fallback, nhưng các topic nghiệp vụ trong `KafkaTopics.cs` được tạo chủ động bởi service `kafka-init` với 3 partitions và replication factor 1.
 
 Chạy:
 
@@ -168,7 +168,7 @@ Nếu thay đổi breaking contract, tạo topic `.v2` thay vì sửa payload `.
 |---|---|---|
 | `inventory-orders-v1` | Inventory.Api | `sales.order-confirmation-requested.v1`, `sales.order-undo-confirmation-requested.v1` |
 | `sales-inventory-results-v1` | Sales.Api | `inventory.stock-reserved.v1`, `inventory.stock-rejected.v1`, `inventory.stock-released.v1` |
-| `audit-mongodb-v1` | AuditLog.Worker | Toàn bộ topic audit/integration |
+| `audit-mongodb-v3` | AuditLog.Worker | Toàn bộ topic audit/integration |
 
 Giải thích:
 
@@ -200,13 +200,29 @@ Lợi ích:
 
 - Event của cùng order đi vào cùng partition.
 - Kafka giữ ordering trong cùng partition.
+- Kafka không đảm bảo global ordering trên toàn topic.
 - Tránh event cùng order bị xử lý đảo thứ tự.
+- Consumer group quyết định load balancing giữa nhiều consumer instance cùng group.
 
 Nếu sau này event không thuộc Order:
 
 - Customer event: key nên là `customerId`.
 - Product event: key nên là `productId`.
 - Payment event: key nên là `paymentId` hoặc `orderId` nếu cần ordering theo order.
+
+Local Docker chủ động tạo toàn bộ topic trong `KafkaTopics.cs` bằng service `kafka-init`:
+
+```text
+docker/kafka-init-topics.sh
+docker/docker-compose.yml
+```
+
+Thiết lập local:
+
+- `3` partitions cho mỗi topic nghiệp vụ.
+- Replication factor `1`.
+- Script chạy `kafka-topics.sh --create --if-not-exists`, nên idempotent khi chạy lại Docker Compose.
+- Script đọc topic từ `src/Shared/BuildingBlocks.Contracts/Messaging/KafkaTopics.cs`, không duy trì danh sách topic riêng trong Docker.
 
 ## 8. Kafka khởi tạo trong Sales.Api như thế nào?
 
@@ -490,7 +506,7 @@ src/Services/AuditLog/AuditLog.Worker/Program.cs
 Consumer group:
 
 ```text
-audit-mongodb-v1
+audit-mongodb-v3
 ```
 
 Subscribe:
@@ -834,8 +850,8 @@ OutboxPublisher<TDbContext, TOutboxMessage>
 
 Local MVP đang ổn cho bài thực hành, nhưng production nên thêm:
 
-- Tạo topic bằng IaC/script thay vì auto-create.
-- Cấu hình partition count/replication factor rõ ràng.
+- Quản lý topic bằng IaC hoặc script deploy chính thức thay vì chỉ dựa vào Docker Compose local.
+- Cấu hình partition count/replication factor theo tải và độ sẵn sàng thật.
 - Schema registry hoặc contract test cho event versioning.
 - DLQ topic riêng, ví dụ `sales.order-confirmation-requested.v1.dlq`.
 - Dashboard Kafka consumer lag.

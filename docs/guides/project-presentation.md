@@ -726,7 +726,7 @@ Version `.v1` ở cuối topic để sau này có thể thêm `.v2` mà không p
 |---|---|---|
 | `inventory-orders-v1` | Inventory | Sales order confirmation/undo-confirmation |
 | `sales-inventory-results-v1` | Sales | Inventory stock result |
-| `audit-mongodb-v1` | AuditLog | Tất cả audit/integration topics |
+| `audit-mongodb-v3` | AuditLog | Tất cả audit/integration topics |
 
 Ý nghĩa consumer group:
 

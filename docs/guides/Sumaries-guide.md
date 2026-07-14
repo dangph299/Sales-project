@@ -14,7 +14,7 @@ Tài liệu này là **điểm vào duy nhất**: chốt lại yêu cầu bài t
 | Giải quyết 2 người cùng sửa đơn hàng | ✅ Đủ | Optimistic concurrency: `Order.Version` + `ETag`/`If-Match` + 409 Conflict — xem `project-presentation.md` §7, §18 |
 | AuditLog lưu MongoDB, nhận qua Kafka | ✅ Đủ | `AuditLog.Worker` consume Kafka, ghi Mongo unique `EventId`, **giờ log vào Seq** (đã fix, xem mục 4) |
 | Inventory service riêng, bảng riêng, không miss event | ✅ Đủ | `src/Services/Inventory` độc lập, Postgres riêng, Outbox/Inbox transactional, `Reservation.LastOrderVersion` chống event cũ đến trễ |
-| CQRS (command/query) qua MediatR | ✅ Đủ (Sales) | `Sales.Application/Commands`, `Queries` — Inventory dùng Minimal API + `IInventoryService` trực tiếp (quyết định kiến trúc có chủ đích cho service nhỏ, xem `ARCHITECTURE_CHECKLIST.md`) |
+| CQRS (command/query) qua MediatR | ✅ Đủ (Sales + Inventory) | `Sales.Application/Commands`, `Queries`; `Inventory.Application/Commands`, `Queries`, `InventoryTransactionBehavior`; HTTP/Kafka adapters dispatch qua `ISender` |
 | Factory Method | ✅ Đủ | `Product.Create`, `Customer.Create`, `Order.Create`, `ProductSnapshot.Create`, `CustomerSnapshot.Create`, `Money.Vnd` — 6 static factory, đều có private constructor giữ invariant |
 | Repository | ✅ Đủ | `IRepository<T>`/`Repository<T>` + `IProductRepository`/`IOrderRepository` cho query đặc thù |
 | Unit of Work | ✅ Đủ | `SalesDbContext` implement `IUnitOfWork` (`Shared/BuildingBlocks.Application/Persistence/IUnitOfWork.cs`, dùng chung — không còn khai báo riêng trong `Sales.Application`), tách `UnitOfWork.cs` mỏng |
