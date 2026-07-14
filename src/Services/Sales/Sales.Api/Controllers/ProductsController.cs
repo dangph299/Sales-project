@@ -1,4 +1,5 @@
 using MediatR;
+using BuildingBlocks.Web.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sales.Api.Extensions;
@@ -38,7 +39,7 @@ public sealed class ProductsController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateProduct command, CancellationToken ct)
     {
         var product = await _sender.Send(command, ct);
-        return Created("/api/products", product);
+        return this.ToCreatedResponse("/api/products", product);
     }
 
     /// <summary>
@@ -52,7 +53,8 @@ public sealed class ProductsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> Search([FromQuery] string? name, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default)
     {
-        return Ok(await _sender.Send(new SearchProducts(name, page, pageSize), ct));
+        var products = await _sender.Send(new SearchProducts(name, page, pageSize), ct);
+        return this.ToOkResponse(products);
     }
 
     /// <summary>
@@ -66,7 +68,7 @@ public sealed class ProductsController : ControllerBase
     {
         var product = await _sender.Send(new GetProduct(id), ct);
         Response.SetEtag(product);
-        return Ok(product);
+        return this.ToOkResponse(product);
     }
 
     /// <summary>
@@ -80,7 +82,8 @@ public sealed class ProductsController : ControllerBase
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateProductRequest body, CancellationToken ct)
     {
-        return Ok(await _sender.Send(new UpdateProduct(id, body.Name, body.Price, body.IsActive), ct));
+        var product = await _sender.Send(new UpdateProduct(id, body.Name, body.Price, body.IsActive), ct);
+        return this.ToOkResponse(product);
     }
 
     /// <summary>
@@ -94,6 +97,6 @@ public sealed class ProductsController : ControllerBase
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await _sender.Send(new DeleteProduct(id), ct);
-        return NoContent();
+        return this.ToNoContentResponse();
     }
 }

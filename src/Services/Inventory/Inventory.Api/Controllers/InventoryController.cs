@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using BuildingBlocks.Web.Extensions;
 using Inventory.Api.Models.Requests;
 using Inventory.Application;
 using MediatR;
@@ -37,9 +38,12 @@ public sealed class InventoryController : ControllerBase
     public async Task<IActionResult> Get(Guid productId, CancellationToken ct)
     {
         var item = await _sender.Send(new GetInventoryByProductQuery(productId), ct);
-        return item is null
-            ? NotFound()
-            : Ok(new { item.ProductId, item.Sku, item.Available, item.Reserved, item.Version });
+        if (item is null)
+        {
+            return NotFound();
+        }
+
+        return this.ToOkResponse(item);
     }
 
     /// <summary>
@@ -52,7 +56,12 @@ public sealed class InventoryController : ControllerBase
     public async Task<IActionResult> GetReservation(Guid orderId, CancellationToken ct)
     {
         var reservation = await _sender.Send(new GetReservationByOrderQuery(orderId), ct);
-        return reservation is null ? NotFound() : Ok(reservation);
+        if (reservation is null)
+        {
+            return NotFound();
+        }
+
+        return this.ToOkResponse(reservation);
     }
 
     /// <summary>
@@ -68,6 +77,6 @@ public sealed class InventoryController : ControllerBase
     {
         var actor = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "system";
         var item = await _sender.Send(new AdjustInventoryCommand(productId, body.Sku, body.QuantityDelta, actor), ct);
-        return Ok(new { item.ProductId, item.Sku, item.Available, item.Reserved, item.Version });
+        return this.ToOkResponse(item);
     }
 }

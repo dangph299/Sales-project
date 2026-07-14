@@ -1,6 +1,7 @@
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web.Authentication;
+using BuildingBlocks.Web.Extensions;
 using BuildingBlocks.Web.Observability;
 using BuildingBlocks.Web.OpenApi;
 using Inventory.Api.Middleware;
@@ -31,6 +32,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton<IErrorMessageProvider, InventoryErrorMessageProvider>();
         builder.Services.AddSingleton<IErrorCatalog, ErrorCatalogResolver>();
         builder.Services.AddControllers();
+        builder.Services.AddSharedApiModelResponses();
         builder.Services.AddApiDocumentation(
             "Inventory API",
             "Inventory service API for stock queries, reservations, and stock adjustments.");

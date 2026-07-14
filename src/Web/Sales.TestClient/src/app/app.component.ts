@@ -1,9 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { HttpErrorResponse } from '@angular/common/http';
+import { ApiClientError, ApiResponseReader } from './api-client-result';
 import { ApiService } from './api.service';
-import { CustomerDto, OrderDto, OrderLineInput, PhoneMatch, ProductDto } from './models';
+import { CustomerDto, OrderDto, OrderLineInput, PhoneMatch, ProductDto, ValidationError } from './models';
 
 @Component({
   selector: 'app-root',
@@ -17,6 +17,8 @@ export class AppComponent {
   readonly password = signal('Admin123!');
   readonly busy = signal(false);
   readonly log = signal<string[]>([]);
+  readonly formErrors = signal<Record<string, string[]>>({});
+  readonly globalErrors = signal<string[]>([]);
 
   readonly productForm = signal({ sku: `SKU-${Date.now()}`, name: 'Demo product', price: 120000, isActive: true });
   readonly productSearch = signal('');
@@ -53,10 +55,14 @@ export class AppComponent {
 
   async run(label: string, action: () => Promise<void>): Promise<void> {
     this.busy.set(true);
+    this.formErrors.set({});
+    this.globalErrors.set([]);
+    this.api.clearSuccessMessage();
     try {
       await action();
-      this.push(`✅ ${label}`);
+      this.push(`✅ ${this.api.consumeSuccessMessage() || label}`);
     } catch (error) {
+      this.captureValidationErrors(error);
       this.push(`❌ ${label}: ${this.describeError(error)}`);
     } finally {
       this.busy.set(false);
@@ -103,7 +109,9 @@ export class AppComponent {
 
   deleteProduct(): Promise<void> {
     const selected = this.requireProduct();
-    if (!confirm(`Delete product ${selected.sku} - ${selected.name}?`)) return Promise.resolve();
+    if (!confirm(`Delete product ${selected.sku} - ${selected.name}?`)) {
+      return Promise.resolve();
+    }
 
     return this.run('Delete product', async () => {
       await this.api.deleteProduct(selected.id);
@@ -144,7 +152,9 @@ export class AppComponent {
 
   deleteCustomer(): Promise<void> {
     const selected = this.requireCustomer();
-    if (!confirm(`Delete customer ${selected.name} - ${selected.phone}?`)) return Promise.resolve();
+    if (!confirm(`Delete customer ${selected.name} - ${selected.phone}?`)) {
+      return Promise.resolve();
+    }
 
     return this.run('Delete customer', async () => {
       await this.api.deleteCustomer(selected.id);
@@ -296,10 +306,12 @@ export class AppComponent {
 
   patchProductForm(patch: Partial<{ sku: string; name: string; price: number; isActive: boolean }>): void {
     this.productForm.update(value => ({ ...value, ...patch }));
+    this.clearPatchedFields(patch);
   }
 
   patchCustomerForm(patch: Partial<{ name: string; phone: string }>): void {
     this.customerForm.update(value => ({ ...value, ...patch }));
+    this.clearPatchedFields(patch);
   }
 
   patchCustomerSearch(patch: Partial<{ name: string; phone: string; phoneMatch: PhoneMatch }>): void {
@@ -314,6 +326,23 @@ export class AppComponent {
     return `badge ${status.toLowerCase()}`;
   }
 
+  fieldError(...fields: string[]): string {
+    const errors = this.formErrors();
+    const messages: string[] = [];
+
+    for (const field of fields) {
+      const normalized = this.normalizeField(field);
+      const fieldMessages = errors[normalized] || [];
+      for (const message of fieldMessages) {
+        if (!messages.includes(message)) {
+          messages.push(message);
+        }
+      }
+    }
+
+    return messages.join(' ');
+  }
+
   private setCurrentOrder(order: OrderDto, etag?: string | null): void {
     this.currentOrder.set(order);
     this.currentOrderEtag.set(etag || `"${order.version}"`);
@@ -321,7 +350,9 @@ export class AppComponent {
       this.orderQuantity.set(order.totalQuantity);
       this.orderDiscount.set(order.lines[0].discountPercent);
       const matchingProduct = this.products().find(x => x.id === order.lines[0].productId);
-      if (matchingProduct) this.selectProduct(matchingProduct);
+      if (matchingProduct) {
+        this.selectProduct(matchingProduct);
+      }
     }
   }
 
@@ -331,20 +362,32 @@ export class AppComponent {
 
   private requireProduct(): ProductDto {
     const product = this.selectedProduct();
-    if (!product) throw new Error('Select or create a product first.');
+    if (!product) {
+      throw new Error('Select or create a product first.');
+    }
+
     return product;
   }
 
   private requireCustomer(): CustomerDto {
     const customer = this.selectedCustomer();
-    if (!customer) throw new Error('Select or create a customer first.');
+    if (!customer) {
+      throw new Error('Select or create a customer first.');
+    }
+
     return customer;
   }
 
   private requireOrder(): OrderDto {
     const order = this.currentOrder();
-    if (!order) throw new Error('Create or load an order first.');
-    if (!this.currentOrderEtag()) throw new Error('Missing ETag for current order.');
+    if (!order) {
+      throw new Error('Create or load an order first.');
+    }
+
+    if (!this.currentOrderEtag()) {
+      throw new Error('Missing ETag for current order.');
+    }
+
     return order;
   }
 
@@ -357,10 +400,78 @@ export class AppComponent {
   }
 
   private describeError(error: unknown): string {
-    if (error instanceof HttpErrorResponse) {
-      const body = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
-      return `${error.status} ${error.statusText || ''} ${body}`;
+    if (error instanceof ApiClientError) {
+      return ApiResponseReader.formatFailure(error.result);
     }
-    return error instanceof Error ? error.message : String(error);
+
+    if (error instanceof Error) {
+      return error.message;
+    }
+
+    return String(error);
+  }
+
+  private captureValidationErrors(error: unknown): void {
+    if (!(error instanceof ApiClientError)) {
+      return;
+    }
+
+    const fieldErrors: Record<string, string[]> = {};
+    const globalErrors: string[] = [];
+
+    for (const validationError of error.result.validationErrors) {
+      this.addValidationError(validationError, fieldErrors, globalErrors);
+    }
+
+    if (error.result.validationErrors.length === 0) {
+      for (const message of ApiResponseReader.failureMessages(error.result)) {
+        if (!globalErrors.includes(message)) {
+          globalErrors.push(message);
+        }
+      }
+    }
+
+    this.formErrors.set(fieldErrors);
+    this.globalErrors.set(globalErrors);
+  }
+
+  private addValidationError(
+    validationError: ValidationError,
+    fieldErrors: Record<string, string[]>,
+    globalErrors: string[]): void {
+    if (!validationError.field || validationError.field.trim() === '') {
+      if (!globalErrors.includes(validationError.message)) {
+        globalErrors.push(validationError.message);
+      }
+
+      return;
+    }
+
+    const field = this.normalizeField(validationError.field);
+    fieldErrors[field] = fieldErrors[field] || [];
+
+    if (!fieldErrors[field].includes(validationError.message)) {
+      fieldErrors[field].push(validationError.message);
+    }
+  }
+
+  private clearPatchedFields(patch: Record<string, unknown>): void {
+    const fields = Object.keys(patch).map(field => this.normalizeField(field));
+    if (fields.length === 0) {
+      return;
+    }
+
+    this.formErrors.update(errors => {
+      const next = { ...errors };
+      for (const field of fields) {
+        delete next[field];
+      }
+
+      return next;
+    });
+  }
+
+  private normalizeField(field: string): string {
+    return field.replace(/^.*\./, '').toLowerCase();
   }
 }

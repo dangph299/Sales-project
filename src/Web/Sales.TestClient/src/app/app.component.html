@@ -29,13 +29,16 @@
       <div class="row">
         <label>SKU
           <input [disabled]="!!selectedProduct()" [ngModel]="productForm().sku" (ngModelChange)="patchProductForm({ sku: $event })">
+          <small class="field-error" *ngIf="fieldError('sku') as error">{{ error }}</small>
         </label>
         <label>Price
           <input type="number" [ngModel]="productForm().price" (ngModelChange)="patchProductForm({ price: +$event })">
+          <small class="field-error" *ngIf="fieldError('price') as error">{{ error }}</small>
         </label>
       </div>
       <label>Name</label>
       <input [ngModel]="productForm().name" (ngModelChange)="patchProductForm({ name: $event })">
+      <small class="field-error" *ngIf="fieldError('name', 'productName') as error">{{ error }}</small>
       <label class="checkbox">
         <input type="checkbox" [ngModel]="productForm().isActive" (ngModelChange)="patchProductForm({ isActive: $event })">
         Active
@@ -71,8 +74,10 @@
 
       <label>Name</label>
       <input [ngModel]="customerForm().name" (ngModelChange)="patchCustomerForm({ name: $event })">
+      <small class="field-error" *ngIf="fieldError('name', 'customerName') as error">{{ error }}</small>
       <label>Phone</label>
       <input [ngModel]="customerForm().phone" (ngModelChange)="patchCustomerForm({ phone: $event })">
+      <small class="field-error" *ngIf="fieldError('phone', 'customerPhone') as error">{{ error }}</small>
       <div class="actions wrap">
         <button (click)="createCustomer()" [disabled]="busy() || !canCallApi() || !!selectedCustomer()">Create</button>
         <button (click)="updateCustomer()" [disabled]="busy() || !selectedCustomer()">Update</button>
@@ -157,9 +162,11 @@
       <div class="row">
         <label>Quantity
           <input type="number" [ngModel]="orderQuantity()" (ngModelChange)="orderQuantity.set(+$event)">
+          <small class="field-error" *ngIf="fieldError('quantity') as error">{{ error }}</small>
         </label>
         <label>Discount %
           <input type="number" [ngModel]="orderDiscount()" (ngModelChange)="orderDiscount.set(+$event)">
+          <small class="field-error" *ngIf="fieldError('discountPercent') as error">{{ error }}</small>
         </label>
       </div>
 
@@ -234,6 +241,7 @@
       <p class="summary">Selected product: <b>{{ selectedProductLabel() }}</b></p>
       <label>Quantity delta</label>
       <input type="number" [ngModel]="inventoryDelta()" (ngModelChange)="inventoryDelta.set(+$event)">
+      <small class="field-error" *ngIf="fieldError('quantityDelta') as error">{{ error }}</small>
       <div class="actions">
         <button (click)="adjustInventory()" [disabled]="busy() || !selectedProduct()">Adjust stock</button>
         <button class="secondary" (click)="getInventory()" [disabled]="busy() || !selectedProduct()">Get stock</button>
@@ -243,6 +251,9 @@
 
     <article class="card">
       <h2>Run log</h2>
+      <div class="error-panel" *ngIf="globalErrors().length > 0">
+        <p *ngFor="let error of globalErrors()">{{ error }}</p>
+      </div>
       <div class="log">
         <pre *ngFor="let item of log()">{{ item }}</pre>
       </div>

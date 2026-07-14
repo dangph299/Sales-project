@@ -1,4 +1,5 @@
 using MediatR;
+using BuildingBlocks.Web.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sales.Api.Extensions;
@@ -38,7 +39,7 @@ public sealed class OrdersController : ControllerBase
     {
         var order = await _sender.Send(command, ct);
         Response.SetEtag(order);
-        return Created("/api/orders", order);
+        return this.ToCreatedResponse("/api/orders", order);
     }
 
     /// <summary>
@@ -60,7 +61,8 @@ public sealed class OrdersController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        return Ok(await _sender.Send(new SearchOrders(from, to, customer, page, pageSize), ct));
+        var orders = await _sender.Send(new SearchOrders(from, to, customer, page, pageSize), ct);
+        return this.ToOkResponse(orders);
     }
 
     /// <summary>
@@ -74,7 +76,7 @@ public sealed class OrdersController : ControllerBase
     {
         var order = await _sender.Send(new GetOrder(id), ct);
         Response.SetEtag(order);
-        return Ok(order);
+        return this.ToOkResponse(order);
     }
 
     /// <summary>
@@ -89,7 +91,7 @@ public sealed class OrdersController : ControllerBase
     {
         var order = await _sender.Send(new ReplaceOrderLines(id, Request.RequireVersion(), body), ct);
         Response.SetEtag(order);
-        return Ok(order);
+        return this.ToOkResponse(order);
     }
 
     /// <summary>
@@ -103,7 +105,7 @@ public sealed class OrdersController : ControllerBase
     {
         var order = await _sender.Send(new ConfirmOrder(id, Request.RequireVersion()), ct);
         Response.SetEtag(order);
-        return Ok(order);
+        return this.ToOkResponse(order);
     }
 
     /// <summary>
@@ -117,7 +119,7 @@ public sealed class OrdersController : ControllerBase
     {
         var order = await _sender.Send(new CancelOrder(id, Request.RequireVersion()), ct);
         Response.SetEtag(order);
-        return Ok(order);
+        return this.ToOkResponse(order);
     }
 
     /// <summary>
@@ -131,6 +133,6 @@ public sealed class OrdersController : ControllerBase
     {
         var order = await _sender.Send(new UndoConfirmOrder(id, Request.RequireVersion()), ct);
         Response.SetEtag(order);
-        return Ok(order);
+        return this.ToOkResponse(order);
     }
 }

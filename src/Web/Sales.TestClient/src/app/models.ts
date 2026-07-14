@@ -4,11 +4,50 @@ export interface TokenResponse {
   refreshToken: string;
 }
 
+export interface ApiResponse<T> {
+  success: boolean;
+  succeeded?: boolean;
+  message?: string | null;
+  correlationId?: string | null;
+  data?: T | null;
+}
+
+export interface ApiErrorResponse {
+  status: number;
+  errorCode: string;
+  message?: string | null;
+  traceId?: string | null;
+  correlationId?: string | null;
+  errors?: ApiError[] | null;
+  validationErrors?: ValidationError[] | null;
+}
+
+export interface ApiError {
+  code: string;
+  message: string;
+}
+
+export interface ValidationError {
+  field: string;
+  message: string;
+  code?: string | null;
+}
+
 export interface PagedResult<T> {
   items: T[];
   page: number;
   pageSize: number;
   total: number;
+}
+
+export interface PagedResponse<T> {
+  items: T[];
+  totalCount: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+  pageNumber: number;
+  pageSize: number;
 }
 
 export interface ProductDto {
@@ -85,4 +124,6 @@ export interface ApiResult<T> {
   body: T;
   etag?: string | null;
   status: number;
+  message?: string | null;
+  correlationId?: string | null;
 }

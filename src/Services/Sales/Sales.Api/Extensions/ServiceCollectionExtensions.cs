@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web.Authentication;
+using BuildingBlocks.Web.Extensions;
 using BuildingBlocks.Web.Observability;
 using BuildingBlocks.Web.OpenApi;
 using Hangfire;
@@ -37,6 +38,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSingleton<IErrorCatalog, ErrorCatalogResolver>();
         builder.Services.AddControllers()
             .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+        builder.Services.AddSharedApiModelResponses();
         builder.Services.AddApiDocumentation(
             "Sales API",
             "Sales service API for authentication, products, customers, and orders.");

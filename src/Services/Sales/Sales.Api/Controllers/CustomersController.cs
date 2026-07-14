@@ -1,4 +1,5 @@
 using MediatR;
+using BuildingBlocks.Web.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sales.Api.Extensions;
@@ -36,7 +37,7 @@ public sealed class CustomersController : ControllerBase
     public async Task<IActionResult> Create([FromBody] CreateCustomer command, CancellationToken ct)
     {
         var customer = await _sender.Send(command, ct);
-        return Created("/api/customers", customer);
+        return this.ToCreatedResponse("/api/customers", customer);
     }
 
     /// <summary>
@@ -58,7 +59,8 @@ public sealed class CustomersController : ControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        return Ok(await _sender.Send(new SearchCustomers(name, phone, phoneMatch, page, pageSize), ct));
+        var customers = await _sender.Send(new SearchCustomers(name, phone, phoneMatch, page, pageSize), ct);
+        return this.ToOkResponse(customers);
     }
 
     /// <summary>
@@ -72,7 +74,7 @@ public sealed class CustomersController : ControllerBase
     {
         var customer = await _sender.Send(new GetCustomer(id), ct);
         Response.SetEtag(customer);
-        return Ok(customer);
+        return this.ToOkResponse(customer);
     }
 
     /// <summary>
@@ -85,7 +87,8 @@ public sealed class CustomersController : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCustomerRequest body, CancellationToken ct)
     {
-        return Ok(await _sender.Send(new UpdateCustomer(id, body.Name, body.Phone), ct));
+        var customer = await _sender.Send(new UpdateCustomer(id, body.Name, body.Phone), ct);
+        return this.ToOkResponse(customer);
     }
 
     /// <summary>
@@ -98,6 +101,6 @@ public sealed class CustomersController : ControllerBase
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await _sender.Send(new DeleteCustomer(id), ct);
-        return NoContent();
+        return this.ToNoContentResponse();
     }
 }

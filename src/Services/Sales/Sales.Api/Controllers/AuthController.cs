@@ -3,12 +3,14 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using BuildingBlocks.Application;
+using BuildingBlocks.Web.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Sales.Api.Models.Requests;
+using Sales.Api.Models.Responses;
 using Sales.Infrastructure;
 
 namespace Sales.Api.Controllers;
@@ -58,7 +60,8 @@ public sealed class AuthController : ControllerBase
             return Unauthorized();
         }
 
-        return Ok(await IssueTokenAsync(user, ct));
+        var token = await IssueTokenAsync(user, ct);
+        return this.ToOkResponse(token);
     }
 
     /// <summary>
@@ -71,10 +74,13 @@ public sealed class AuthController : ControllerBase
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest body, CancellationToken ct)
     {
-        var stored = await _db.RefreshTokens.SingleOrDefaultAsync(x =>
-            x.TokenHash == Hash(body.RefreshToken) &&
-            x.RevokedAt == null &&
-            x.ExpiresAt > _clock.UtcNow, ct);
+        var tokenHash = Hash(body.RefreshToken);
+        var stored = await (
+            from refreshToken in _db.RefreshTokens
+            where refreshToken.TokenHash == tokenHash &&
+                  refreshToken.RevokedAt == null &&
+                  refreshToken.ExpiresAt > _clock.UtcNow
+            select refreshToken).SingleOrDefaultAsync(ct);
 
         if (stored is null)
         {
@@ -83,10 +89,16 @@ public sealed class AuthController : ControllerBase
 
         stored.RevokedAt = _clock.UtcNow;
         var user = await _users.FindByIdAsync(stored.UserId.ToString());
-        return user is null ? Unauthorized() : Ok(await IssueTokenAsync(user, ct));
+        if (user is null)
+        {
+            return Unauthorized();
+        }
+
+        var token = await IssueTokenAsync(user, ct);
+        return this.ToOkResponse(token);
     }
 
-    private async Task<object> IssueTokenAsync(ApplicationUser user, CancellationToken ct)
+    private async Task<TokenResponse> IssueTokenAsync(ApplicationUser user, CancellationToken ct)
     {
         var now = _clock.UtcNow;
         var claims = new List<Claim>
@@ -95,7 +107,10 @@ public sealed class AuthController : ControllerBase
             new(JwtRegisteredClaimNames.UniqueName, user.UserName!)
         };
         var roles = await _users.GetRolesAsync(user);
-        claims.AddRange(roles.Select(x => new Claim(ClaimTypes.Role, x)));
+        foreach (var role in roles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, role));
+        }
 
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"] ?? "development-only-key-change-me-32-chars")),
@@ -118,12 +133,10 @@ public sealed class AuthController : ControllerBase
         });
         await _db.SaveChangesAsync(ct);
 
-        return new
-        {
-            accessToken = new JwtSecurityTokenHandler().WriteToken(jwt),
-            expiresIn = 1800,
-            refreshToken = refresh
-        };
+        return new TokenResponse(
+            new JwtSecurityTokenHandler().WriteToken(jwt),
+            1800,
+            refresh);
     }
 
     private static string Hash(string token)

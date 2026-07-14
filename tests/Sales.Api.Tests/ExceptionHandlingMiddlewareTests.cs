@@ -1,9 +1,10 @@
+using System.Text.Json;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
+using BuildingBlocks.Web.Models;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Sales.Api.Middleware;
@@ -16,152 +17,143 @@ public sealed class ExceptionHandlingMiddlewareTests
     [Fact]
     public async Task Concurrency_exception_maps_to_409_with_shared_code()
     {
-        var problemDetails = new FakeProblemDetailsService();
-        var middleware = CreateMiddleware(problemDetails);
-        var context = new DefaultHttpContext();
+        var middleware = CreateMiddleware();
+        var context = CreateContext();
 
         var handled = await middleware.TryHandleAsync(context, new DbUpdateConcurrencyException(), CancellationToken.None);
+        var response = ReadError(context);
 
         Assert.True(handled);
         Assert.Equal(409, context.Response.StatusCode);
-        Assert.Equal(ErrorCodes.ConcurrencyConflict, problemDetails.LastDetails!.Extensions["code"]);
-        Assert.Equal("The sales resource was changed by another request.", problemDetails.LastDetails.Extensions["description"]);
+        Assert.Equal(ErrorCodes.ConcurrencyConflict, response.ErrorCode);
+        Assert.Equal("The sales resource was changed by another request.", response.Message);
     }
 
     [Fact]
     public async Task Not_found_exception_maps_to_404_with_shared_code()
     {
-        var problemDetails = new FakeProblemDetailsService();
-        var middleware = CreateMiddleware(problemDetails);
-        var context = new DefaultHttpContext();
+        var middleware = CreateMiddleware();
+        var context = CreateContext();
 
         var handled = await middleware.TryHandleAsync(context, new NotFoundException("Order", Guid.NewGuid()), CancellationToken.None);
+        var response = ReadError(context);
 
         Assert.True(handled);
         Assert.Equal(404, context.Response.StatusCode);
-        Assert.Equal(ErrorCodes.NotFound, problemDetails.LastDetails!.Extensions["code"]);
-        Assert.Null(problemDetails.LastDetails.Detail);
+        Assert.Equal(ErrorCodes.NotFound, response.ErrorCode);
     }
 
     [Fact]
     public async Task Validation_exception_maps_to_400_with_shared_code()
     {
-        var problemDetails = new FakeProblemDetailsService();
-        var middleware = CreateMiddleware(problemDetails);
-        var context = new DefaultHttpContext();
+        var middleware = CreateMiddleware();
+        var context = CreateContext();
         var exception = new ValidationException([new ValidationFailure("Name", "Name is required.")]);
 
         var handled = await middleware.TryHandleAsync(context, exception, CancellationToken.None);
+        var response = ReadError(context);
 
         Assert.True(handled);
         Assert.Equal(400, context.Response.StatusCode);
-        Assert.Equal(ErrorCodes.Validation, problemDetails.LastDetails!.Extensions["code"]);
-        Assert.True(problemDetails.LastDetails.Extensions.ContainsKey("errors"));
+        Assert.Equal(ErrorCodes.Validation, response.ErrorCode);
+        AssertValidationError(response.ValidationErrors!, "Name", "Name is required.");
     }
 
     [Fact]
     public async Task Unique_violation_maps_to_409_with_shared_code()
     {
-        var problemDetails = new FakeProblemDetailsService();
-        var middleware = CreateMiddleware(problemDetails);
-        var context = new DefaultHttpContext();
+        var middleware = CreateMiddleware();
+        var context = CreateContext();
         var unique = new PostgresException("duplicate key", "ERROR", "ERROR", "23505");
 
         var handled = await middleware.TryHandleAsync(context, new DbUpdateException("save failed", unique), CancellationToken.None);
+        var response = ReadError(context);
 
         Assert.True(handled);
         Assert.Equal(409, context.Response.StatusCode);
-        Assert.Equal(ErrorCodes.UniqueViolation, problemDetails.LastDetails!.Extensions["code"]);
+        Assert.Equal(ErrorCodes.UniqueViolation, response.ErrorCode);
     }
 
     [Fact]
     public async Task Unknown_DbUpdateException_maps_to_500()
     {
-        var problemDetails = new FakeProblemDetailsService();
-        var middleware = CreateMiddleware(problemDetails);
-        var context = new DefaultHttpContext();
+        var middleware = CreateMiddleware();
+        var context = CreateContext();
 
         var handled = await middleware.TryHandleAsync(context, new DbUpdateException("FK violation"), CancellationToken.None);
+        var response = ReadError(context);
 
         Assert.True(handled);
         Assert.Equal(500, context.Response.StatusCode);
-        Assert.Equal(ErrorCodes.InternalServerError, problemDetails.LastDetails!.Extensions["code"]);
-        Assert.Null(problemDetails.LastDetails.Detail);
+        Assert.Equal(ErrorCodes.InternalServerError, response.ErrorCode);
+        Assert.DoesNotContain("FK violation", response.Message);
     }
 
     [Fact]
     public async Task Unknown_exception_maps_to_500_without_internal_detail()
     {
-        var problemDetails = new FakeProblemDetailsService();
-        var middleware = CreateMiddleware(problemDetails);
-        var context = new DefaultHttpContext();
+        var middleware = CreateMiddleware();
+        var context = CreateContext();
 
         var handled = await middleware.TryHandleAsync(context, new InvalidOperationException("secret internals"), CancellationToken.None);
+        var response = ReadError(context);
 
         Assert.True(handled);
         Assert.Equal(500, context.Response.StatusCode);
-        Assert.Equal(ErrorCodes.InternalServerError, problemDetails.LastDetails!.Extensions["code"]);
-        Assert.Null(problemDetails.LastDetails.Detail);
+        Assert.Equal(ErrorCodes.InternalServerError, response.ErrorCode);
+        Assert.DoesNotContain("secret internals", response.Message);
     }
 
     [Fact]
     public async Task Sales_and_inventory_use_same_concurrency_error_code()
     {
-        var salesProblemDetails = new FakeProblemDetailsService();
-        var inventoryProblemDetails = new InventoryFakeProblemDetailsService();
-        var sales = CreateMiddleware(salesProblemDetails);
+        var sales = CreateMiddleware();
         var inventory = new Inventory.Api.Middleware.ExceptionHandlingMiddleware(
-            inventoryProblemDetails,
             new ErrorCatalogResolver(new Inventory.Api.Middleware.InventoryErrorMessageProvider()),
             new PostgresPersistenceExceptionClassifier());
+        var salesContext = CreateContext();
+        var inventoryContext = CreateContext();
 
-        await sales.TryHandleAsync(new DefaultHttpContext(), new DbUpdateConcurrencyException(), CancellationToken.None);
-        await inventory.TryHandleAsync(new DefaultHttpContext(), new DbUpdateConcurrencyException(), CancellationToken.None);
+        await sales.TryHandleAsync(salesContext, new DbUpdateConcurrencyException(), CancellationToken.None);
+        await inventory.TryHandleAsync(inventoryContext, new DbUpdateConcurrencyException(), CancellationToken.None);
 
         Assert.Equal(
-            salesProblemDetails.LastDetails!.Extensions["code"],
-            inventoryProblemDetails.LastDetails!.Extensions["code"]);
+            ReadError(salesContext).ErrorCode,
+            ReadError(inventoryContext).ErrorCode);
     }
 
-    private static ExceptionHandlingMiddleware CreateMiddleware(FakeProblemDetailsService problemDetails)
+    private static ExceptionHandlingMiddleware CreateMiddleware()
     {
         return new ExceptionHandlingMiddleware(
-            problemDetails,
             new ErrorCatalogResolver(new SalesErrorMessageProvider()),
             new PostgresPersistenceExceptionClassifier());
     }
 
-    private sealed class FakeProblemDetailsService : IProblemDetailsService
+    private static DefaultHttpContext CreateContext()
     {
-        public ProblemDetails? LastDetails { get; private set; }
-
-        public ValueTask<bool> TryWriteAsync(ProblemDetailsContext context)
-        {
-            LastDetails = context.ProblemDetails;
-            return ValueTask.FromResult(true);
-        }
-
-        public ValueTask WriteAsync(ProblemDetailsContext context)
-        {
-            LastDetails = context.ProblemDetails;
-            return ValueTask.CompletedTask;
-        }
+        var context = new DefaultHttpContext();
+        context.Response.Body = new MemoryStream();
+        return context;
     }
 
-    private sealed class InventoryFakeProblemDetailsService : IProblemDetailsService
+    private static ApiErrorResponse ReadError(HttpContext context)
     {
-        public ProblemDetails? LastDetails { get; private set; }
+        context.Response.Body.Position = 0;
+        return JsonSerializer.Deserialize<ApiErrorResponse>(
+            context.Response.Body,
+            new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+    }
 
-        public ValueTask<bool> TryWriteAsync(ProblemDetailsContext context)
+    private static void AssertValidationError(IReadOnlyCollection<ValidationError> validationErrors, string field, string message)
+    {
+        foreach (var validationError in validationErrors)
         {
-            LastDetails = context.ProblemDetails;
-            return ValueTask.FromResult(true);
+            if (validationError.Field == field && validationError.Message == message)
+            {
+                return;
+            }
         }
 
-        public ValueTask WriteAsync(ProblemDetailsContext context)
-        {
-            LastDetails = context.ProblemDetails;
-            return ValueTask.CompletedTask;
-        }
+        Assert.Fail($"Expected validation error for field '{field}' with message '{message}'.");
     }
 }

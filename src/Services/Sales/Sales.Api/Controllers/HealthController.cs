@@ -1,3 +1,4 @@
+using BuildingBlocks.Web.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -19,6 +20,6 @@ public sealed class HealthController : ControllerBase
     [HttpGet]
     public IActionResult Get()
     {
-        return Ok(new { status = "healthy" });
+        return this.ToOkResponse("healthy");
     }
 }
