@@ -35,6 +35,8 @@ public static class DependencyInjection
         services.AddScoped<IInventoryTransactionManager, InventoryTransactionManager>();
         services.AddScoped<IInventoryInbox, InventoryInbox>();
         services.AddScoped<IInventoryEventOutbox, InventoryEventOutbox>();
+        services.AddScoped<InventoryMaintenanceService>();
+        services.AddHostedService<InventoryMaintenanceWorker>();
         services.AddSingleton<IInventoryMetrics, InventoryMetricsAdapter>();
         services.AddScoped<IIntegrationEventProcessor, InventoryIntegrationEventProcessor>();
         services.AddSingleton(new ActivitySource(InventoryObservability.KafkaActivitySourceName));

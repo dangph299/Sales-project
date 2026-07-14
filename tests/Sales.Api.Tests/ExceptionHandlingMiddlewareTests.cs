@@ -1,4 +1,5 @@
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using FluentValidation;
 using FluentValidation.Results;
 using Microsoft.AspNetCore.Http;
@@ -111,7 +112,8 @@ public sealed class ExceptionHandlingMiddlewareTests
         var sales = CreateMiddleware(salesProblemDetails);
         var inventory = new Inventory.Api.Middleware.ExceptionHandlingMiddleware(
             inventoryProblemDetails,
-            new ErrorCatalogResolver(new Inventory.Api.Middleware.InventoryErrorMessageProvider()));
+            new ErrorCatalogResolver(new Inventory.Api.Middleware.InventoryErrorMessageProvider()),
+            new PostgresPersistenceExceptionClassifier());
 
         await sales.TryHandleAsync(new DefaultHttpContext(), new DbUpdateConcurrencyException(), CancellationToken.None);
         await inventory.TryHandleAsync(new DefaultHttpContext(), new DbUpdateConcurrencyException(), CancellationToken.None);
@@ -125,7 +127,8 @@ public sealed class ExceptionHandlingMiddlewareTests
     {
         return new ExceptionHandlingMiddleware(
             problemDetails,
-            new ErrorCatalogResolver(new SalesErrorMessageProvider()));
+            new ErrorCatalogResolver(new SalesErrorMessageProvider()),
+            new PostgresPersistenceExceptionClassifier());
     }
 
     private sealed class FakeProblemDetailsService : IProblemDetailsService

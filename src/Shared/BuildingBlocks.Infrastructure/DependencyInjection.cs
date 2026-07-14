@@ -1,3 +1,4 @@
+using BuildingBlocks.Contracts;
 using KafkaFlow.Producers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,6 +48,7 @@ public static class DependencyInjection
     private static IServiceCollection AddSharedOutbox(this IServiceCollection services)
     {
         services.TryAddSingleton<IOutboxSignal, OutboxSignal>();
+        services.TryAddSingleton<IPersistenceExceptionClassifier, PostgresPersistenceExceptionClassifier>();
         return services;
     }
 }

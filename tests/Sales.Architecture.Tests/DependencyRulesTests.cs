@@ -176,4 +176,31 @@ public sealed class DependencyRulesTests
                 "KafkaFlow").GetResult();
         Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
     }
+
+    [Fact]
+    public void Api_exception_handlers_do_not_depend_on_provider_specific_persistence_exceptions()
+    {
+        var salesResult = Types.InAssembly(typeof(Sales.Api.Middleware.ExceptionHandlingMiddleware).Assembly)
+            .That()
+            .HaveNameEndingWith("ExceptionHandlingMiddleware")
+            .ShouldNot()
+            .HaveDependencyOnAny(
+                "Microsoft.EntityFrameworkCore",
+                "Npgsql",
+                "BuildingBlocks.Infrastructure.PostgresExceptions")
+            .GetResult();
+
+        var inventoryResult = Types.InAssembly(typeof(Inventory.Api.Middleware.ExceptionHandlingMiddleware).Assembly)
+            .That()
+            .HaveNameEndingWith("ExceptionHandlingMiddleware")
+            .ShouldNot()
+            .HaveDependencyOnAny(
+                "Microsoft.EntityFrameworkCore",
+                "Npgsql",
+                "BuildingBlocks.Infrastructure.PostgresExceptions")
+            .GetResult();
+
+        Assert.True(salesResult.IsSuccessful, string.Join(", ", salesResult.FailingTypeNames ?? []));
+        Assert.True(inventoryResult.IsSuccessful, string.Join(", ", inventoryResult.FailingTypeNames ?? []));
+    }
 }

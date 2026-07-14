@@ -1,10 +1,8 @@
 using BuildingBlocks.Domain;
 using BuildingBlocks.Contracts;
-using BuildingBlocks.Infrastructure;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace Inventory.Api.Middleware;
 
@@ -17,16 +15,22 @@ public sealed class ExceptionHandlingMiddleware : IExceptionHandler
 {
     private readonly IProblemDetailsService _problemDetails;
     private readonly IErrorCatalog _errorCatalog;
+    private readonly IPersistenceExceptionClassifier _persistenceExceptionClassifier;
 
     /// <summary>
     /// Initializes the middleware with the service used to write <see cref="ProblemDetails"/> responses.
     /// </summary>
     /// <param name="problemDetails">Problem details service.</param>
     /// <param name="errorCatalog">Shared error catalog.</param>
-    public ExceptionHandlingMiddleware(IProblemDetailsService problemDetails, IErrorCatalog errorCatalog)
+    /// <param name="persistenceExceptionClassifier">Provider-neutral persistence exception classifier.</param>
+    public ExceptionHandlingMiddleware(
+        IProblemDetailsService problemDetails,
+        IErrorCatalog errorCatalog,
+        IPersistenceExceptionClassifier persistenceExceptionClassifier)
     {
         _problemDetails = problemDetails;
         _errorCatalog = errorCatalog;
+        _persistenceExceptionClassifier = persistenceExceptionClassifier;
     }
 
     /// <summary>
@@ -38,32 +42,16 @@ public sealed class ExceptionHandlingMiddleware : IExceptionHandler
     /// <returns><see langword="true"/> to indicate the exception was handled and a response was written.</returns>
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
-        var (status, code, retryable) = exception switch
+        var persistenceError = _persistenceExceptionClassifier.Classify(exception);
+        var (status, code, retryable) = persistenceError is not null
+            ? (409, persistenceError.Code, persistenceError.Retryable)
+            : exception switch
         {
-            // Another request already committed a change to this exact row (EF Core's optimistic
-            // concurrency check failed), or two requests raced to create/record the same
-            // not-yet-existing row (Postgres unique-key violation). The caller must re-fetch
-            // current state before retrying — blindly resubmitting the same payload can silently
-            // clobber the other change.
-            DbUpdateConcurrencyException => (409, ErrorCodes.ConcurrencyConflict, false),
-            DbUpdateException ex when PostgresExceptions.IsUniqueViolation(ex) => (409, ErrorCodes.UniqueViolation, false),
             ValidationException => (400, ErrorCodes.Validation, false),
             DomainException => (400, ErrorCodes.InvalidOperation, false),
             UnauthorizedAccessException => (401, ErrorCodes.Unauthorized, false),
             _ when exception.GetType().Name == "ForbiddenException" => (403, ErrorCodes.Forbidden, false),
             BadHttpRequestException bad => (bad.StatusCode, ErrorCodes.InvalidRequest, false),
-            // Inventory's SERIALIZABLE transaction was aborted by a serialization failure or
-            // deadlock. This is the only conflict guard for AdjustInventoryCommand, the one
-            // Inventory command dispatched over HTTP — nothing was persisted, so the identical
-            // request is safe to retry immediately, no re-fetch needed (unlike the concurrency
-            // cases above). ReserveStockCommand/ReleaseStockCommand also run inside this kind of
-            // transaction but are dispatched only from Kafka via InventoryIntegrationEventProcessor
-            // and never reach this middleware; a conflict there is instead retried transparently by
-            // Kafka's own at-least-once redelivery, independent of this mapping. Any other
-            // DbUpdateException (FK violation, NOT NULL violation, etc.) is a genuine data/schema
-            // defect, not a transient conflict, so it falls through to the 500 case below instead
-            // of being reported as retryable.
-            _ when PostgresExceptions.IsSerializationConflict(exception) => (409, ErrorCodes.ConcurrencyConflict, true),
             _ => (500, ErrorCodes.InternalServerError, false)
         };
         context.Response.StatusCode = status;

@@ -1,10 +1,8 @@
 using FluentValidation;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Domain;
-using BuildingBlocks.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Sales.Application;
 
 namespace Sales.Api.Middleware;
@@ -18,16 +16,22 @@ public sealed class ExceptionHandlingMiddleware : IExceptionHandler
 {
     private readonly IProblemDetailsService _problemDetails;
     private readonly IErrorCatalog _errorCatalog;
+    private readonly IPersistenceExceptionClassifier _persistenceExceptionClassifier;
 
     /// <summary>
     /// Initializes the middleware with the service used to write <see cref="ProblemDetails"/> responses.
     /// </summary>
     /// <param name="problemDetails">Problem details service.</param>
     /// <param name="errorCatalog">Shared error catalog.</param>
-    public ExceptionHandlingMiddleware(IProblemDetailsService problemDetails, IErrorCatalog errorCatalog)
+    /// <param name="persistenceExceptionClassifier">Provider-neutral persistence exception classifier.</param>
+    public ExceptionHandlingMiddleware(
+        IProblemDetailsService problemDetails,
+        IErrorCatalog errorCatalog,
+        IPersistenceExceptionClassifier persistenceExceptionClassifier)
     {
         _problemDetails = problemDetails;
         _errorCatalog = errorCatalog;
+        _persistenceExceptionClassifier = persistenceExceptionClassifier;
     }
 
     /// <summary>
@@ -39,12 +43,13 @@ public sealed class ExceptionHandlingMiddleware : IExceptionHandler
     /// <returns><see langword="true"/> to indicate the exception was handled and a response was written.</returns>
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
-        var (status, code) = exception switch
+        var persistenceError = _persistenceExceptionClassifier.Classify(exception);
+        var (status, code) = persistenceError is not null
+            ? (409, persistenceError.Code)
+            : exception switch
         {
             NotFoundException => (404, ErrorCodes.NotFound),
             ConflictException => (409, ErrorCodes.ConcurrencyConflict),
-            DbUpdateConcurrencyException => (409, ErrorCodes.ConcurrencyConflict),
-            DbUpdateException ex when PostgresExceptions.IsUniqueViolation(ex) => (409, ErrorCodes.UniqueViolation),
             ValidationException => (400, ErrorCodes.Validation),
             DomainException => (400, ErrorCodes.InvalidOperation),
             UnauthorizedAccessException => (401, ErrorCodes.Unauthorized),

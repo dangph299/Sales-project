@@ -26,7 +26,7 @@ Bảng này giải thích nhanh các từ hay gặp trong dự án.
 | Consumer Group | Nhóm consumer cùng xử lý topic | `inventory-orders-v1` |
 | Partition | Phần chia nhỏ của topic trong Kafka | partition/offset trong log Kafka |
 | Redis Cache | Cache dữ liệu đọc nhanh hơn DB | `ProductCache` |
-| Distributed Lock | Lock dùng chung giữa nhiều instance | lock cleanup job trong `MaintenanceJobs` |
+| Distributed Lock | Lock dùng chung giữa nhiều instance | Redis lock trong Sales cleanup, Postgres advisory lock trong Inventory cleanup |
 | Hangfire | Thư viện chạy background job | Sales cleanup recurring job |
 | Optimistic Concurrency | Phát hiện conflict bằng version | ETag/If-Match trên order |
 | ETag | Version của resource trả qua HTTP header | `Response.SetEtag(order)` |

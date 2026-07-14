@@ -467,6 +467,8 @@ Code chính:
 - Dashboard: `src/Services/Sales/Sales.Api/Extensions/ApplicationBuilderExtensions.cs`
 - Job: `src/Services/Sales/Sales.Infrastructure/Hangfire/MaintenanceJobs.cs`
 - Startup recurring job: `src/Services/Sales/Sales.Api/Extensions/StartupTaskExtensions.cs`
+- Inventory cleanup worker: `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceWorker.cs`
+- Inventory cleanup service: `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceService.cs`
 
 Cách hoạt động:
 
@@ -480,8 +482,9 @@ flowchart TD
 
 - Hangfire dùng PostgreSQL storage.
 - Server có queues: `critical`, `default`, `maintenance`.
-- Job cleanup chạy queue `maintenance`.
-- Redis lock ngăn nhiều instance cleanup cùng lúc.
+- Sales cleanup chạy queue `maintenance`.
+- Redis lock ngăn nhiều Sales instance cleanup cùng lúc.
+- Inventory cleanup không dùng Hangfire; hosted worker dùng Postgres advisory transaction lock.
 
 ## 14. Kafka topic, group, partition
 

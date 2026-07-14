@@ -240,6 +240,12 @@ Cách đang dùng:
 - Nếu lock thành công thì cleanup.
 - Cuối cùng xóa lock bằng Lua script để chỉ owner mới xóa được lock.
 
+Inventory cleanup dùng lock theo transaction của Postgres thay vì Redis:
+
+- `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceService.cs`
+- `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceWorker.cs`
+- Worker chạy định kỳ và dùng `pg_try_advisory_xact_lock` để chỉ một instance cleanup.
+
 Quy tắc:
 
 - Lock phải có TTL.
@@ -256,6 +262,9 @@ Code nằm ở:
 - Dashboard: `src/Services/Sales/Sales.Api/Extensions/ApplicationBuilderExtensions.cs`
 - Job class: `src/Services/Sales/Sales.Infrastructure/Hangfire/MaintenanceJobs.cs`
 - Register recurring job: `src/Services/Sales/Sales.Api/Extensions/StartupTaskExtensions.cs`
+
+Inventory không dùng Hangfire cho cleanup. Inventory dùng hosted worker riêng để dọn
+processed Inbox/Outbox bằng Postgres advisory lock.
 
 Quy tắc:
 

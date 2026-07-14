@@ -1,4 +1,5 @@
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using FluentValidation;
 using FluentValidation.Results;
 using Inventory.Api.Middleware;
@@ -129,7 +130,8 @@ public sealed class ExceptionHandlingMiddlewareTests
     {
         return new ExceptionHandlingMiddleware(
             problemDetails,
-            new ErrorCatalogResolver(new InventoryErrorMessageProvider()));
+            new ErrorCatalogResolver(new InventoryErrorMessageProvider()),
+            new PostgresPersistenceExceptionClassifier());
     }
 
     private sealed class FakeProblemDetailsService : IProblemDetailsService

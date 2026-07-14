@@ -10,7 +10,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Services\Sales\Sales.Domain\Sales.Domain.csproj" />
     <ProjectReference Include="..\..\src\Services\Sales\Sales.Application\Sales.Application.csproj" />
+    <ProjectReference Include="..\..\src\Services\Sales\Sales.Api\Sales.Api.csproj" />
     <ProjectReference Include="..\..\src\Services\Sales\Sales.Infrastructure\Sales.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Services\Inventory\Inventory.Api\Inventory.Api.csproj" />
     <ProjectReference Include="..\..\src\Services\Inventory\Inventory.Domain\Inventory.Domain.csproj" />
     <ProjectReference Include="..\..\src\Services\AuditLog\AuditLog.Infrastructure\AuditLog.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Shared\BuildingBlocks.Domain\BuildingBlocks.Domain.csproj" />
