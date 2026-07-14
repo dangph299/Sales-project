@@ -23,6 +23,36 @@ public sealed class SpecificationTests
         Assert.Equal([3, 4, 5], result);
     }
 
+    [Fact]
+    public void Active_customer_matches_only_customers_that_are_not_deleted()
+    {
+        var active = Customer.Create("Nguyen Van A", "0901234567");
+        var deleted = Customer.Create("Nguyen Van B", "0901234568");
+        deleted.Delete("admin");
+
+        var result = new[] { active, deleted }.AsQueryable()
+            .Where(new ActiveCustomerSpecification().ToExpression())
+            .ToArray();
+
+        Assert.Equal([active], result);
+    }
+
+    [Fact]
+    public void Active_product_matches_only_enabled_products_that_are_not_deleted()
+    {
+        var active = Product.Create("sku-1", "Keyboard", 100);
+        var disabled = Product.Create("sku-2", "Mouse", 50);
+        var deleted = Product.Create("sku-3", "Monitor", 200);
+        disabled.Update(disabled.Name, disabled.Price.Amount, false);
+        deleted.Delete("admin");
+
+        var result = new[] { active, disabled, deleted }.AsQueryable()
+            .Where(new ActiveProductSpecification().ToExpression())
+            .ToArray();
+
+        Assert.Equal([active], result);
+    }
+
     private sealed class GreaterThanSpecification(int threshold) : Specification<int>
     {
         public override Expression<Func<int, bool>> ToExpression() => x => x > threshold;

@@ -13,7 +13,15 @@ public sealed class CachedProductReadService(ProductReadService inner, IProductC
     public async Task<ProductDto?> GetAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var cached = await cache.GetAsync(id, cancellationToken);
-        if (cached is not null) return cached;
+        if (cached is not null)
+        {
+            if (IsActive(cached))
+            {
+                return cached;
+            }
+
+            await cache.RemoveAsync(id, cancellationToken);
+        }
 
         var product = await inner.GetAsync(id, cancellationToken);
         if (product is not null) await cache.SetAsync(product, cancellationToken);
@@ -29,5 +37,10 @@ public sealed class CachedProductReadService(ProductReadService inner, IProductC
         CancellationToken cancellationToken = default)
     {
         return inner.SearchAsync(name, page, pageSize, cancellationToken);
+    }
+
+    private static bool IsActive(ProductDto product)
+    {
+        return product.IsActive && !product.IsDelete;
     }
 }

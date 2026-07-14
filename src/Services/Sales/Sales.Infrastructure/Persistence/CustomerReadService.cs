@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Sales.Application;
+using Sales.Domain;
 
 namespace Sales.Infrastructure;
 
@@ -9,16 +10,21 @@ namespace Sales.Infrastructure;
 public sealed class CustomerReadService(SalesDbContext db) : ICustomerReadService
 {
     /// <inheritdoc/>
-    public Task<CustomerDto?> GetAsync(Guid id, CancellationToken ct = default) => db.Customers.AsNoTracking()
-        .Where(x => x.Id == id)
-        .Select(x => new CustomerDto(x.Id, x.Name, x.Phone, x.Version, x.UpdatedAt, x.IsDelete, x.DeleteByUser, x.DeletedAt))
-        .SingleOrDefaultAsync(ct);
+    public async Task<CustomerDto?> GetAsync(Guid id, CancellationToken ct = default)
+    {
+        var activeCustomer = new ActiveCustomerSpecification();
+        var customer = await db.Customers.AsNoTracking()
+            .Where(activeCustomer.ToExpression())
+            .SingleOrDefaultAsync(x => x.Id == id, ct);
+        return customer?.ToDto();
+    }
 
     /// <inheritdoc/>
     public async Task<PagedResult<CustomerDto>> SearchAsync(string? name, string? phone, PhoneMatch phoneMatch, int page, int pageSize, CancellationToken ct = default)
     {
         (page, pageSize) = Paging.Normalize(page, pageSize);
-        var query = db.Customers.AsNoTracking();
+        var activeCustomer = new ActiveCustomerSpecification();
+        var query = db.Customers.AsNoTracking().Where(activeCustomer.ToExpression());
         if (!string.IsNullOrWhiteSpace(name)) query = query.Where(x => EF.Functions.ILike(x.Name, $"%{name.Trim()}%"));
         if (!string.IsNullOrWhiteSpace(phone))
         {
@@ -28,9 +34,7 @@ public sealed class CustomerReadService(SalesDbContext db) : ICustomerReadServic
                 : query.Where(x => x.Phone.StartsWith(normalized));
         }
         var total = await query.LongCountAsync(ct);
-        var items = await query.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize)
-            .Select(x => new CustomerDto(x.Id, x.Name, x.Phone, x.Version, x.UpdatedAt, x.IsDelete, x.DeleteByUser, x.DeletedAt))
-            .ToListAsync(ct);
-        return new(items, page, pageSize, total);
+        var customers = await query.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
+        return new(customers.Select(x => x.ToDto()).ToArray(), page, pageSize, total);
     }
 }
