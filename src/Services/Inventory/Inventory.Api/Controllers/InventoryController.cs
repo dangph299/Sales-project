@@ -1,29 +1,30 @@
 using System.Security.Claims;
 using Inventory.Api.Models.Requests;
 using Inventory.Application;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Inventory.Api.Controllers;
 
 /// <summary>
-/// HTTP API for reading inventory state and manually adjusting stock. Delegates use cases to the
-/// Inventory application service.
+/// HTTP API for reading inventory state and manually adjusting stock. Delegates use cases through
+/// MediatR.
 /// </summary>
 [ApiController]
 [Authorize]
 [Route("api/inventory")]
 public sealed class InventoryController : ControllerBase
 {
-    private readonly IInventoryService _inventory;
+    private readonly ISender _sender;
 
     /// <summary>
-    /// Initializes the controller with the Inventory application service.
+    /// Initializes the controller with the MediatR sender.
     /// </summary>
-    /// <param name="inventory">Inventory application service.</param>
-    public InventoryController(IInventoryService inventory)
+    /// <param name="sender">MediatR sender.</param>
+    public InventoryController(ISender sender)
     {
-        _inventory = inventory;
+        _sender = sender;
     }
 
     /// <summary>
@@ -35,7 +36,7 @@ public sealed class InventoryController : ControllerBase
     [HttpGet("{productId:guid}")]
     public async Task<IActionResult> Get(Guid productId, CancellationToken ct)
     {
-        var item = await _inventory.GetAsync(productId, ct);
+        var item = await _sender.Send(new GetInventoryByProductQuery(productId), ct);
         return item is null
             ? NotFound()
             : Ok(new { item.ProductId, item.Sku, item.Available, item.Reserved, item.Version });
@@ -50,7 +51,7 @@ public sealed class InventoryController : ControllerBase
     [HttpGet("reservations/{orderId:guid}")]
     public async Task<IActionResult> GetReservation(Guid orderId, CancellationToken ct)
     {
-        var reservation = await _inventory.GetReservationAsync(orderId, ct);
+        var reservation = await _sender.Send(new GetReservationByOrderQuery(orderId), ct);
         return reservation is null ? NotFound() : Ok(reservation);
     }
 
@@ -66,7 +67,7 @@ public sealed class InventoryController : ControllerBase
     public async Task<IActionResult> Adjust(Guid productId, [FromBody] AdjustStockRequest body, CancellationToken ct)
     {
         var actor = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "system";
-        var item = await _inventory.AdjustAsync(productId, body.Sku, body.QuantityDelta, actor, ct);
+        var item = await _sender.Send(new AdjustInventoryCommand(productId, body.Sku, body.QuantityDelta, actor), ct);
         return Ok(new { item.ProductId, item.Sku, item.Available, item.Reserved, item.Version });
     }
 }

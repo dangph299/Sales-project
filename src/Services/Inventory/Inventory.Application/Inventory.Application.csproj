@@ -1,4 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><RootNamespace>Inventory.Application</RootNamespace></PropertyGroup>
-  <ItemGroup><ProjectReference Include="..\Inventory.Domain\Inventory.Domain.csproj" /></ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Inventory.Domain\Inventory.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="14.0.0" />
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+  </ItemGroup>
 </Project>

@@ -49,12 +49,23 @@ public sealed class InventoryItemTests
     [Fact]
     public void Reservation_ignores_stale_release_after_newer_confirmation()
     {
-        var reservation = Reservation.Create(Guid.NewGuid(), 7, [new ReservationRequestLine(Guid.NewGuid(), "sku", 1)]);
+        var productId = Guid.NewGuid();
+        var reservation = Reservation.Create(Guid.NewGuid(), 7, [new ReservationRequestLine(productId, "sku", 1)]);
 
-        Assert.True(reservation.AcknowledgeActive(10));
+        Assert.True(reservation.ReplaceActive(10, [new ReservationRequestLine(productId, "sku", 1)]));
 
         Assert.False(reservation.Release(9));
         Assert.Equal(ReservationStatus.Active, reservation.Status);
         Assert.Equal(10, reservation.LastOrderVersion);
+    }
+
+    [Fact]
+    public void IsStale_reflects_last_applied_order_version()
+    {
+        var reservation = Reservation.Create(Guid.NewGuid(), 5, [new ReservationRequestLine(Guid.NewGuid(), "sku", 1)]);
+
+        Assert.True(reservation.IsStale(5));
+        Assert.True(reservation.IsStale(4));
+        Assert.False(reservation.IsStale(6));
     }
 }

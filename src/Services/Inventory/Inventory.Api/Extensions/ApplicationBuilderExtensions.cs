@@ -10,12 +10,14 @@ namespace Inventory.Api.Extensions;
 public static class ApplicationBuilderExtensions
 {
     /// <summary>
-    /// Applies request logging, observability, authentication, authorization, Swagger, and controller mapping.
+    /// Applies exception handling, request logging, observability, authentication, authorization,
+    /// Swagger, and controller mapping.
     /// </summary>
     /// <param name="app">Inventory API application.</param>
     /// <returns>Application for chaining.</returns>
     public static WebApplication ConfigureApplication(this WebApplication app)
     {
+        app.UseExceptionHandler();
         app.UseSerilogRequestLogging(RequestLoggingDefaults.Configure);
         app.UseMiddleware<RequestObservabilityMiddleware>();
         app.UseRouting();

@@ -44,7 +44,7 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 ## 5. Dependency direction (Clean Architecture / DDD)
 
 - **Domain** không được reference Application, Infrastructure, EF Core, MediatR, Kafka, Hangfire, MongoDB Driver hay bất kỳ framework nào. Domain chỉ chứa C# thuần + business rule. `Sales.Domain`/`Inventory.Domain` được phép reference `Shared/BuildingBlocks.Domain` (base type framework-independent dùng chung — `AggregateRoot<TId>`, `Entity<TId>`, `IDomainEvent`/`DomainEvent`, `DomainException`), không được reference `BuildingBlocks.Application`/`BuildingBlocks.Infrastructure`/`BuildingBlocks.Web`.
-- **Application** không được reference Infrastructure. Application có thể reference Domain, `BuildingBlocks.Contracts` (chỉ khi cần dùng chung contract, ví dụ mapping sang integration event — không bắt buộc nếu Application chưa cần), và `Shared/BuildingBlocks.Application` (pipeline behavior, `IUnitOfWork`, pagination dùng chung — hiện chỉ `Sales.Application` dùng, vì Inventory không dùng CQRS/MediatR).
+- **Application** không được reference Infrastructure. Application có thể reference Domain, `BuildingBlocks.Contracts` (chỉ khi cần dùng chung contract, ví dụ mapping sang integration event — không bắt buộc nếu Application chưa cần), và `Shared/BuildingBlocks.Application` (pipeline behavior, `IUnitOfWork`, pagination dùng chung — dùng bởi cả `Sales.Application` và `Inventory.Application`, cả hai đều dùng CQRS/MediatR). Application không được reference EF Core/Npgsql hay bất kỳ package hạ tầng nào, kể cả để bắt exception persistence (vd `DbUpdateConcurrencyException`) — việc dịch exception đó sang HTTP response thuộc về Api (xem `Sales.Api/Middleware/ExceptionHandlingMiddleware` và `Inventory.Api/Middleware/ExceptionHandlingMiddleware`).
 - **Infrastructure** implement các abstraction khai báo ở Domain/Application (repository interfaces, `IUnitOfWork`, `IOutboxPublisher`...). Infrastructure được reference Domain, Application, `BuildingBlocks.Contracts`, và mọi package hạ tầng (EF Core, Npgsql, KafkaFlow, MongoDB.Driver, Hangfire...).
 - **Api/Worker** (entrypoint) được reference Application + Infrastructure để wiring DI; không chứa business logic.
 - **Cross-service**: Sales không được reference trực tiếp implementation của Inventory (và ngược lại). Giao tiếp liên service chỉ qua **integration event** định nghĩa trong `Shared/BuildingBlocks.Contracts` + Kafka topic, không qua project reference trực tiếp giữa hai service.
@@ -208,7 +208,18 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 - Infrastructure must not depend on API.
 - Controllers must not bypass the Application layer for business use cases.
 
-## 22. General
+## 22. Application Abstraction Reuse and Audit-Before-Create Rules
+
+- Trước khi tạo folder, class, interface, command, query, handler, DTO, validator, mapper, behavior, repository, service, decorator hoặc wrapper mới, phải tìm trong toàn solution theo thứ tự: `BuildingBlocks.Application`, shared project phù hợp khác, Application/Domain của service hiện tại, rồi implementation hiện có trong Infrastructure.
+- Ưu tiên dùng trực tiếp abstraction shared đã có trong `BuildingBlocks.Application`, ví dụ `IUnitOfWork`, CQRS marker, pagination model, clock, exception classifier và MediatR pipeline behaviors. Không tạo alias/wrapper theo tên service nếu không bổ sung hành vi thật.
+- `Inventory.Application/Abstractions` hoặc folder tương tự ở service khác chỉ chứa contract đặc thù use case của service đó. Không đặt abstraction dùng chung hoặc contract domain-agnostic trùng với BuildingBlocks vào đây.
+- Không tạo folder theo template như `Abstractions`, `Common`, `Interfaces`, `Services`, `Mappings`, `Validators`, `Behaviors`, `Models` nếu chưa có file thật cần đặt vào đó. Không giữ folder rỗng để chuẩn bị cho tương lai.
+- Không đưa abstraction domain-specific vào BuildingBlocks quá sớm. Chỉ chuyển vào shared project khi có ít nhất hai service dùng thật, contract ổn định, domain-agnostic, và không làm service coupling với nhau.
+- Application không được phụ thuộc Infrastructure, API hoặc Application của service khác. Implementation của Application abstractions đặt ở Infrastructure.
+- Command/query/handler chỉ được tạo cho use case thực tế đang tồn tại hoặc được yêu cầu rõ. Không tạo đủ bộ command/query giả định chỉ vì kiến trúc mẫu liệt kê.
+- AI coding agent hoặc người refactor phải báo rõ thành phần tái sử dụng từ BuildingBlocks, thành phần tạo mới, lý do tạo mới, và thành phần xóa vì trùng/không dùng.
+
+## 23. General
 
 - Do not duplicate code.
 - Do not use generic static helper classes as a dumping ground.

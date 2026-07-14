@@ -50,16 +50,26 @@ public sealed class Reservation : AggregateRoot<Guid>
     }
 
     /// <summary>
-    /// Records a newer confirmation event while the reservation is already active. This can happen
-    /// when a reconfirm event overtakes a delayed release event from an earlier order version.
+    /// Determines whether an order-version-carrying command is stale — i.e. carries a version no
+    /// newer than the one already applied to this reservation — and should be ignored. This is the
+    /// single staleness check used both to gate callers before they mutate other aggregates and by
+    /// this aggregate's own state-changing methods, so the two can never disagree.
+    /// </summary>
+    /// <param name="orderVersion">Sales order version carried by the incoming command/event.</param>
+    public bool IsStale(long orderVersion) => orderVersion <= LastOrderVersion;
+
+    /// <summary>
+    /// Replaces an active reservation with newer order lines.
     /// </summary>
     /// <param name="orderVersion">Sales order version carried by the confirmation event.</param>
-    /// <returns><see langword="true"/> when this event advanced the reservation version; otherwise <see langword="false"/> because it was duplicate or stale.</returns>
-    public bool AcknowledgeActive(long orderVersion)
+    /// <param name="lines">Current product/quantity lines to reserve.</param>
+    /// <returns><see langword="true"/> when this event advanced the reservation version; otherwise <see langword="false"/>.</returns>
+    public bool ReplaceActive(long orderVersion, IEnumerable<ReservationRequestLine> lines)
     {
-        if (Status != ReservationStatus.Active) throw new InvalidOperationException("Only active reservations can be acknowledged.");
-        if (orderVersion <= LastOrderVersion) return false;
+        if (Status != ReservationStatus.Active) throw new InvalidOperationException("Only active reservations can be replaced.");
+        if (IsStale(orderVersion)) return false;
         LastOrderVersion = orderVersion;
+        SetLines(lines);
         return true;
     }
 
@@ -71,7 +81,7 @@ public sealed class Reservation : AggregateRoot<Guid>
     public bool Reactivate(long orderVersion, IEnumerable<ReservationRequestLine> lines)
     {
         if (Status != ReservationStatus.Released) throw new InvalidOperationException("Only released reservations can be reactivated.");
-        if (orderVersion <= LastOrderVersion) return false;
+        if (IsStale(orderVersion)) return false;
         Status = ReservationStatus.Active;
         CreatedAt = DateTimeOffset.UtcNow;
         LastOrderVersion = orderVersion;
@@ -86,7 +96,7 @@ public sealed class Reservation : AggregateRoot<Guid>
     public bool Release(long orderVersion)
     {
         if (Status != ReservationStatus.Active) throw new InvalidOperationException("Reservation is already released.");
-        if (orderVersion <= LastOrderVersion) return false;
+        if (IsStale(orderVersion)) return false;
         LastOrderVersion = orderVersion;
         Status = ReservationStatus.Released;
         return true;

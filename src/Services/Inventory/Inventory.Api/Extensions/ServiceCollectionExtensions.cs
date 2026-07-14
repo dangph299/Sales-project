@@ -2,7 +2,10 @@ using BuildingBlocks.Observability;
 using BuildingBlocks.Web.Authentication;
 using BuildingBlocks.Web.Observability;
 using BuildingBlocks.Web.OpenApi;
+using Inventory.Api.Middleware;
+using Inventory.Application;
 using Inventory.Infrastructure;
+using MediatR;
 using Serilog;
 
 namespace Inventory.Api.Extensions;
@@ -23,11 +26,14 @@ public static class ServiceCollectionExtensions
             config.ConfigureSharedSinks(context.Configuration, "inventory-api"));
 
         builder.Services.AddProblemDetails();
+        builder.Services.AddExceptionHandler<ExceptionHandlingMiddleware>();
         builder.Services.AddControllers();
         builder.Services.AddApiDocumentation(
             "Inventory API",
             "Inventory service API for stock queries, reservations, and stock adjustments.");
         builder.Services.AddSwaggerCors(builder.Environment);
+        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AdjustInventoryCommand>());
+        builder.Services.AddInventoryApplication();
         builder.Services.AddInventoryInfrastructure(builder.Configuration);
         builder.Services.AddJwtAuthentication(builder.Configuration);
         builder.Services.AddAuthorization();
