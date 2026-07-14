@@ -1,3 +1,4 @@
+using BuildingBlocks.Contracts;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web.Authentication;
 using BuildingBlocks.Web.Observability;
@@ -27,6 +28,8 @@ public static class ServiceCollectionExtensions
 
         builder.Services.AddProblemDetails();
         builder.Services.AddExceptionHandler<ExceptionHandlingMiddleware>();
+        builder.Services.AddSingleton<IErrorMessageProvider, InventoryErrorMessageProvider>();
+        builder.Services.AddSingleton<IErrorCatalog, ErrorCatalogResolver>();
         builder.Services.AddControllers();
         builder.Services.AddApiDocumentation(
             "Inventory API",

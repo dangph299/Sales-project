@@ -1,18 +1,19 @@
 using BuildingBlocks.Contracts;
 using FluentValidation;
 using FluentValidation.Results;
-using Inventory.Api.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Sales.Api.Middleware;
+using Sales.Application;
 
-namespace Inventory.Api.Tests;
+namespace Sales.Api.Tests;
 
 public sealed class ExceptionHandlingMiddlewareTests
 {
     [Fact]
-    public async Task Concurrency_exception_maps_to_409()
+    public async Task Concurrency_exception_maps_to_409_with_shared_code()
     {
         var problemDetails = new FakeProblemDetailsService();
         var middleware = CreateMiddleware(problemDetails);
@@ -22,25 +23,22 @@ public sealed class ExceptionHandlingMiddlewareTests
 
         Assert.True(handled);
         Assert.Equal(409, context.Response.StatusCode);
-        Assert.Equal(409, problemDetails.LastDetails!.Status);
-        Assert.Equal(ErrorCodes.ConcurrencyConflict, problemDetails.LastDetails.Extensions["code"]);
-        Assert.Equal("Inventory was changed by another operation. Please retry.", problemDetails.LastDetails.Extensions["description"]);
-        Assert.Equal(false, problemDetails.LastDetails.Extensions["retryable"]);
+        Assert.Equal(ErrorCodes.ConcurrencyConflict, problemDetails.LastDetails!.Extensions["code"]);
+        Assert.Equal("The sales resource was changed by another request.", problemDetails.LastDetails.Extensions["description"]);
     }
 
     [Fact]
-    public async Task Non_concurrency_data_integrity_exception_maps_to_500()
+    public async Task Not_found_exception_maps_to_404_with_shared_code()
     {
         var problemDetails = new FakeProblemDetailsService();
         var middleware = CreateMiddleware(problemDetails);
         var context = new DefaultHttpContext();
 
-        var handled = await middleware.TryHandleAsync(context, new DbUpdateException("FK violation"), CancellationToken.None);
+        var handled = await middleware.TryHandleAsync(context, new NotFoundException("Order", Guid.NewGuid()), CancellationToken.None);
 
         Assert.True(handled);
-        Assert.Equal(500, context.Response.StatusCode);
-        Assert.Equal(500, problemDetails.LastDetails!.Status);
-        Assert.Equal(ErrorCodes.InternalServerError, problemDetails.LastDetails.Extensions["code"]);
+        Assert.Equal(404, context.Response.StatusCode);
+        Assert.Equal(ErrorCodes.NotFound, problemDetails.LastDetails!.Extensions["code"]);
         Assert.Null(problemDetails.LastDetails.Detail);
     }
 
@@ -50,7 +48,7 @@ public sealed class ExceptionHandlingMiddlewareTests
         var problemDetails = new FakeProblemDetailsService();
         var middleware = CreateMiddleware(problemDetails);
         var context = new DefaultHttpContext();
-        var exception = new ValidationException([new ValidationFailure("Quantity", "Quantity is required.")]);
+        var exception = new ValidationException([new ValidationFailure("Name", "Name is required.")]);
 
         var handled = await middleware.TryHandleAsync(context, exception, CancellationToken.None);
 
@@ -61,41 +59,7 @@ public sealed class ExceptionHandlingMiddlewareTests
     }
 
     [Fact]
-    public async Task Raw_serialization_failure_from_commit_maps_to_409()
-    {
-        var problemDetails = new FakeProblemDetailsService();
-        var middleware = CreateMiddleware(problemDetails);
-        var context = new DefaultHttpContext();
-        var serializationFailure = new PostgresException("could not serialize access", "ERROR", "ERROR", "40001");
-
-        var handled = await middleware.TryHandleAsync(context, serializationFailure, CancellationToken.None);
-
-        Assert.True(handled);
-        Assert.Equal(409, context.Response.StatusCode);
-        Assert.Equal(409, problemDetails.LastDetails!.Status);
-        Assert.Equal(ErrorCodes.ConcurrencyConflict, problemDetails.LastDetails.Extensions["code"]);
-        Assert.Equal(true, problemDetails.LastDetails.Extensions["retryable"]);
-    }
-
-    [Fact]
-    public async Task Deadlock_wrapped_in_DbUpdateException_maps_to_409()
-    {
-        var problemDetails = new FakeProblemDetailsService();
-        var middleware = CreateMiddleware(problemDetails);
-        var context = new DefaultHttpContext();
-        var deadlock = new PostgresException("deadlock detected", "ERROR", "ERROR", "40P01");
-
-        var handled = await middleware.TryHandleAsync(context, new DbUpdateException("save failed", deadlock), CancellationToken.None);
-
-        Assert.True(handled);
-        Assert.Equal(409, context.Response.StatusCode);
-        Assert.Equal(409, problemDetails.LastDetails!.Status);
-        Assert.Equal(ErrorCodes.ConcurrencyConflict, problemDetails.LastDetails.Extensions["code"]);
-        Assert.Equal(true, problemDetails.LastDetails.Extensions["retryable"]);
-    }
-
-    [Fact]
-    public async Task Unique_violation_maps_to_409_with_shared_unique_code()
+    public async Task Unique_violation_maps_to_409_with_shared_code()
     {
         var problemDetails = new FakeProblemDetailsService();
         var middleware = CreateMiddleware(problemDetails);
@@ -107,7 +71,21 @@ public sealed class ExceptionHandlingMiddlewareTests
         Assert.True(handled);
         Assert.Equal(409, context.Response.StatusCode);
         Assert.Equal(ErrorCodes.UniqueViolation, problemDetails.LastDetails!.Extensions["code"]);
-        Assert.Equal(false, problemDetails.LastDetails.Extensions["retryable"]);
+    }
+
+    [Fact]
+    public async Task Unknown_DbUpdateException_maps_to_500()
+    {
+        var problemDetails = new FakeProblemDetailsService();
+        var middleware = CreateMiddleware(problemDetails);
+        var context = new DefaultHttpContext();
+
+        var handled = await middleware.TryHandleAsync(context, new DbUpdateException("FK violation"), CancellationToken.None);
+
+        Assert.True(handled);
+        Assert.Equal(500, context.Response.StatusCode);
+        Assert.Equal(ErrorCodes.InternalServerError, problemDetails.LastDetails!.Extensions["code"]);
+        Assert.Null(problemDetails.LastDetails.Detail);
     }
 
     [Fact]
@@ -125,14 +103,49 @@ public sealed class ExceptionHandlingMiddlewareTests
         Assert.Null(problemDetails.LastDetails.Detail);
     }
 
+    [Fact]
+    public async Task Sales_and_inventory_use_same_concurrency_error_code()
+    {
+        var salesProblemDetails = new FakeProblemDetailsService();
+        var inventoryProblemDetails = new InventoryFakeProblemDetailsService();
+        var sales = CreateMiddleware(salesProblemDetails);
+        var inventory = new Inventory.Api.Middleware.ExceptionHandlingMiddleware(
+            inventoryProblemDetails,
+            new ErrorCatalogResolver(new Inventory.Api.Middleware.InventoryErrorMessageProvider()));
+
+        await sales.TryHandleAsync(new DefaultHttpContext(), new DbUpdateConcurrencyException(), CancellationToken.None);
+        await inventory.TryHandleAsync(new DefaultHttpContext(), new DbUpdateConcurrencyException(), CancellationToken.None);
+
+        Assert.Equal(
+            salesProblemDetails.LastDetails!.Extensions["code"],
+            inventoryProblemDetails.LastDetails!.Extensions["code"]);
+    }
+
     private static ExceptionHandlingMiddleware CreateMiddleware(FakeProblemDetailsService problemDetails)
     {
         return new ExceptionHandlingMiddleware(
             problemDetails,
-            new ErrorCatalogResolver(new InventoryErrorMessageProvider()));
+            new ErrorCatalogResolver(new SalesErrorMessageProvider()));
     }
 
     private sealed class FakeProblemDetailsService : IProblemDetailsService
+    {
+        public ProblemDetails? LastDetails { get; private set; }
+
+        public ValueTask<bool> TryWriteAsync(ProblemDetailsContext context)
+        {
+            LastDetails = context.ProblemDetails;
+            return ValueTask.FromResult(true);
+        }
+
+        public ValueTask WriteAsync(ProblemDetailsContext context)
+        {
+            LastDetails = context.ProblemDetails;
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private sealed class InventoryFakeProblemDetailsService : IProblemDetailsService
     {
         public ProblemDetails? LastDetails { get; private set; }
 

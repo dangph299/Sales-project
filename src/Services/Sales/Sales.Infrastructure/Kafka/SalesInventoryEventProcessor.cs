@@ -39,7 +39,7 @@ public sealed class SalesInventoryEventProcessor(
         {
             // Commit the Inbox row so repeated delivery of this orphan event is still skipped.
             await transaction.CommitAsync();
-            return "OrderNotFound";
+            return ErrorCodes.OrderNotFound;
         }
 
         var result = ApplyOrderTransition(envelope, order);

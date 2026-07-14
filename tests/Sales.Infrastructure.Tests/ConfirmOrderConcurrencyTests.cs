@@ -48,7 +48,7 @@ public sealed class ConfirmOrderConcurrencyTests
         await clientA.SaveChangesAsync();
 
         // Client B replays the same stale If-Match: "1"; the row already moved on, so this is what the
-        // API's ExceptionHandlingMiddleware turns into a 409 "Concurrent update detected" response.
+        // API's ExceptionHandlingMiddleware turns into a 409 concurrency_conflict response.
         await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => clientB.SaveChangesAsync());
 
         await using var verify = new SalesDbContext(options, executionContext);

@@ -14,7 +14,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Services\Sales\Sales.Api\Sales.Api.csproj" />
+    <ProjectReference Include="..\..\src\Shared\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Services\Inventory\Inventory.Api\Inventory.Api.csproj" />
   </ItemGroup>
 </Project>

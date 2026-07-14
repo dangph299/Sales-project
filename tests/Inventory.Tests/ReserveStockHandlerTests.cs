@@ -60,7 +60,7 @@ public sealed class ReserveStockHandlerTests
             Guid.NewGuid(),
             [new OrderLineIntegration(productId, "sku", 2)]), CancellationToken.None);
 
-        Assert.Equal("StaleReservation", result);
+        Assert.Equal(ErrorCodes.StaleReservation, result);
         Assert.Equal(10, item.Available);
         Assert.Equal(0, item.Reserved);
         Assert.Equal(ReservationStatus.Released, reservation.Status);

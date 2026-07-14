@@ -1,5 +1,7 @@
 using FluentValidation;
+using BuildingBlocks.Contracts;
 using BuildingBlocks.Domain;
+using BuildingBlocks.Infrastructure;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -15,14 +17,17 @@ namespace Sales.Api.Middleware;
 public sealed class ExceptionHandlingMiddleware : IExceptionHandler
 {
     private readonly IProblemDetailsService _problemDetails;
+    private readonly IErrorCatalog _errorCatalog;
 
     /// <summary>
     /// Initializes the middleware with the service used to write <see cref="ProblemDetails"/> responses.
     /// </summary>
     /// <param name="problemDetails">Problem details service.</param>
-    public ExceptionHandlingMiddleware(IProblemDetailsService problemDetails)
+    /// <param name="errorCatalog">Shared error catalog.</param>
+    public ExceptionHandlingMiddleware(IProblemDetailsService problemDetails, IErrorCatalog errorCatalog)
     {
         _problemDetails = problemDetails;
+        _errorCatalog = errorCatalog;
     }
 
     /// <summary>
@@ -34,18 +39,29 @@ public sealed class ExceptionHandlingMiddleware : IExceptionHandler
     /// <returns><see langword="true"/> to indicate the exception was handled and a response was written.</returns>
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
-        var (status, title) = exception switch
+        var (status, code) = exception switch
         {
-            NotFoundException => (404, "Resource not found"),
-            ConflictException => (409, "Concurrent update detected"),
-            DbUpdateConcurrencyException => (409, "Concurrent update detected"),
-            ValidationException => (400, "Validation failed"),
-            DomainException => (400, "Domain rule violated"),
-            BadHttpRequestException bad => (bad.StatusCode, "Invalid request"),
-            _ => (500, "Unexpected server error")
+            NotFoundException => (404, ErrorCodes.NotFound),
+            ConflictException => (409, ErrorCodes.ConcurrencyConflict),
+            DbUpdateConcurrencyException => (409, ErrorCodes.ConcurrencyConflict),
+            DbUpdateException ex when PostgresExceptions.IsUniqueViolation(ex) => (409, ErrorCodes.UniqueViolation),
+            ValidationException => (400, ErrorCodes.Validation),
+            DomainException => (400, ErrorCodes.InvalidOperation),
+            UnauthorizedAccessException => (401, ErrorCodes.Unauthorized),
+            _ when exception.GetType().Name == "ForbiddenException" => (403, ErrorCodes.Forbidden),
+            BadHttpRequestException bad => (bad.StatusCode, ErrorCodes.InvalidRequest),
+            _ => (500, ErrorCodes.InternalServerError)
         };
         context.Response.StatusCode = status;
-        var details = new ProblemDetails { Status = status, Title = title, Detail = exception.Message, Instance = context.Request.Path };
+        var error = _errorCatalog.Get(code);
+        var details = new ProblemDetails
+        {
+            Status = status,
+            Title = error.Description,
+            Instance = context.Request.Path
+        };
+        details.Extensions["code"] = error.Code;
+        details.Extensions["description"] = error.Description;
         if (exception is ConflictException conflict) details.Extensions["currentVersion"] = conflict.CurrentVersion;
         if (exception is ValidationException validation)
             details.Extensions["errors"] = validation.Errors

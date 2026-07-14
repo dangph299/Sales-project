@@ -25,7 +25,7 @@ public sealed class ReserveStockCommandHandler(
 
         if (existingReservation is not null && existingReservation.IsStale(request.OrderVersion))
         {
-            return "StaleReservation";
+            return ErrorCodes.StaleReservation;
         }
 
         var items = await LoadItems(request.Lines.Select(x => x.ProductId), cancellationToken);
@@ -52,7 +52,7 @@ public sealed class ReserveStockCommandHandler(
             // Reactivate itself relies on, so this can only fail if Status is no longer Released
             // — not reachable here since the earlier branch already routed Active reservations
             // into ReplaceActiveReservation.
-            if (!existingReservation.Reactivate(request.OrderVersion, requestedLines)) return "StaleReservation";
+            if (!existingReservation.Reactivate(request.OrderVersion, requestedLines)) return ErrorCodes.StaleReservation;
         }
 
         outbox.EnqueueStockReserved(request.OrderId, request.OrderVersion, request.CorrelationId, request.EventId);

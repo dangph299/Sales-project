@@ -227,3 +227,21 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 - Keep naming consistent across the solution.
 - Do not use `#region`.
 - Each class must have one clear responsibility.
+
+## 24. Unified Error Code Rules
+
+- The solution must use one shared `ErrorCodes` class in `BuildingBlocks.Contracts/Errors`.
+- Every public error code must be declared only once.
+- Do not create separate error-code classes per service.
+- Do not alias shared error codes inside service projects.
+- Services may customize error descriptions through `IErrorMessageProvider`, but must not redefine codes.
+- Public error codes must not be hard-coded in middleware, controllers, handlers, consumers, or infrastructure code.
+- Use a generic code when only the description differs.
+- Create a specific business code only when clients need to distinguish and handle that condition differently.
+- Error codes are stable public contracts.
+- Error code and error description must remain separate.
+- Use inheritance or provider overriding only for error descriptions, not for redefining error codes.
+- Use the default description when a service does not need customization.
+- Do not rename existing public error codes without checking backward compatibility.
+- Do not map every `DbUpdateException` to HTTP 409.
+- Domain projects must not depend on API or Infrastructure error handling.
