@@ -5,6 +5,7 @@ using Sales.Application;
 
 namespace Sales.Infrastructure.Tests;
 
+[Trait("Category", "Reliability")]
 public sealed class OutboxReliabilityTests
 {
     [Fact]

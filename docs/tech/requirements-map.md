@@ -331,6 +331,8 @@ Cần lưu ý:
 - Hệ thống có Outbox/Inbox và retry, tốt cho mục tiêu không miss event.
 - Pre-check Inbox không thay đổi correctness: atomicity giữa Inbox insert, domain mutation và Outbox vẫn nằm trong một serializable transaction, và `TryRecordAsync` + unique constraint vẫn là barrier trùng lặp có thẩm quyền. Test: `tests/Inventory.Tests/InventoryTransactionBehaviorTests.cs` (fast-path duplicate + race backstop).
 - Case confirmation event mới đến trước release event cũ đã có xử lý delta và test trong `tests/Inventory.Tests/ReserveStockHandlerTests.cs`.
+- Reliability tests: các guarantee (Outbox retry, dead-letter sau `MaxAttempts`, Inbox idempotency, stale event, audit idempotency, optimistic concurrency) được kiểm chứng và mô tả trong `docs/tech/reliability-tests.md`. Test cần database thật gắn `[Trait("Category", "Reliability")]`, gate bằng `RUN_RELIABILITY_TESTS=true`; hai kịch bản cần live Kafka (consumer offset failure, process restart) hiện là thủ tục manual.
+- CI: workflow `.github/workflows/ci.yml` tách `fast-checks` (mọi push/PR) và `reliability-tests` (push `main` hoặc `workflow_dispatch`, có Postgres + Mongo service container, upload trx/log khi fail).
 
 ## 8. CQRS và MediatR
 

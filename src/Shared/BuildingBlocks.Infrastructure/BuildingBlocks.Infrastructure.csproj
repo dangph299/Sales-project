@@ -12,6 +12,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Exposes the internal outbox publish-cycle seam to the Sales reliability tests. -->
+    <InternalsVisibleTo Include="Sales.Infrastructure.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="KafkaFlow" Version="4.2.0" />
     <PackageReference Include="KafkaFlow.Microsoft.DependencyInjection" Version="4.2.0" />
     <PackageReference Include="Cronos" Version="0.11.1" />

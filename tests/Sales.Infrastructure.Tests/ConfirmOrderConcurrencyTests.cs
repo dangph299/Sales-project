@@ -5,6 +5,7 @@ using Sales.Domain;
 
 namespace Sales.Infrastructure.Tests;
 
+[Trait("Category", "Reliability")]
 public sealed class ConfirmOrderConcurrencyTests
 {
     [Fact]

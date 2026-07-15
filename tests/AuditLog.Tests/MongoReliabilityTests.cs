@@ -3,6 +3,7 @@ using MongoDB.Driver;
 
 namespace AuditLog.Tests;
 
+[Trait("Category", "Reliability")]
 public sealed class MongoReliabilityTests
 {
     [Fact]

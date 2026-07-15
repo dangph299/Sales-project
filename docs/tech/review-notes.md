@@ -67,6 +67,20 @@ Cần lưu ý:
 - Kafka không đảm bảo global ordering trên toàn topic; ordering chỉ nằm trong từng partition.
 - Consumer group quyết định cách các consumer instance chia nhau partition.
 
+### Reliability tests và CI
+
+Trạng thái hiện tại:
+
+- Reliability tests dùng database thật đã gắn `[Trait("Category", "Reliability")]` và gate bằng `RUN_RELIABILITY_TESTS=true`; khi không set thì no-op, `dotnet test` mặc định vẫn xanh.
+- Có test tự động cho: Outbox retry → publish một lần, Outbox max-retry → dead-letter, Outbox replay, Inbox idempotency, stale event, audit idempotency, optimistic concurrency.
+- CI `.github/workflows/ci.yml` tách `fast-checks` (mọi push/PR, chạy `Category!=Reliability`) và `reliability-tests` (push `main`/`workflow_dispatch`, có Postgres + Mongo service container, upload trx/log khi fail).
+- Chi tiết: [reliability-tests.md](reliability-tests.md).
+
+Cần lưu ý:
+
+- Hai kịch bản cần live Kafka (consumer lỗi trước commit offset, process restart) hiện là thủ tục manual, chưa tự động hóa để giữ CI đơn giản/ổn định.
+- Không tuyên bố exactly-once; tài liệu dùng ngôn ngữ at-least-once + idempotent consumer.
+
 ### Observability dashboard
 
 Trạng thái hiện tại:
