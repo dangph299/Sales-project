@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Sales.Application;
 using Sales.Domain;
 
 namespace Sales.Application.Tests;
@@ -45,6 +44,12 @@ public sealed class ConfirmOrderHandlerTests
 
     private sealed class FakeOrderRepository(Order? order) : IOrderRepository
     {
+        public Task<IReadOnlyCollection<Guid>> FindExpiredCancellableOrderIdsAsync(
+            DateTimeOffset orderUpdatedBefore,
+            int batchSize,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyCollection<Guid>>([]);
+
         public Task<Order?> GetWithLinesAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(order);
         public Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult(order);
         public Task<IReadOnlyList<Order>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default) =>

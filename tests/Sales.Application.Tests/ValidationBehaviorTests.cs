@@ -1,7 +1,6 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
-using Sales.Application;
 using Sales.Domain;
 
 namespace Sales.Application.Tests;
@@ -62,6 +61,12 @@ public sealed class ValidationBehaviorTests
 
     private sealed class FakeOrderRepository : IOrderRepository
     {
+        public Task<IReadOnlyCollection<Guid>> FindExpiredCancellableOrderIdsAsync(
+            DateTimeOffset orderUpdatedBefore,
+            int batchSize,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyCollection<Guid>>([]);
+
         public Task<Order?> GetWithLinesAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Order?>(null);
         public Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) => Task.FromResult<Order?>(null);
         public Task<IReadOnlyList<Order>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default) =>

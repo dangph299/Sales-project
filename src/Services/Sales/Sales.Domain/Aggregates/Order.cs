@@ -157,6 +157,35 @@ public sealed class Order : AggregateRoot<Guid>
     }
 
     /// <summary>
+    /// Cancels an open order that has not changed before the expiration cutoff.
+    /// </summary>
+    /// <param name="orderUpdatedBefore">Latest allowed order update time.</param>
+    /// <returns><see langword="true"/> when the order was cancelled; otherwise <see langword="false"/>.</returns>
+    public bool CancelDueToExpiration(DateTimeOffset orderUpdatedBefore)
+    {
+        if (!CanBeCancelledDueToExpiration())
+        {
+            return false;
+        }
+
+        if (UpdatedAt > orderUpdatedBefore)
+        {
+            return false;
+        }
+
+        var shouldReleaseInventoryReservation = Status == OrderStatus.PendingInventory;
+
+        Status = OrderStatus.Cancelled;
+        Touch();
+        if (shouldReleaseInventoryReservation)
+        {
+            Raise(new OrderUndoComfirmedDomainEvent(Id));
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Moves a confirmed order back to <see cref="OrderStatus.Draft"/> and raises <see cref="OrderUndoComfirmedDomainEvent"/>
     /// so Inventory can release any reserved stock.
     /// </summary>
@@ -179,5 +208,10 @@ public sealed class Order : AggregateRoot<Guid>
     private void EnsureDraft()
     {
         if (Status != OrderStatus.Draft) throw new DomainException("Only a draft order can be edited.");
+    }
+
+    private bool CanBeCancelledDueToExpiration()
+    {
+        return Status is OrderStatus.Draft or OrderStatus.PendingInventory or OrderStatus.InventoryRejected;
     }
 }

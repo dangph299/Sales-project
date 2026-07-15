@@ -1,6 +1,4 @@
-using Hangfire;
 using BuildingBlocks.Infrastructure;
-using Sales.Infrastructure;
 
 namespace Sales.Api.Extensions;
 
@@ -19,6 +17,6 @@ public static class StartupTaskExtensions
         app.Lifetime.ApplicationStopping.Register(() => KafkaBusLifecycle.StopAsync(kafkaBus).GetAwaiter().GetResult());
 
         await app.Services.SeedIdentityAsync();
-        RecurringJob.AddOrUpdate<MaintenanceJobs>("sales-cleanup", "maintenance", x => x.CleanupAsync(), Cron.Daily);
+        app.Services.RegisterRecurringJobs();
     }
 }

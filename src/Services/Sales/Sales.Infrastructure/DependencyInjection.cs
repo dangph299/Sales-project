@@ -32,8 +32,13 @@ public static class DependencyInjection
         services.AddSalesExecutionContext();
         services.AddSalesCaching(configuration);
         services.AddSalesMessaging(configuration);
-        services.AddScoped<MaintenanceJobs>();
+        services.AddSalesHangfireJobs(configuration);
         return services;
+    }
+
+    private static IServiceCollection AddSalesHangfireJobs(this IServiceCollection services, IConfiguration configuration)
+    {
+        return services.AddSalesRecurringJobs(configuration);
     }
 
     private static IServiceCollection AddSalesRepositories(this IServiceCollection services)

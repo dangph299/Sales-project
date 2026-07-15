@@ -1,5 +1,3 @@
-using Sales.Domain;
-
 namespace Sales.Domain.Tests;
 
 public sealed class OrderTests
@@ -30,6 +28,92 @@ public sealed class OrderTests
         order.UndoConfirmed();
         Assert.Equal(OrderStatus.Draft, order.Status);
         Assert.Contains(order.GetDomainEvents(), x => x is OrderUndoComfirmedDomainEvent);
+    }
+
+    [Fact]
+    public void Expired_pending_inventory_order_is_cancelled_and_raises_release_event()
+    {
+        var order = CreateOrder();
+        order.RequestConfirmation();
+        order.ClearDomainEvents();
+
+        var wasOrderCancelled = order.CancelDueToExpiration(order.UpdatedAt.AddSeconds(1));
+
+        Assert.True(wasOrderCancelled);
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+        Assert.Single(order.GetDomainEvents(), x => x is OrderUndoComfirmedDomainEvent);
+    }
+
+    [Fact]
+    public void Draft_order_is_cancelled_by_expiration_without_release_event()
+    {
+        var order = CreateOrder();
+        order.ClearDomainEvents();
+
+        var wasOrderCancelled = order.CancelDueToExpiration(order.UpdatedAt.AddSeconds(1));
+
+        Assert.True(wasOrderCancelled);
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+        Assert.Empty(order.GetDomainEvents());
+    }
+
+    [Fact]
+    public void Inventory_rejected_order_is_cancelled_by_expiration_without_release_event()
+    {
+        var order = CreateOrder();
+        order.RequestConfirmation();
+        order.RejectInventory("out of stock");
+        order.ClearDomainEvents();
+
+        var wasOrderCancelled = order.CancelDueToExpiration(order.UpdatedAt.AddSeconds(1));
+
+        Assert.True(wasOrderCancelled);
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+        Assert.Empty(order.GetDomainEvents());
+    }
+
+    [Fact]
+    public void Order_not_past_expiration_is_not_cancelled()
+    {
+        var order = CreateOrder();
+        order.RequestConfirmation();
+        order.ClearDomainEvents();
+
+        var wasOrderCancelled = order.CancelDueToExpiration(order.UpdatedAt.AddSeconds(-1));
+
+        Assert.False(wasOrderCancelled);
+        Assert.Equal(OrderStatus.PendingInventory, order.Status);
+        Assert.Empty(order.GetDomainEvents());
+    }
+
+    [Fact]
+    public void Expiration_cancellation_is_idempotent()
+    {
+        var order = CreateOrder();
+        order.RequestConfirmation();
+        var expirationCutoff = order.UpdatedAt.AddSeconds(1);
+        order.ClearDomainEvents();
+
+        Assert.True(order.CancelDueToExpiration(expirationCutoff));
+        Assert.False(order.CancelDueToExpiration(expirationCutoff));
+
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+        Assert.Single(order.GetDomainEvents(), x => x is OrderUndoComfirmedDomainEvent);
+    }
+
+    [Fact]
+    public void Confirmed_order_is_not_cancelled_by_expiration()
+    {
+        var order = CreateOrder();
+        order.RequestConfirmation();
+        order.MarkReserved();
+        order.ClearDomainEvents();
+
+        var wasOrderCancelled = order.CancelDueToExpiration(order.UpdatedAt.AddSeconds(1));
+
+        Assert.False(wasOrderCancelled);
+        Assert.Equal(OrderStatus.Confirmed, order.Status);
+        Assert.Empty(order.GetDomainEvents());
     }
 
     [Fact]

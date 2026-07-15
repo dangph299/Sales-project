@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using BuildingBlocks.Infrastructure.Observability.Logging;
 using BuildingBlocks.Web.Authentication;
 using BuildingBlocks.Web.ExceptionHandling;
@@ -9,11 +10,9 @@ using BuildingBlocks.Web.Observability;
 using BuildingBlocks.Web.OpenApi;
 using Hangfire;
 using Hangfire.PostgreSql;
-using MediatR;
 using Microsoft.AspNetCore.Identity;
 using Sales.Api.Middleware;
 using Sales.Application;
-using Sales.Domain;
 using Sales.Infrastructure;
 using Serilog;
 
@@ -77,7 +76,15 @@ public static class ServiceCollectionExtensions
     {
         services.AddHangfire(config => config.UsePostgreSqlStorage(options =>
             options.UseNpgsqlConnection(configuration.GetConnectionString("Hangfire"))));
-        services.AddHangfireServer(options => options.Queues = ["critical", "default", "maintenance"]);
+        services.AddHangfireServer(options =>
+        {
+            options.Queues =
+            [
+                HangfireQueueNames.Critical,
+                HangfireQueueNames.Default,
+                HangfireQueueNames.Maintenance
+            ];
+        });
         return services;
     }
 

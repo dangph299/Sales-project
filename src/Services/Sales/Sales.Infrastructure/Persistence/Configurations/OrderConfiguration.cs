@@ -15,6 +15,7 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         entity.ToTable("orders");
         entity.HasKey(x => x.Id);
         entity.HasIndex(x => x.CreatedAt);
+        entity.HasIndex(x => new { x.Status, x.UpdatedAt, x.Id });
         entity.HasIndex(x => x.CustomerName).HasMethod("gin").HasOperators("gin_trgm_ops");
         entity.HasIndex(x => x.CustomerPhone);
         entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
