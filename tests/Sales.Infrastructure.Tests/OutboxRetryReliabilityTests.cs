@@ -15,6 +15,7 @@ namespace Sales.Infrastructure.Tests;
 /// deterministic (no background loop, no sleeps). Requires <c>RUN_RELIABILITY_TESTS=true</c>.
 /// </summary>
 [Trait("Category", "Reliability")]
+[Collection("SalesReliabilityPostgres")]
 public sealed class OutboxRetryReliabilityTests
 {
     private static readonly DateTimeOffset T0 = new(2026, 7, 15, 12, 0, 0, TimeSpan.Zero);

@@ -6,6 +6,7 @@ using Sales.Domain;
 namespace Sales.Infrastructure.Tests;
 
 [Trait("Category", "Reliability")]
+[Collection("SalesReliabilityPostgres")]
 public sealed class ConfirmOrderConcurrencyTests
 {
     [Fact]
