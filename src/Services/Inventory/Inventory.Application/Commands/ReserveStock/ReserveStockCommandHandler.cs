@@ -7,15 +7,15 @@ namespace Inventory.Application;
 /// and commit are handled by <see cref="InventoryTransactionBehavior{TRequest,TResponse}"/>.
 /// </summary>
 public sealed class ReserveStockCommandHandler(
-    IInventoryRepository inventory,
-    IReservationRepository reservations,
-    IInventoryEventOutbox outbox,
+    IInventoryRepository inventoryRepository,
+    IReservationRepository reservationRepository,
+    IInventoryEventOutbox inventoryEventOutbox,
     IInventoryMetrics metrics) : IRequestHandler<ReserveStockCommand, string>
 {
     /// <inheritdoc/>
     public async Task<string> Handle(ReserveStockCommand request, CancellationToken cancellationToken)
     {
-        var existingReservation = await reservations.GetByOrderIdAsync(request.OrderId, cancellationToken);
+        var existingReservation = await reservationRepository.GetByOrderIdAsync(request.OrderId, cancellationToken);
         var requestedLines = request.Lines.Select(x => new ReservationRequestLine(x.ProductId, x.Sku, x.Quantity)).ToArray();
 
         if (existingReservation?.Status == ReservationStatus.Active)
@@ -44,7 +44,7 @@ public sealed class ReserveStockCommandHandler(
 
         if (existingReservation is null)
         {
-            reservations.Add(Reservation.Create(request.OrderId, request.OrderVersion, requestedLines));
+            reservationRepository.Add(Reservation.Create(request.OrderId, request.OrderVersion, requestedLines));
         }
         else
         {
@@ -55,7 +55,7 @@ public sealed class ReserveStockCommandHandler(
             if (!existingReservation.Reactivate(request.OrderVersion, requestedLines)) return ErrorCodes.StaleReservation;
         }
 
-        outbox.EnqueueStockReserved(request.OrderId, request.OrderVersion, request.CorrelationId, request.EventId);
+        inventoryEventOutbox.EnqueueStockReserved(request.OrderId, request.OrderVersion, request.CorrelationId, request.EventId);
         metrics.RecordReservationReserved();
         return "Reserved";
     }
@@ -97,14 +97,14 @@ public sealed class ReserveStockCommandHandler(
         // itself relies on, so this can only fail if Status is no longer Active — not reachable here
         // since the caller only routes into this method for an Active reservation.
         if (!existingReservation.ReplaceActive(request.OrderVersion, requestedLines)) return "AlreadyReserved";
-        outbox.EnqueueStockReserved(request.OrderId, request.OrderVersion, request.CorrelationId, request.EventId);
+        inventoryEventOutbox.EnqueueStockReserved(request.OrderId, request.OrderVersion, request.CorrelationId, request.EventId);
         metrics.RecordReservationReserved();
         return "ReservedAcknowledged";
     }
 
     private async Task<IReadOnlyCollection<InventoryItem>> LoadItems(IEnumerable<Guid> productIds, CancellationToken cancellationToken)
     {
-        return await inventory.GetByProductIdsAsync(productIds, cancellationToken);
+        return await inventoryRepository.GetByProductIdsAsync(productIds, cancellationToken);
     }
 
     private static OrderLineIntegration? FindRejectedLine(IReadOnlyCollection<OrderLineIntegration> requestLines, IReadOnlyCollection<InventoryItem> items)
@@ -131,7 +131,7 @@ public sealed class ReserveStockCommandHandler(
 
     private void EnqueueStockRejected(ReserveStockCommand request, string sku)
     {
-        outbox.EnqueueStockRejected(
+        inventoryEventOutbox.EnqueueStockRejected(
             request.OrderId,
             request.OrderVersion,
             $"Insufficient stock for {sku}.",

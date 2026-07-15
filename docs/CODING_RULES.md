@@ -249,11 +249,12 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 ## 25. Database Query and Batch Processing Rules
 
 - Không truy vấn database theo từng phần tử trong vòng lặp. Tránh mẫu lấy danh sách ID rồi gọi repository/DbContext lại trong `foreach`, `for`, `Select` hoặc `Task.WhenAll`.
+- Không dùng `Task.WhenAll` để chạy nhiều query trên cùng một `DbContext`. `DbContext` không thread-safe và pattern này vẫn là N+1 query.
 - Batch job, scheduled job, consumer và worker xử lý nhiều bản ghi phải dùng query chuyên biệt trả về entity/projection cần thiết cho use case, bao gồm navigation data bằng `Include`, projection hoặc specification.
 - Batch query phải filter ở database, có `Take(batchSize)`, có thứ tự ổn định trước `Take` như `CreatedAt` rồi `Id`, và không trả về ID nếu handler ngay sau đó cần query lại từng aggregate.
 - Không gọi `SaveChangesAsync` mặc định trong từng vòng lặp. Với batch thông thường, cập nhật aggregate trong memory rồi gọi `SaveChangesAsync` một lần sau vòng lặp.
 - Chỉ gọi `SaveChangesAsync` theo từng item khi use case yêu cầu transaction độc lập, partial success, retry độc lập hoặc không rollback toàn batch; khi đó transaction boundary phải rõ ràng và vẫn không được phát sinh N+1 query.
-- Không nhận diện exception bằng tên type hoặc string matching như `ex.GetType().Name.Contains(...)`. Bắt type cụ thể hoặc exception abstraction dùng chung của application.
+- Không nhận diện exception bằng tên type, full name hoặc message string như `ex.GetType().Name.Contains(...)`, `ex.GetType().FullName.Contains(...)`, hoặc `exception.Message.Contains(...)`. Bắt type cụ thể, mã lỗi provider cụ thể trong Infrastructure, hoặc exception abstraction dùng chung của application.
 - Không dùng bulk update/delete nếu bypass aggregate invariant, domain event, outbox hoặc audit behavior.
 - Không thêm `Include` máy móc; chọn projection cho read side và aggregate loading cho write side theo đúng use case.
 - Khi sinh hoặc refactor code, phải kiểm tra N+1 query, database call trong loop, `SaveChangesAsync` lặp không cần thiết, repository trả ID rồi handler query lại, query thiếu navigation data, thiếu `batchSize`, thiếu thứ tự ổn định, và `Task.WhenAll` chạy song song trên cùng một `DbContext`.

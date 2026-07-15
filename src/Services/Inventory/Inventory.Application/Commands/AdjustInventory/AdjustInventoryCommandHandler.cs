@@ -9,24 +9,29 @@ namespace Inventory.Application;
 /// corrupting stock — the API layer maps that conflict to <c>409 Conflict</c>.
 /// </summary>
 public sealed class AdjustInventoryCommandHandler(
-    IInventoryRepository inventory,
-    IInventoryEventOutbox outbox) : IRequestHandler<AdjustInventoryCommand, InventorySnapshot>
+    IInventoryRepository inventoryRepository,
+    IInventoryEventOutbox inventoryEventOutbox) : IRequestHandler<AdjustInventoryCommand, InventorySnapshot>
 {
     /// <inheritdoc/>
     public async Task<InventorySnapshot> Handle(AdjustInventoryCommand request, CancellationToken cancellationToken)
     {
-        var item = await inventory.GetByProductIdAsync(request.ProductId, cancellationToken);
-        if (item is null)
+        var inventoryItem = await inventoryRepository.GetByProductIdAsync(request.ProductId, cancellationToken);
+        if (inventoryItem is null)
         {
-            item = InventoryItem.Create(request.ProductId, request.Sku, request.QuantityDelta);
-            inventory.Add(item);
+            inventoryItem = InventoryItem.Create(request.ProductId, request.Sku, request.QuantityDelta);
+            inventoryRepository.Add(inventoryItem);
         }
         else
         {
-            item.Adjust(request.QuantityDelta);
+            inventoryItem.Adjust(request.QuantityDelta);
         }
 
-        outbox.EnqueueInventoryAdjusted(request.ProductId, item.Version, request.QuantityDelta, item.Available, request.Actor);
-        return item.ToSnapshot();
+        inventoryEventOutbox.EnqueueInventoryAdjusted(
+            request.ProductId,
+            inventoryItem.Version,
+            request.QuantityDelta,
+            inventoryItem.Available,
+            request.Actor);
+        return inventoryItem.ToSnapshot();
     }
 }
