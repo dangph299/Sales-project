@@ -15,6 +15,12 @@ public sealed class InventoryInbox(
     ILogger<InventoryInbox> logger) : IInventoryInbox
 {
     /// <inheritdoc/>
+    public Task<bool> HasBeenProcessedAsync(Guid eventId, CancellationToken cancellationToken = default)
+    {
+        return db.Inbox.AnyAsync(row => row.EventId == eventId, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public async Task<bool> TryRecordAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
         try

@@ -9,4 +9,11 @@ namespace Sales.Application;
 public sealed record CancelExpiredPendingOrders(
     DateTimeOffset CurrentUtc,
     int ExpirationMinutes,
-    int BatchSize) : ICommand<CancelExpiredPendingOrdersResult>;
+    int BatchSize) : ICommand<CancelExpiredPendingOrdersResult>
+{
+    /// <summary>
+    /// Stable logical name of the maintenance job that issues this command, used for log correlation
+    /// independently of the Hangfire recurring-job identifier declared in Infrastructure.
+    /// </summary>
+    public const string JobName = "CancelExpiredPendingOrders";
+}

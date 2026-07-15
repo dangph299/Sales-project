@@ -321,7 +321,7 @@ sequenceDiagram
 
 - Sales confirm order rồi publish event qua Sales Outbox.
 - Inventory Kafka adapter map envelope thành `ReserveStockCommand` hoặc `ReleaseStockCommand`.
-- Application handler insert Inbox trước để idempotent.
+- `InventoryTransactionBehavior` pre-check Inbox (`HasBeenProcessedAsync`) trước khi mở serializable transaction: mỗi first-delivery tốn thêm một query tồn tại nhẹ, đổi lại event trùng/redelivery đã commit inbox sẽ return sớm, bỏ qua transaction + insert + rollback. Có lợi chủ yếu khi Kafka retry/redelivery nhiều. Insert Inbox trong transaction (`TryRecordAsync` + unique constraint) vẫn là hàng rào correctness cuối cho race hai delivery cùng vượt pre-check.
 - Application handler reserve/release stock trong transaction qua domain methods.
 - Inventory enqueue kết quả vào Inventory Outbox.
 - Inventory Outbox publish `StockReserved`, `StockRejected`, `StockReleased`.
@@ -329,6 +329,7 @@ sequenceDiagram
 Cần lưu ý:
 
 - Hệ thống có Outbox/Inbox và retry, tốt cho mục tiêu không miss event.
+- Pre-check Inbox không thay đổi correctness: atomicity giữa Inbox insert, domain mutation và Outbox vẫn nằm trong một serializable transaction, và `TryRecordAsync` + unique constraint vẫn là barrier trùng lặp có thẩm quyền. Test: `tests/Inventory.Tests/InventoryTransactionBehaviorTests.cs` (fast-path duplicate + race backstop).
 - Case confirmation event mới đến trước release event cũ đã có xử lý delta và test trong `tests/Inventory.Tests/ReserveStockHandlerTests.cs`.
 
 ## 8. CQRS và MediatR

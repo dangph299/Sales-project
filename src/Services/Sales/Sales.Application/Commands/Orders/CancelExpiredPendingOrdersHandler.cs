@@ -55,8 +55,10 @@ public sealed class CancelExpiredPendingOrdersHandler(
                 failedOrderCount++;
                 logger.LogWarning(
                     exception,
-                    "Expired order cancellation failed {OrderId}",
-                    orderId);
+                    "Expired order cancellation failed {OrderId} {ExpiredBeforeUtc} {JobId}",
+                    orderId,
+                    orderUpdatedBefore,
+                    CancelExpiredPendingOrders.JobName);
             }
         }
 
