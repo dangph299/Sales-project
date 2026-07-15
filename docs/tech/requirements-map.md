@@ -492,7 +492,7 @@ flowchart TD
 ### Business job: `CancelExpiredPendingOrders`
 
 - **Business purpose**: tự động hủy các đơn hàng đang mở (`Draft`, `PendingInventory`) không đổi trạng thái quá `ExpirationMinutes` phút, để đơn không treo vô thời hạn. Cấu hình: `SalesRecurringJobs:CancelExpiredPendingOrders` (mặc định cron `*/5 * * * *`, `ExpirationMinutes=30`, `BatchSize=100`).
-- **Queue/Schedule**: recurring trên queue `maintenance`, mỗi 5 phút.
+- **Queue/Schedule**: recurring trên queue `critical` (job nghiệp vụ ảnh hưởng reservation/stock, tách khỏi housekeeping ở `maintenance`), mỗi 5 phút.
 - **Layering**: adapter mỏng `CancelExpiredPendingOrdersJob` (Infrastructure) chỉ dispatch MediatR command `CancelExpiredPendingOrders`; business workflow nằm ở `CancelExpiredPendingOrdersHandler` (Application) + domain method `Order.CancelDueToExpiration(...)`.
 - **Batch**: handler query danh sách ID đủ điều kiện (giới hạn `BatchSize`), load từng aggregate trong scope riêng, một order lỗi không làm hỏng cả batch (đếm scanned/cancelled/skipped/failed).
 - **Concurrency/idempotency**: `CancelDueToExpiration` kiểm tra lại state và `UpdatedAt` so với cutoff nên bỏ qua order đã bị người dùng đổi; optimistic concurrency (`Version`) chặn ghi đè; chạy lặp lại an toàn (order đã cancel → skip). Không thêm distributed lock riêng: overlap được xử lý bằng domain re-check + optimistic concurrency. Hủy đơn `PendingInventory` raise `OrderUndoComfirmedDomainEvent` → Inventory release stock qua Outbox.
