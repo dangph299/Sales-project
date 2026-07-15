@@ -1,6 +1,5 @@
 using BuildingBlocks.Web;
 using BuildingBlocks.Web.OpenApi;
-using Serilog;
 
 namespace Inventory.Api.Extensions;
 
@@ -17,9 +16,7 @@ public static class ApplicationBuilderExtensions
     /// <returns>Application for chaining.</returns>
     public static WebApplication ConfigureApplication(this WebApplication app)
     {
-        app.UseExceptionHandler();
-        app.UseSerilogRequestLogging(RequestLoggingDefaults.Configure);
-        app.UseMiddleware<RequestObservabilityMiddleware>();
+        app.UseBuildingBlocksRequestPipeline();
         app.UseRouting();
         app.UseSwaggerCors();
         app.UseAuthentication();

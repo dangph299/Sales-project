@@ -9,8 +9,10 @@ public sealed class CancelExpiredPendingOrdersHandlerTests
     [Fact]
     public async Task Handler_queries_expired_cancellable_orders_with_batch_size()
     {
-        var currentUtc = DateTimeOffset.Parse("2026-07-15T10:00:00Z");
         var order = CreateDraftOrder();
+        // Derive the cutoff from the order's actual UpdatedAt so the test does not depend on
+        // wall-clock time: cutoff = currentUtc - 30min lands one minute after UpdatedAt.
+        var currentUtc = order.UpdatedAt.AddMinutes(31);
         var repository = new FakeOrderRepository([order.Id], new Dictionary<Guid, Order> { [order.Id] = order });
         var unitOfWork = new FakeUnitOfWork();
         var handler = CreateHandler(repository, unitOfWork);
@@ -69,8 +71,7 @@ public sealed class CancelExpiredPendingOrdersHandlerTests
         var unitOfWork = new FakeUnitOfWork { ThrowOnSaveNumber = 2 };
         var handler = CreateHandler(repository, unitOfWork);
         var currentUtc = orderIds
-            .Select(orderId => orders[orderId].UpdatedAt)
-            .Max()
+            .Max(orderId => orders[orderId].UpdatedAt)
             .AddMinutes(31);
 
         var result = await handler.Handle(new CancelExpiredPendingOrders(currentUtc, 30, 10), CancellationToken.None);
