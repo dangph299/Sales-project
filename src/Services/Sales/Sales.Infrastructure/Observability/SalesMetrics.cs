@@ -5,8 +5,23 @@ namespace Sales.Infrastructure;
 
 internal static class SalesMetrics
 {
-    private static readonly OutboxMetrics Outbox = new("Sales.Infrastructure", "sales");
-    private static readonly InboxMetrics Inbox = new("Sales.Infrastructure", "sales");
+    private const string MeterName = "Sales.Infrastructure";
+
+    private static readonly OutboxMetrics Outbox = new(MeterName, "sales");
+    private static readonly InboxMetrics Inbox = new(MeterName, "sales");
+
+    private static readonly Meter Meter = new(MeterName);
+
+    private static readonly Counter<long> ExpiredOrdersScanned =
+        Meter.CreateCounter<long>("sales.orders.expiration.scanned");
+    private static readonly Counter<long> ExpiredOrdersCancelled =
+        Meter.CreateCounter<long>("sales.orders.expiration.cancelled");
+    private static readonly Counter<long> ExpiredOrdersSkipped =
+        Meter.CreateCounter<long>("sales.orders.expiration.skipped");
+    private static readonly Counter<long> ExpiredOrdersFailed =
+        Meter.CreateCounter<long>("sales.orders.expiration.failed");
+    private static readonly Histogram<double> ExpiredOrdersDuration =
+        Meter.CreateHistogram<double>("sales.orders.expiration.duration", unit: "ms");
 
     /// <summary>Counts outbox rows successfully published to Kafka.</summary>
     public static Counter<long> OutboxPublished => Outbox.Published;
@@ -31,5 +46,27 @@ internal static class SalesMetrics
     public static void SetOutboxSnapshot(long backlog, long deadLetters)
     {
         Outbox.SetSnapshot(backlog, deadLetters);
+    }
+
+    /// <summary>
+    /// Records the outcome of one expired-order cancellation batch.
+    /// </summary>
+    /// <param name="scanned">Number of expired candidate orders scanned.</param>
+    /// <param name="cancelled">Number of orders cancelled.</param>
+    /// <param name="skipped">Number of candidates skipped because they were no longer cancellable.</param>
+    /// <param name="failed">Number of candidates that failed to cancel.</param>
+    /// <param name="elapsedMilliseconds">Wall-clock duration of the batch, in milliseconds.</param>
+    public static void RecordExpiredOrderCancellation(
+        long scanned,
+        long cancelled,
+        long skipped,
+        long failed,
+        double elapsedMilliseconds)
+    {
+        ExpiredOrdersScanned.Add(scanned);
+        ExpiredOrdersCancelled.Add(cancelled);
+        ExpiredOrdersSkipped.Add(skipped);
+        ExpiredOrdersFailed.Add(failed);
+        ExpiredOrdersDuration.Record(elapsedMilliseconds);
     }
 }

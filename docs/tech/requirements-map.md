@@ -489,6 +489,16 @@ flowchart TD
 - Redis lock ngăn nhiều Sales instance cleanup cùng lúc.
 - Inventory cleanup không dùng Hangfire; hosted worker dùng Postgres advisory transaction lock.
 
+### Business job: `CancelExpiredPendingOrders`
+
+- **Business purpose**: tự động hủy các đơn hàng đang mở (`Draft`, `PendingInventory`) không đổi trạng thái quá `ExpirationMinutes` phút, để đơn không treo vô thời hạn. Cấu hình: `SalesRecurringJobs:CancelExpiredPendingOrders` (mặc định cron `*/5 * * * *`, `ExpirationMinutes=30`, `BatchSize=100`).
+- **Queue/Schedule**: recurring trên queue `maintenance`, mỗi 5 phút.
+- **Layering**: adapter mỏng `CancelExpiredPendingOrdersJob` (Infrastructure) chỉ dispatch MediatR command `CancelExpiredPendingOrders`; business workflow nằm ở `CancelExpiredPendingOrdersHandler` (Application) + domain method `Order.CancelDueToExpiration(...)`.
+- **Batch**: handler query danh sách ID đủ điều kiện (giới hạn `BatchSize`), load từng aggregate trong scope riêng, một order lỗi không làm hỏng cả batch (đếm scanned/cancelled/skipped/failed).
+- **Concurrency/idempotency**: `CancelDueToExpiration` kiểm tra lại state và `UpdatedAt` so với cutoff nên bỏ qua order đã bị người dùng đổi; optimistic concurrency (`Version`) chặn ghi đè; chạy lặp lại an toàn (order đã cancel → skip). Không thêm distributed lock riêng: overlap được xử lý bằng domain re-check + optimistic concurrency. Hủy đơn `PendingInventory` raise `OrderUndoComfirmedDomainEvent` → Inventory release stock qua Outbox.
+- **Metrics** (meter `Sales.Infrastructure`, export OTel): `sales.orders.expiration.scanned`, `.cancelled`, `.skipped`, `.failed` (counter) và `.duration` (histogram, ms). Ghi tại adapter sau mỗi batch.
+- **Test**: `tests/Sales.Domain.Tests/OrderTests.cs` (domain rule), `tests/Sales.Application.Tests/CancelExpiredPendingOrdersHandlerTests.cs` (batch/idempotency/concurrency), `tests/Sales.Api.Tests/CancelExpiredPendingOrdersJobTests.cs` (dispatch, rethrow-for-retry, metric emission), `tests/Sales.Infrastructure.Tests/SalesRecurringJobsTests.cs` (bind đúng cron/section, validate tham số).
+
 ## 14. Kafka topic, group, partition
 
 Trạng thái: đã đáp ứng topic/group; topic local được khởi tạo chủ động với 3 partitions và replication factor 1.
