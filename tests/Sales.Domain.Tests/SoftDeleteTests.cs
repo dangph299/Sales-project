@@ -1,5 +1,3 @@
-using Sales.Domain;
-
 namespace Sales.Domain.Tests;
 
 public sealed class SoftDeleteTests

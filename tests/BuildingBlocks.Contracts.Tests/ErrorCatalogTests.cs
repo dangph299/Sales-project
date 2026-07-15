@@ -1,5 +1,4 @@
 using System.Reflection;
-using BuildingBlocks.Contracts;
 using Inventory.Api.Middleware;
 
 namespace BuildingBlocks.Contracts.Tests;

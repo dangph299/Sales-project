@@ -1,5 +1,4 @@
 using BuildingBlocks.Infrastructure;
-using Inventory.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
 namespace Inventory.Infrastructure.Tests;

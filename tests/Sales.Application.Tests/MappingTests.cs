@@ -1,4 +1,3 @@
-using Sales.Application;
 using Sales.Domain;
 
 namespace Sales.Application.Tests;

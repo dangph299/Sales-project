@@ -1,7 +1,5 @@
 using MediatR;
 using Microsoft.Extensions.Logging;
-using Sales.Application;
-using Sales.Domain;
 
 namespace Sales.Application.Tests;
 

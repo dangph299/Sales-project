@@ -1,5 +1,3 @@
-using Sales.Application;
-
 namespace Sales.Infrastructure;
 
 /// <summary>

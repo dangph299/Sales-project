@@ -1,7 +1,4 @@
-using System.Data;
 using BuildingBlocks.Application;
-using Inventory.Application;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Inventory.Infrastructure;
 

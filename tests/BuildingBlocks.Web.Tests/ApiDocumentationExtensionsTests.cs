@@ -1,8 +1,6 @@
 using BuildingBlocks.Web.OpenApi;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 namespace BuildingBlocks.Web.Tests;

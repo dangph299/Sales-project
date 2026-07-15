@@ -1,5 +1,4 @@
 using System.Text.Json;
-using BuildingBlocks.Application;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;

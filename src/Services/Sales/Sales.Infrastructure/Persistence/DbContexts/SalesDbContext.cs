@@ -1,4 +1,3 @@
-using BuildingBlocks.Contracts;
 using BuildingBlocks.Domain;
 using BuildingBlocks.Infrastructure;
 using Microsoft.AspNetCore.Identity;

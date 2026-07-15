@@ -8,7 +8,6 @@ using BuildingBlocks.Web.OpenApi;
 using Inventory.Api.Middleware;
 using Inventory.Application;
 using Inventory.Infrastructure;
-using MediatR;
 using Serilog;
 
 namespace Inventory.Api.Extensions;

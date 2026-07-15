@@ -2,8 +2,6 @@ using AuditLog.Infrastructure;
 using BuildingBlocks.Contracts;
 using KafkaFlow;
 using KafkaFlow.Serializer;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace AuditLog.Worker;
 

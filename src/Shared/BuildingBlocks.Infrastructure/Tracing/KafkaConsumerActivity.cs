@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using BuildingBlocks.Contracts;
 using KafkaFlow;
 using ContractHeaders = BuildingBlocks.Contracts.MessageHeaders;
 

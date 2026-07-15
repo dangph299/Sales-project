@@ -1,5 +1,3 @@
-using MediatR;
-
 namespace Sales.Application;
 
 /// <summary>

@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using Sales.Domain;
 
 namespace Sales.Domain.Tests;
 
