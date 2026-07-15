@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Inventory.Infrastructure.Tests;
 
+[Trait("Category", "Reliability")]
 public sealed class InventoryPostgresReliabilityTests
 {
     [Fact]

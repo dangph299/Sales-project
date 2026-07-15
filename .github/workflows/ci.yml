@@ -3,10 +3,74 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 jobs:
-  build-test:
+  fast-checks:
+    name: Fast checks (build + unit/architecture tests)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        run: dotnet restore Sales.sln
+
+      - name: Build
+        run: dotnet build Sales.sln --no-restore --configuration Release --verbosity:minimal
+
+      # Everything except the reliability suite, which needs live infrastructure.
+      - name: Test (non-reliability)
+        run: >-
+          dotnet test Sales.sln --no-build --no-restore --configuration Release
+          --filter "Category!=Reliability" --verbosity:minimal
+
+      - name: Validate Docker Compose
+        run: docker compose -f docker/docker-compose.yml config
+
+  reliability-tests:
+    name: Reliability tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Reliability tests spin up real databases, so keep them off every pull request:
+    # run on pushes to main and on-demand via the Actions tab.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --quiet --eval 'db.adminCommand({ ping: 1 })'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      RUN_RELIABILITY_TESTS: "true"
+      SALES_TEST_POSTGRES: "Host=localhost;Port=5432;Database=sales_reliability_tests;Username=postgres;Password=postgres"
+      INVENTORY_TEST_POSTGRES: "Host=localhost;Port=5432;Database=inventory_reliability_tests;Username=postgres;Password=postgres"
+      MONGO_TEST_CONNECTION: "mongodb://localhost:27017"
+      MONGO_TEST_DATABASE: "audit_reliability_tests"
 
     steps:
       - name: Checkout
@@ -21,10 +85,31 @@ jobs:
         run: dotnet restore Sales.sln
 
       - name: Build
-        run: dotnet build Sales.sln --no-restore --verbosity:minimal
+        run: dotnet build Sales.sln --no-restore --configuration Release --verbosity:minimal
 
-      - name: Test
-        run: dotnet test Sales.sln --no-build --no-restore --verbosity:minimal
+      # The reliability tests create and migrate their own databases on first connect.
+      - name: Test (reliability)
+        run: >-
+          dotnet test Sales.sln --no-build --no-restore --configuration Release
+          --filter "Category=Reliability"
+          --logger "trx;LogFileName=reliability-tests.trx"
+          --results-directory ${{ github.workspace }}/test-results
 
-      - name: Validate Docker Compose
-        run: docker compose -f docker/docker-compose.yml config
+      - name: Collect service container logs
+        if: failure()
+        run: |
+          mkdir -p ${{ github.workspace }}/test-results
+          for id in $(docker ps -aq); do
+            name=$(docker inspect --format '{{.Name}}' "$id" | tr -d '/')
+            echo "=== $name ($id) ==="
+            docker logs "$id" 2>&1 | tail -300
+            echo
+          done > ${{ github.workspace }}/test-results/service-logs.txt || true
+
+      - name: Upload reliability artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reliability-results
+          path: ${{ github.workspace }}/test-results
+          if-no-files-found: ignore

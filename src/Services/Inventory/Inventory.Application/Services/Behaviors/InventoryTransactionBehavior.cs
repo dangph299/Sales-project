@@ -20,6 +20,18 @@ public sealed class InventoryTransactionBehavior<TRequest, TResponse>(
     /// <inheritdoc/>
     public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
     {
+        // Existence pre-check before opening a serializable transaction. Every first delivery pays one
+        // extra lightweight query here; in return, a duplicate or redelivered event whose inbox record
+        // is already committed returns early and skips the transaction, insert, and rollback below.
+        // This mainly helps when Kafka retries/redeliveries are common. It can race with a concurrent
+        // writer, so the transactional TryRecordAsync insert below stays the authoritative barrier.
+        if (request is IIdempotentCommand<TResponse> preChecked
+            && await inbox.HasBeenProcessedAsync(preChecked.EventId, cancellationToken))
+        {
+            metrics.RecordInboxDuplicate();
+            return preChecked.DuplicateResponse;
+        }
+
         await using var transaction = await transactions.BeginSerializableTransactionAsync(cancellationToken);
         try
         {

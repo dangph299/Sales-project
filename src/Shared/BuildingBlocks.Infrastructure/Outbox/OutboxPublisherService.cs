@@ -57,6 +57,14 @@ public abstract class OutboxPublisherService<TDbContext>(
         }
     }
 
+    /// <summary>
+    /// Runs exactly one claim-and-publish cycle against the supplied context. Exposed to reliability
+    /// tests so the retry and dead-letter state machine can be exercised deterministically against a
+    /// real database without starting the background loop.
+    /// </summary>
+    internal Task RunPublishCycleAsync(TDbContext db, CancellationToken cancellationToken = default)
+        => PublishReadyMessages(db, cancellationToken);
+
     private async Task PublishReadyMessages(TDbContext db, CancellationToken ct)
     {
         var now = utcNow();

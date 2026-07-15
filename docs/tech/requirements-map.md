@@ -321,7 +321,7 @@ sequenceDiagram
 
 - Sales confirm order rồi publish event qua Sales Outbox.
 - Inventory Kafka adapter map envelope thành `ReserveStockCommand` hoặc `ReleaseStockCommand`.
-- Application handler insert Inbox trước để idempotent.
+- `InventoryTransactionBehavior` pre-check Inbox (`HasBeenProcessedAsync`) trước khi mở serializable transaction: mỗi first-delivery tốn thêm một query tồn tại nhẹ, đổi lại event trùng/redelivery đã commit inbox sẽ return sớm, bỏ qua transaction + insert + rollback. Có lợi chủ yếu khi Kafka retry/redelivery nhiều. Insert Inbox trong transaction (`TryRecordAsync` + unique constraint) vẫn là hàng rào correctness cuối cho race hai delivery cùng vượt pre-check.
 - Application handler reserve/release stock trong transaction qua domain methods.
 - Inventory enqueue kết quả vào Inventory Outbox.
 - Inventory Outbox publish `StockReserved`, `StockRejected`, `StockReleased`.
@@ -329,7 +329,10 @@ sequenceDiagram
 Cần lưu ý:
 
 - Hệ thống có Outbox/Inbox và retry, tốt cho mục tiêu không miss event.
+- Pre-check Inbox không thay đổi correctness: atomicity giữa Inbox insert, domain mutation và Outbox vẫn nằm trong một serializable transaction, và `TryRecordAsync` + unique constraint vẫn là barrier trùng lặp có thẩm quyền. Test: `tests/Inventory.Tests/InventoryTransactionBehaviorTests.cs` (fast-path duplicate + race backstop).
 - Case confirmation event mới đến trước release event cũ đã có xử lý delta và test trong `tests/Inventory.Tests/ReserveStockHandlerTests.cs`.
+- Reliability tests: các guarantee (Outbox retry, dead-letter sau `MaxAttempts`, Inbox idempotency, stale event, audit idempotency, optimistic concurrency) được kiểm chứng và mô tả trong `docs/tech/reliability-tests.md`. Test cần database thật gắn `[Trait("Category", "Reliability")]`, gate bằng `RUN_RELIABILITY_TESTS=true`; hai kịch bản cần live Kafka (consumer offset failure, process restart) hiện là thủ tục manual.
+- CI: workflow `.github/workflows/ci.yml` tách `fast-checks` (mọi push/PR) và `reliability-tests` (push `main` hoặc `workflow_dispatch`, có Postgres + Mongo service container, upload trx/log khi fail).
 
 ## 8. CQRS và MediatR
 
@@ -486,6 +489,16 @@ flowchart TD
 - Redis lock ngăn nhiều Sales instance cleanup cùng lúc.
 - Inventory cleanup không dùng Hangfire; hosted worker dùng Postgres advisory transaction lock.
 
+### Business job: `CancelExpiredPendingOrders`
+
+- **Business purpose**: tự động hủy các đơn hàng đang mở (`Draft`, `PendingInventory`) không đổi trạng thái quá `ExpirationMinutes` phút, để đơn không treo vô thời hạn. Cấu hình: `SalesRecurringJobs:CancelExpiredPendingOrders` (mặc định cron `*/5 * * * *`, `ExpirationMinutes=30`, `BatchSize=100`).
+- **Queue/Schedule**: recurring trên queue `critical` (job nghiệp vụ ảnh hưởng reservation/stock, tách khỏi housekeeping ở `maintenance`), mỗi 5 phút.
+- **Layering**: adapter mỏng `CancelExpiredPendingOrdersJob` (Infrastructure) chỉ dispatch MediatR command `CancelExpiredPendingOrders`; business workflow nằm ở `CancelExpiredPendingOrdersHandler` (Application) + domain method `Order.CancelDueToExpiration(...)`.
+- **Batch**: handler query danh sách ID đủ điều kiện (giới hạn `BatchSize`), load từng aggregate trong scope riêng, một order lỗi không làm hỏng cả batch (đếm scanned/cancelled/skipped/failed).
+- **Concurrency/idempotency**: `CancelDueToExpiration` kiểm tra lại state và `UpdatedAt` so với cutoff nên bỏ qua order đã bị người dùng đổi; optimistic concurrency (`Version`) chặn ghi đè; chạy lặp lại an toàn (order đã cancel → skip). Không thêm distributed lock riêng: overlap được xử lý bằng domain re-check + optimistic concurrency. Hủy đơn `PendingInventory` raise `OrderUndoComfirmedDomainEvent` → Inventory release stock qua Outbox.
+- **Metrics** (meter `Sales.Infrastructure`, export OTel): `sales.orders.expiration.scanned`, `.cancelled`, `.skipped`, `.failed` (counter) và `.duration` (histogram, ms). Ghi tại adapter sau mỗi batch.
+- **Test**: `tests/Sales.Domain.Tests/OrderTests.cs` (domain rule), `tests/Sales.Application.Tests/CancelExpiredPendingOrdersHandlerTests.cs` (batch/idempotency/concurrency), `tests/Sales.Api.Tests/CancelExpiredPendingOrdersJobTests.cs` (dispatch, rethrow-for-retry, metric emission), `tests/Sales.Infrastructure.Tests/SalesRecurringJobsTests.cs` (bind đúng cron/section, validate tham số).
+
 ## 14. Kafka topic, group, partition
 
 Trạng thái: đã đáp ứng topic/group; topic local được khởi tạo chủ động với 3 partitions và replication factor 1.
@@ -589,7 +602,12 @@ flowchart LR
 
 ## 17. Monitoring, logging, tracing, metrics
 
-Trạng thái: đã đáp ứng phần chính; demo monitoring được mô tả trong [monitoring-demo.md](monitoring-demo.md). Chưa có dashboard export hoặc screenshot thật được commit.
+Trạng thái: đã đáp ứng phần chính; demo monitoring được mô tả trong [monitoring-demo.md](monitoring-demo.md).
+
+- **Kibana dashboard export**: implemented — `docker/kibana/exports/sales-management-reliability.ndjson` (3 data view, 8 visualization, dashboard `Sales Management Reliability`).
+- **Dashboard import script**: implemented — `docker/kibana/import-dashboards.sh` (idempotent, retry) + service one-shot `kibana-init` trong `docker/docker-compose.yml`. NDJSON soạn theo schema Kibana 9.1, cần xác nhận lại bằng một lần import thật.
+- **Screenshot**: chưa thể tạo trong môi trường hiện tại (không chạy được Docker/Kibana). Vị trí + checklist ở `docs/images/monitoring/README.md`.
+- **Trace demo guide**: implemented — hướng dẫn tìm trace xuyên service, log Seq, retry/dead-letter trong [monitoring-demo.md](monitoring-demo.md).
 
 Code chính:
 

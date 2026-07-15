@@ -1,3 +1,4 @@
+using System.Diagnostics.Metrics;
 using BuildingBlocks.Application;
 using MediatR;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -24,6 +25,39 @@ public sealed class CancelExpiredPendingOrdersJobTests
         Assert.Equal(currentUtc, command.CurrentUtc);
         Assert.Equal(45, command.ExpirationMinutes);
         Assert.Equal(75, command.BatchSize);
+    }
+
+    [Fact]
+    public async Task Job_records_expiration_metrics_for_the_batch()
+    {
+        var measurements = new List<(string Name, double Value)>();
+        using var listener = new MeterListener
+        {
+            InstrumentPublished = (instrument, activeListener) =>
+            {
+                if (instrument.Meter.Name == "Sales.Infrastructure")
+                {
+                    activeListener.EnableMeasurementEvents(instrument);
+                }
+            }
+        };
+        listener.SetMeasurementEventCallback<long>((instrument, value, _, _) => measurements.Add((instrument.Name, value)));
+        listener.SetMeasurementEventCallback<double>((instrument, value, _, _) => measurements.Add((instrument.Name, value)));
+        listener.Start();
+
+        var sender = new FakeSender(new CancelExpiredPendingOrdersResult(3, 2, 1, 0));
+        var job = new CancelExpiredPendingOrdersJob(
+            sender,
+            new FakeClock(DateTimeOffset.UtcNow),
+            NullLogger<CancelExpiredPendingOrdersJob>.Instance);
+
+        await job.ExecuteAsync(30, 100, CancellationToken.None);
+
+        Assert.Contains(("sales.orders.expiration.scanned", 3d), measurements);
+        Assert.Contains(("sales.orders.expiration.cancelled", 2d), measurements);
+        Assert.Contains(("sales.orders.expiration.skipped", 1d), measurements);
+        Assert.Contains(("sales.orders.expiration.failed", 0d), measurements);
+        Assert.Contains(measurements, m => m.Name == "sales.orders.expiration.duration" && m.Value >= 0d);
     }
 
     [Fact]

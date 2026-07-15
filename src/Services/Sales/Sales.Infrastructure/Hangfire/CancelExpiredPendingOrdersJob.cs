@@ -36,6 +36,13 @@ public sealed class CancelExpiredPendingOrdersJob(
                 batchSize),
             cancellationToken);
 
+        SalesMetrics.RecordExpiredOrderCancellation(
+            result.ScannedOrderCount,
+            result.CancelledOrderCount,
+            result.SkippedOrderCount,
+            result.FailedOrderCount,
+            stopwatch.Elapsed.TotalMilliseconds);
+
         logger.LogInformation(
             "CancelExpiredPendingOrdersJob completed {ScannedOrderCount} {CancelledOrderCount} {SkippedOrderCount} {FailedOrderCount} {ElapsedMs}",
             result.ScannedOrderCount,

@@ -28,7 +28,7 @@ public sealed class CancelExpiredPendingOrdersRecurringJobRegistration
     {
         RecurringJobManager.AddOrUpdateRecurringJob<CancelExpiredPendingOrdersJob>(
             SalesRecurringJobIds.CancelExpiredPendingOrders,
-            HangfireQueueNames.Maintenance,
+            HangfireQueueNames.Critical,
             Options.Cron,
             cancelExpiredPendingOrdersJob => cancelExpiredPendingOrdersJob.ExecuteAsync(
                 Options.ExpirationMinutes,

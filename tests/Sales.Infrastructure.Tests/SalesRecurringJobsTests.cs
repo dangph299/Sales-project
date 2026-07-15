@@ -103,7 +103,7 @@ public sealed class SalesRecurringJobsTests
         registration.Register();
 
         Assert.Equal(SalesRecurringJobIds.CancelExpiredPendingOrders, recurringJobManager.AddedRecurringJobId);
-        Assert.Equal(HangfireQueueNames.Maintenance, recurringJobManager.AddedJob?.Queue);
+        Assert.Equal(HangfireQueueNames.Critical, recurringJobManager.AddedJob?.Queue);
         Assert.Equal("*/5 * * * *", recurringJobManager.AddedCronExpression);
         Assert.Equal(typeof(CancelExpiredPendingOrdersJob), recurringJobManager.AddedJob?.Type);
         Assert.Equal(nameof(CancelExpiredPendingOrdersJob.ExecuteAsync), recurringJobManager.AddedJob?.Method.Name);
