@@ -6,6 +6,21 @@ namespace Sales.Infrastructure.Tests;
 public sealed class ReadServiceSpecificationTests
 {
     [Fact]
+    public async Task Product_get_returns_active_product()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var active = Product.Create("sku-active", "Active", 100);
+        await fixture.SeedAsync(active);
+
+        var service = new ProductReadService(fixture.CreateContext());
+
+        var result = await service.GetAsync(active.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(active.Id, result.Id);
+    }
+
+    [Fact]
     public async Task Product_get_excludes_inactive_products()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
@@ -65,6 +80,21 @@ public sealed class ReadServiceSpecificationTests
         var result = await service.SearchAsync(null, 1, 20);
 
         Assert.Equal([active.Id], result.Items.Select(x => x.Id).ToArray());
+    }
+
+    [Fact]
+    public async Task Customer_get_returns_non_deleted_customer()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var active = Customer.Create("Nguyen Van Active", "0901234567");
+        await fixture.SeedAsync(active);
+
+        var service = new CustomerReadService(fixture.CreateContext());
+
+        var result = await service.GetAsync(active.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal(active.Id, result.Id);
     }
 
     [Fact]

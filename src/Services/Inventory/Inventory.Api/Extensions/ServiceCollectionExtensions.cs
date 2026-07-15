@@ -1,6 +1,7 @@
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure.Observability.Logging;
 using BuildingBlocks.Web.Authentication;
+using BuildingBlocks.Web.ExceptionHandling;
 using BuildingBlocks.Web.Extensions;
 using BuildingBlocks.Web.Observability;
 using BuildingBlocks.Web.OpenApi;
@@ -28,7 +29,7 @@ public static class ServiceCollectionExtensions
             config.ConfigureSharedSinks(context.Configuration, "inventory-api"));
 
         builder.Services.AddProblemDetails();
-        builder.Services.AddExceptionHandler<ExceptionHandlingMiddleware>();
+        builder.Services.AddApiExceptionHandling();
         builder.Services.AddSingleton<IErrorMessageProvider, InventoryErrorMessageProvider>();
         builder.Services.AddSingleton<IErrorCatalog, ErrorCatalogResolver>();
         builder.Services.AddControllers();

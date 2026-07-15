@@ -48,7 +48,12 @@ public static class DependencyInjection
     private static IServiceCollection AddSalesReadServices(this IServiceCollection services)
     {
         services.AddScoped<ProductReadService>();
-        services.AddScoped<IProductReadService, CachedProductReadService>();
+        services.AddScoped<IProductReadService>(sp =>
+        {
+            var inner = sp.GetRequiredService<ProductReadService>();
+            var cache = sp.GetRequiredService<IProductCache>();
+            return new CachedProductReadService(inner, cache);
+        });
         services.AddScoped<ICustomerReadService, CustomerReadService>();
         services.AddScoped<IOrderReadService, OrderReadService>();
         return services;

@@ -2,7 +2,9 @@ using System.Text.Json.Serialization;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure.Observability.Logging;
 using BuildingBlocks.Web.Authentication;
+using BuildingBlocks.Web.ExceptionHandling;
 using BuildingBlocks.Web.Extensions;
+using BuildingBlocks.Web.Models;
 using BuildingBlocks.Web.Observability;
 using BuildingBlocks.Web.OpenApi;
 using Hangfire;
@@ -33,7 +35,21 @@ public static class ServiceCollectionExtensions
             config.ConfigureSharedSinks(context.Configuration, "sales-api"));
 
         builder.Services.AddProblemDetails();
-        builder.Services.AddExceptionHandler<ExceptionHandlingMiddleware>();
+        builder.Services.AddApiExceptionHandling(options =>
+        {
+            options.Map<NotFoundException>((_, errorCatalog) =>
+            {
+                var error = errorCatalog.Get(ErrorCodes.NotFound);
+                return new ApiExceptionMapping(404, error.Code, error.Description);
+            });
+
+            options.Map<ConflictException>((exception, errorCatalog) =>
+            {
+                var error = errorCatalog.Get(ErrorCodes.ConcurrencyConflict);
+                var errors = new[] { new ApiError("current_version", exception.CurrentVersion.ToString()) };
+                return new ApiExceptionMapping(409, error.Code, error.Description, errors);
+            });
+        });
         builder.Services.AddSingleton<IErrorMessageProvider, SalesErrorMessageProvider>();
         builder.Services.AddSingleton<IErrorCatalog, ErrorCatalogResolver>();
         builder.Services.AddControllers()

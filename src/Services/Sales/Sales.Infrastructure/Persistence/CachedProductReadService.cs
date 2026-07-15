@@ -7,7 +7,7 @@ namespace Sales.Infrastructure;
 /// falling back to the database for <see cref="GetAsync"/>, and warms the cache on a miss.
 /// <see cref="SearchAsync"/> is not cached and always delegates to the inner service.
 /// </summary>
-public sealed class CachedProductReadService(ProductReadService inner, IProductCache cache) : IProductReadService
+public sealed class CachedProductReadService(IProductReadService inner, IProductCache cache) : IProductReadService
 {
     /// <inheritdoc/>
     public async Task<ProductDto?> GetAsync(Guid id, CancellationToken cancellationToken = default)
@@ -24,7 +24,10 @@ public sealed class CachedProductReadService(ProductReadService inner, IProductC
         }
 
         var product = await inner.GetAsync(id, cancellationToken);
-        if (product is not null) await cache.SetAsync(product, cancellationToken);
+        if (product is not null)
+        {
+            await cache.SetAsync(product, cancellationToken);
+        }
 
         return product;
     }

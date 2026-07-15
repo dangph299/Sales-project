@@ -1,17 +1,20 @@
 using System.Text.Json;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
+using BuildingBlocks.Web.ExceptionHandling;
 using BuildingBlocks.Web.Models;
 using FluentValidation;
 using FluentValidation.Results;
 using Inventory.Api.Middleware;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace Inventory.Api.Tests;
 
-public sealed class ExceptionHandlingMiddlewareTests
+public sealed class ApiExceptionHandlerTests
 {
     [Fact]
     public async Task Concurrency_exception_maps_to_409()
@@ -127,11 +130,14 @@ public sealed class ExceptionHandlingMiddlewareTests
         Assert.DoesNotContain("secret internals", response.Message);
     }
 
-    private static ExceptionHandlingMiddleware CreateMiddleware()
+    private static ApiExceptionHandler CreateMiddleware()
     {
-        return new ExceptionHandlingMiddleware(
-            new ErrorCatalogResolver(new InventoryErrorMessageProvider()),
-            new PostgresPersistenceExceptionClassifier());
+        var errorCatalog = new ErrorCatalogResolver(new InventoryErrorMessageProvider());
+        return new ApiExceptionHandler(
+            errorCatalog,
+            new PostgresPersistenceExceptionClassifier(),
+            Options.Create(new ApiExceptionHandlingOptions()),
+            NullLogger<ApiExceptionHandler>.Instance);
     }
 
     private static DefaultHttpContext CreateContext()

@@ -7,8 +7,7 @@ namespace Inventory.Application;
 /// commands through the inbox before invoking the handler, and committing only after the handler
 /// and inbox bookkeeping both succeed. Any failure — including a persistence-layer concurrency or
 /// uniqueness conflict — rolls the transaction back before the exception is rethrown; translating
-/// that exception into an HTTP response is the API layer's responsibility (see
-/// <c>Inventory.Api/Middleware/ExceptionHandlingMiddleware</c>), so this behavior stays free of
+/// that exception into an HTTP response is the API layer's responsibility, so this behavior stays free of
 /// EF Core/Npgsql-specific types per the Application → Infrastructure dependency rule.
 /// </summary>
 public sealed class InventoryTransactionBehavior<TRequest, TResponse>(

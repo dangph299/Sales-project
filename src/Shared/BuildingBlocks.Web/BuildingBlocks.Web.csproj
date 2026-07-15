@@ -24,4 +24,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.3.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
+  </ItemGroup>
+
 </Project>

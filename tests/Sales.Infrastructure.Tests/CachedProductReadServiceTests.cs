@@ -1,4 +1,6 @@
-using Microsoft.EntityFrameworkCore;
+using BuildingBlocks.Application;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Sales.Application;
 using Sales.Domain;
 
@@ -11,13 +13,29 @@ public sealed class CachedProductReadServiceTests
     {
         var product = ProductDto(Guid.NewGuid(), isActive: true, isDelete: false);
         var cache = new RecordingProductCache(product);
-        var service = new CachedProductReadService(CreateUnavailableInner(), cache);
+        var inner = new RecordingProductReadService();
+        var service = new CachedProductReadService(inner, cache);
 
         var result = await service.GetAsync(product.Id);
 
         Assert.Same(product, result);
+        Assert.Equal(0, inner.GetCalls);
         Assert.False(cache.Removed);
         Assert.Empty(cache.Stored);
+    }
+
+    [Fact]
+    public async Task Get_on_cache_miss_calls_inner_service()
+    {
+        var product = ProductDto(Guid.NewGuid(), isActive: true, isDelete: false);
+        var cache = new RecordingProductCache();
+        var inner = new RecordingProductReadService(product);
+        var service = new CachedProductReadService(inner, cache);
+
+        var result = await service.GetAsync(product.Id);
+
+        Assert.Same(product, result);
+        Assert.Equal(1, inner.GetCalls);
     }
 
     [Fact]
@@ -119,17 +137,50 @@ public sealed class CachedProductReadServiceTests
         Assert.Empty(cache.Stored);
     }
 
+    [Fact]
+    public async Task Get_passes_cancellation_token_to_cache_and_inner_service()
+    {
+        var id = Guid.NewGuid();
+        using var cancellationTokenSource = new CancellationTokenSource();
+        var cache = new RecordingProductCache();
+        var inner = new RecordingProductReadService();
+        var service = new CachedProductReadService(inner, cache);
+
+        await service.GetAsync(id, cancellationTokenSource.Token);
+
+        Assert.Equal(cancellationTokenSource.Token, cache.LastGetToken);
+        Assert.Equal(cancellationTokenSource.Token, inner.LastGetToken);
+    }
+
+    [Fact]
+    public void Product_read_service_registration_resolves_decorator_without_circular_dependency()
+    {
+        var services = new ServiceCollection();
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Sales"] = "Host=localhost;Database=sales_test;Username=test;Password=test",
+                ["ConnectionStrings:Redis"] = "localhost:6379",
+                ["Kafka:Brokers:0"] = "localhost:9092"
+            })
+            .Build();
+
+        services.AddSalesInfrastructure(configuration);
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateScopes = true
+        });
+        using var scope = provider.CreateScope();
+
+        var service = scope.ServiceProvider.GetRequiredService<IProductReadService>();
+
+        Assert.IsType<CachedProductReadService>(service);
+    }
+
     private static ProductDto ProductDto(Guid id, bool isActive, bool isDelete)
     {
         return new ProductDto(id, "SKU", "Keyboard", 100, isActive, 1, DateTimeOffset.UtcNow, isDelete, null, isDelete ? DateTimeOffset.UtcNow : null);
-    }
-
-    private static ProductReadService CreateUnavailableInner()
-    {
-        var options = new DbContextOptionsBuilder<SalesDbContext>()
-            .UseSqlite("Data Source=:memory:")
-            .Options;
-        return new ProductReadService(new SalesDbContext(options, new TestExecutionContext()));
     }
 
     private sealed class RecordingProductCache(ProductDto? value = null) : IProductCache
@@ -137,9 +188,11 @@ public sealed class CachedProductReadServiceTests
         public List<ProductDto> Stored { get; } = [];
         public bool Removed { get; private set; }
         public Guid? RemovedId { get; private set; }
+        public CancellationToken LastGetToken { get; private set; }
 
         public Task<ProductDto?> GetAsync(Guid id, CancellationToken cancellationToken = default)
         {
+            LastGetToken = cancellationToken;
             return Task.FromResult(value is not null && value.Id == id ? value : null);
         }
 
@@ -159,4 +212,25 @@ public sealed class CachedProductReadServiceTests
         }
     }
 
+    private sealed class RecordingProductReadService(ProductDto? value = null) : IProductReadService
+    {
+        public int GetCalls { get; private set; }
+        public CancellationToken LastGetToken { get; private set; }
+
+        public Task<ProductDto?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            GetCalls++;
+            LastGetToken = cancellationToken;
+            return Task.FromResult(value is not null && value.Id == id ? value : null);
+        }
+
+        public Task<PagedResult<ProductDto>> SearchAsync(
+            string? name,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException("Search is not used by these tests.");
+        }
+    }
 }

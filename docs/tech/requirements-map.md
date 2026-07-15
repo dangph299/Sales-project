@@ -204,7 +204,7 @@ Code chính:
 - ETag helper: `src/Services/Sales/Sales.Api/Extensions/ControllerEtagExtensions.cs`
 - Controller dùng `If-Match`: `src/Services/Sales/Sales.Api/Controllers/OrdersController.cs`
 - Conflict exception: `src/Services/Sales/Sales.Application/Services/ConflictException.cs`
-- Exception mapping 409: `src/Services/Sales/Sales.Api/Middleware/ExceptionHandlingMiddleware.cs`
+- Exception mapping 409: `src/Shared/BuildingBlocks.Web/ExceptionHandling/ApiExceptionHandler.cs` + Sales `AddApiExceptionHandling(...)` configuration in `src/Services/Sales/Sales.Api/Extensions/ServiceCollectionExtensions.cs`
 - Test: `tests/Sales.Infrastructure.Tests/ConfirmOrderConcurrencyTests.cs`
 
 Cách hoạt động:
