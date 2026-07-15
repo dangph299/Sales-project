@@ -1,14 +1,9 @@
 using BuildingBlocks.Contracts;
-using BuildingBlocks.Infrastructure.Observability.Logging;
-using BuildingBlocks.Web.Authentication;
-using BuildingBlocks.Web.ExceptionHandling;
-using BuildingBlocks.Web.Extensions;
-using BuildingBlocks.Web.Observability;
-using BuildingBlocks.Web.OpenApi;
+using BuildingBlocks.Observability;
+using BuildingBlocks.Web;
 using Inventory.Api.Middleware;
 using Inventory.Application;
 using Inventory.Infrastructure;
-using Serilog;
 
 namespace Inventory.Api.Extensions;
 
@@ -17,6 +12,8 @@ namespace Inventory.Api.Extensions;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
+    private const string ServiceName = "inventory-api";
+
     /// <summary>
     /// Registers all services required by the Inventory API host.
     /// </summary>
@@ -24,28 +21,21 @@ public static class ServiceCollectionExtensions
     /// <returns>Builder for chaining.</returns>
     public static WebApplicationBuilder AddApplicationServices(this WebApplicationBuilder builder)
     {
-        builder.Host.UseSerilog((context, config) =>
-            config.ConfigureSharedSinks(context.Configuration, "inventory-api"));
+        builder.AddBuildingBlocksLogging(ServiceName);
 
-        builder.Services.AddProblemDetails();
-        builder.Services.AddApiExceptionHandling();
+        builder.Services.AddBuildingBlocksWeb(builder.Configuration, options =>
+        {
+            options.ServiceName = ServiceName;
+            options.ApiTitle = "Inventory API";
+            options.ApiDescription = "Inventory service API for stock queries, reservations, and stock adjustments.";
+            options.ActivitySourceName = InventoryObservability.KafkaActivitySourceName;
+            options.MeterName = "Inventory.Infrastructure";
+        });
+
         builder.Services.AddSingleton<IErrorMessageProvider, InventoryErrorMessageProvider>();
-        builder.Services.AddSingleton<IErrorCatalog, ErrorCatalogResolver>();
-        builder.Services.AddControllers();
-        builder.Services.AddSharedApiModelResponses();
-        builder.Services.AddApiDocumentation(
-            "Inventory API",
-            "Inventory service API for stock queries, reservations, and stock adjustments.");
         builder.Services.AddSwaggerCors(builder.Environment);
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AdjustInventoryCommand>());
         builder.Services.AddInventoryApplication();
         builder.Services.AddInventoryInfrastructure(builder.Configuration);
-        builder.Services.AddJwtAuthentication(builder.Configuration);
-        builder.Services.AddAuthorization();
-        builder.Services.AddApplicationObservability(
-            builder.Configuration,
-            InventoryObservability.KafkaActivitySourceName,
-            "Inventory.Infrastructure");
 
         return builder;
     }

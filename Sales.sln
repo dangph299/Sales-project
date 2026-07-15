@@ -71,6 +71,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks.Contracts.Te
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks.Infrastructure.Tests", "tests\BuildingBlocks.Infrastructure.Tests\BuildingBlocks.Infrastructure.Tests.csproj", "{7D49BBA7-1B0F-44CE-8472-D29C6FCEF409}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks.Observability", "src\Shared\BuildingBlocks.Observability\BuildingBlocks.Observability.csproj", "{06E756AF-D82F-413D-9429-8B948163125A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -405,6 +407,18 @@ Global
 		{7D49BBA7-1B0F-44CE-8472-D29C6FCEF409}.Release|x64.Build.0 = Release|Any CPU
 		{7D49BBA7-1B0F-44CE-8472-D29C6FCEF409}.Release|x86.ActiveCfg = Release|Any CPU
 		{7D49BBA7-1B0F-44CE-8472-D29C6FCEF409}.Release|x86.Build.0 = Release|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Debug|x64.Build.0 = Debug|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Debug|x86.Build.0 = Debug|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Release|x64.ActiveCfg = Release|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Release|x64.Build.0 = Release|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Release|x86.ActiveCfg = Release|Any CPU
+		{06E756AF-D82F-413D-9429-8B948163125A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -441,5 +455,6 @@ Global
 		{2E524724-1CCF-4D2B-B08C-514A92A81794} = {C8E42992-5E42-0C2B-DBFE-AA848D06431C}
 		{FD3CA9B1-FB45-474A-B094-1F5D2BE6E1C1} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{7D49BBA7-1B0F-44CE-8472-D29C6FCEF409} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{06E756AF-D82F-413D-9429-8B948163125A} = {C8E42992-5E42-0C2B-DBFE-AA848D06431C}
 	EndGlobalSection
 EndGlobal

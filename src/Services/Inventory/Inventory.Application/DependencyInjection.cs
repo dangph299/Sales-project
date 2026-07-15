@@ -19,6 +19,7 @@ public static class DependencyInjection
     /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddInventoryApplication(this IServiceCollection services)
     {
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<AdjustInventoryCommand>());
         services.AddValidatorsFromAssemblyContaining<AdjustInventoryCommandValidator>();
         services.AddApplicationBuildingBlocks();
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(InventoryTransactionBehavior<,>));

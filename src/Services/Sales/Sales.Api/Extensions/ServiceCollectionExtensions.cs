@@ -1,20 +1,16 @@
 using System.Text.Json.Serialization;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
-using BuildingBlocks.Infrastructure.Observability.Logging;
-using BuildingBlocks.Web.Authentication;
+using BuildingBlocks.Observability;
+using BuildingBlocks.Web;
 using BuildingBlocks.Web.ExceptionHandling;
-using BuildingBlocks.Web.Extensions;
 using BuildingBlocks.Web.Models;
-using BuildingBlocks.Web.Observability;
-using BuildingBlocks.Web.OpenApi;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Identity;
 using Sales.Api.Middleware;
 using Sales.Application;
 using Sales.Infrastructure;
-using Serilog;
 
 namespace Sales.Api.Extensions;
 
@@ -23,6 +19,8 @@ namespace Sales.Api.Extensions;
 /// </summary>
 public static class ServiceCollectionExtensions
 {
+    private const string ServiceName = "sales-api";
+
     /// <summary>
     /// Registers all services required by the Sales API host.
     /// </summary>
@@ -30,46 +28,44 @@ public static class ServiceCollectionExtensions
     /// <returns>Builder for chaining.</returns>
     public static WebApplicationBuilder AddApplicationServices(this WebApplicationBuilder builder)
     {
-        builder.Host.UseSerilog((context, config) =>
-            config.ConfigureSharedSinks(context.Configuration, "sales-api"));
+        builder.AddBuildingBlocksLogging(ServiceName);
 
-        builder.Services.AddProblemDetails();
-        builder.Services.AddApiExceptionHandling(options =>
+        builder.Services.AddBuildingBlocksWeb(builder.Configuration, options =>
         {
-            options.Map<NotFoundException>((_, errorCatalog) =>
-            {
-                var error = errorCatalog.Get(ErrorCodes.NotFound);
-                return new ApiExceptionMapping(404, error.Code, error.Description);
-            });
-
-            options.Map<ConflictException>((exception, errorCatalog) =>
-            {
-                var error = errorCatalog.Get(ErrorCodes.ConcurrencyConflict);
-                var errors = new[] { new ApiError("current_version", exception.CurrentVersion.ToString()) };
-                return new ApiExceptionMapping(409, error.Code, error.Description, errors);
-            });
+            options.ServiceName = ServiceName;
+            options.ApiTitle = "Sales API";
+            options.ApiDescription = "Sales service API for authentication, products, customers, and orders.";
+            options.ActivitySourceName = SalesObservability.KafkaActivitySourceName;
+            options.MeterName = "Sales.Infrastructure";
+            options.JwtClockSkew = TimeSpan.FromSeconds(30);
+            options.ConfigureExceptions = ConfigureSalesExceptions;
+            options.ConfigureControllers = controllers => controllers.AddJsonOptions(json =>
+                json.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
         });
+
         builder.Services.AddSingleton<IErrorMessageProvider, SalesErrorMessageProvider>();
-        builder.Services.AddSingleton<IErrorCatalog, ErrorCatalogResolver>();
-        builder.Services.AddControllers()
-            .AddJsonOptions(options => options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
-        builder.Services.AddSharedApiModelResponses();
-        builder.Services.AddApiDocumentation(
-            "Sales API",
-            "Sales service API for authentication, products, customers, and orders.");
-        builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<CreateProduct>());
         builder.Services.AddSalesApplication();
         builder.Services.AddSalesInfrastructure(builder.Configuration);
         builder.Services.AddSalesBackgroundJobs(builder.Configuration);
         builder.Services.AddSalesIdentity();
-        builder.Services.AddJwtAuthentication(builder.Configuration, TimeSpan.FromSeconds(30));
-        builder.Services.AddAuthorization();
-        builder.Services.AddApplicationObservability(
-            builder.Configuration,
-            SalesObservability.KafkaActivitySourceName,
-            "Sales.Infrastructure");
 
         return builder;
+    }
+
+    private static void ConfigureSalesExceptions(ApiExceptionHandlingOptions options)
+    {
+        options.Map<NotFoundException>((_, errorCatalog) =>
+        {
+            var error = errorCatalog.Get(ErrorCodes.NotFound);
+            return new ApiExceptionMapping(404, error.Code, error.Description);
+        });
+
+        options.Map<ConflictException>((exception, errorCatalog) =>
+        {
+            var error = errorCatalog.Get(ErrorCodes.ConcurrencyConflict);
+            var errors = new[] { new ApiError("current_version", exception.CurrentVersion.ToString()) };
+            return new ApiExceptionMapping(409, error.Code, error.Description, errors);
+        });
     }
 
     private static IServiceCollection AddSalesBackgroundJobs(this IServiceCollection services, IConfiguration configuration)
