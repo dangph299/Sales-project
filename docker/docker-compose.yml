@@ -119,6 +119,19 @@ services:
     ports: ["4317:4317", "4318:4318"]
     depends_on: [apm-server]
 
+  # One-shot: imports the Sales/Inventory Kibana dashboard once Kibana is available.
+  # The script polls Kibana's status API, so it tolerates Kibana still starting up.
+  # Idempotent (overwrite=true); safe to leave in the stack across restarts.
+  kibana-init:
+    image: curlimages/curl:8.11.0
+    depends_on: [kibana, apm-server]
+    environment:
+      KIBANA_URL: http://kibana:5601
+    volumes:
+      - ./kibana:/opt/kibana-init:ro
+    entrypoint: ["sh", "/opt/kibana-init/import-dashboards.sh"]
+    restart: "no"
+
   sales-api:
     mem_limit: 512m
     build:

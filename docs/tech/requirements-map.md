@@ -602,7 +602,12 @@ flowchart LR
 
 ## 17. Monitoring, logging, tracing, metrics
 
-Trạng thái: đã đáp ứng phần chính; demo monitoring được mô tả trong [monitoring-demo.md](monitoring-demo.md). Chưa có dashboard export hoặc screenshot thật được commit.
+Trạng thái: đã đáp ứng phần chính; demo monitoring được mô tả trong [monitoring-demo.md](monitoring-demo.md).
+
+- **Kibana dashboard export**: implemented — `docker/kibana/exports/sales-management-reliability.ndjson` (3 data view, 8 visualization, dashboard `Sales Management Reliability`).
+- **Dashboard import script**: implemented — `docker/kibana/import-dashboards.sh` (idempotent, retry) + service one-shot `kibana-init` trong `docker/docker-compose.yml`. NDJSON soạn theo schema Kibana 9.1, cần xác nhận lại bằng một lần import thật.
+- **Screenshot**: chưa thể tạo trong môi trường hiện tại (không chạy được Docker/Kibana). Vị trí + checklist ở `docs/images/monitoring/README.md`.
+- **Trace demo guide**: implemented — hướng dẫn tìm trace xuyên service, log Seq, retry/dead-letter trong [monitoring-demo.md](monitoring-demo.md).
 
 Code chính:
 

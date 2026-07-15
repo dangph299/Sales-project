@@ -91,8 +91,9 @@ Trạng thái hiện tại:
 
 Cần lưu ý:
 
-- Chưa có dashboard export hoặc screenshot thật trong repo.
-- Code không tự tạo dashboard.
+- Đã có dashboard export `docker/kibana/exports/sales-management-reliability.ndjson` + import script `docker/kibana/import-dashboards.sh` + service `kibana-init` tự import khi `docker compose up`.
+- NDJSON soạn thủ công theo schema Kibana 9.1, **cần xác nhận lại bằng một lần import thật** trên stack đang chạy.
+- Screenshot chưa chụp được (không chạy Docker/Kibana trong môi trường hiện tại); vị trí + checklist ở `docs/images/monitoring/README.md`.
 
 ### Inventory đã refactor sang MediatR/CQRS
 
