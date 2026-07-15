@@ -245,3 +245,31 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 - Do not rename existing public error codes without checking backward compatibility.
 - Do not map every `DbUpdateException` to HTTP 409.
 - Domain projects must not depend on API or Infrastructure error handling.
+
+## 25. Database Query and Batch Processing Rules
+
+- Không truy vấn database theo từng phần tử trong vòng lặp. Tránh mẫu lấy danh sách ID rồi gọi repository/DbContext lại trong `foreach`, `for`, `Select` hoặc `Task.WhenAll`.
+- Batch job, scheduled job, consumer và worker xử lý nhiều bản ghi phải dùng query chuyên biệt trả về entity/projection cần thiết cho use case, bao gồm navigation data bằng `Include`, projection hoặc specification.
+- Batch query phải filter ở database, có `Take(batchSize)`, có thứ tự ổn định trước `Take` như `CreatedAt` rồi `Id`, và không trả về ID nếu handler ngay sau đó cần query lại từng aggregate.
+- Không gọi `SaveChangesAsync` mặc định trong từng vòng lặp. Với batch thông thường, cập nhật aggregate trong memory rồi gọi `SaveChangesAsync` một lần sau vòng lặp.
+- Chỉ gọi `SaveChangesAsync` theo từng item khi use case yêu cầu transaction độc lập, partial success, retry độc lập hoặc không rollback toàn batch; khi đó transaction boundary phải rõ ràng và vẫn không được phát sinh N+1 query.
+- Không nhận diện exception bằng tên type hoặc string matching như `ex.GetType().Name.Contains(...)`. Bắt type cụ thể hoặc exception abstraction dùng chung của application.
+- Không dùng bulk update/delete nếu bypass aggregate invariant, domain event, outbox hoặc audit behavior.
+- Không thêm `Include` máy móc; chọn projection cho read side và aggregate loading cho write side theo đúng use case.
+- Khi sinh hoặc refactor code, phải kiểm tra N+1 query, database call trong loop, `SaveChangesAsync` lặp không cần thiết, repository trả ID rồi handler query lại, query thiếu navigation data, thiếu `batchSize`, thiếu thứ tự ổn định, và `Task.WhenAll` chạy song song trên cùng một `DbContext`.
+
+## 26. Meaningful Naming Rules
+
+- Tên phải thể hiện business intent, không chỉ thể hiện kiểu dữ liệu.
+- Collection dùng danh từ số nhiều; một entity dùng danh từ số ít.
+- ID phải có tên đối tượng sở hữu, ví dụ `orderId`, `customerId`, `outboxMessageId`; tránh `id`, `ids`, `entityId` trong phạm vi lớn.
+- Trạng thái phải gắn với đối tượng và bước nghiệp vụ, ví dụ `expiredPendingInventoryOrders`, không dùng `pending` hoặc `expired` đứng một mình.
+- Boolean phải đọc được như một câu hỏi hoặc kết quả, ví dụ `canCancelOrder`, `wasOrderCancelled`, `hasInventoryReservationExpired`.
+- Thời gian phải thể hiện vai trò nghiệp vụ, ví dụ `inventoryExpirationCutoff`, `reservationExpiresAt`, `processingStartedAt`; không dùng `date`, `time`, `before` khi thiếu ngữ cảnh.
+- Số lượng phải thể hiện đối tượng được đếm, ví dụ `cancelledOrderCount`, `maximumOrderCount`, `processedOutboxMessageCount`.
+- Repository dependency dùng số ít theo aggregate, ví dụ `orderRepository`, `productRepository`; tránh đặt tên dependency là `orders` hoặc `products`.
+- Hạn chế viết tắt như `uow`, `repo`, `ctx`, `ct`, `req`, `res`, `msg`, `evt`, `cmd`, `qry` trong public API, constructor và method dài.
+- Không dùng tên chung chung như `data`, `item`, `value`, `result`, `model`, `entity`, `object` nếu có thể đặt tên nghiệp vụ rõ hơn.
+- Không đổi tên integration contract, API contract hoặc database field mà không đánh giá compatibility và migration/consumer impact.
+- Không dùng bulk rename chỉ để tên dài hơn; tên mới phải làm rõ đối tượng, trạng thái, vai trò hoặc boundary nghiệp vụ.
+- AI-generated code phải tự review naming trước khi hoàn tất, đặc biệt ở handler, repository contract, background job, consumer, log property và test mô tả business behavior.
