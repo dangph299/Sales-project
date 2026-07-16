@@ -9,13 +9,20 @@ namespace Sales.Infrastructure.Tests;
 [Collection("SalesReliabilityPostgres")]
 public sealed class OutboxReliabilityTests
 {
-    [Fact]
+    private readonly PostgresReliabilityFixture _fixture;
+
+    public OutboxReliabilityTests(PostgresReliabilityFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    [SkippableFact]
     public async Task Postgres_migration_contains_outbox_reliability_columns_and_replay_resets_dead_letter()
     {
-        if (!ReliabilityTestSettings.Enabled) return;
+        Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
 
         var options = new DbContextOptionsBuilder<SalesDbContext>()
-            .UseNpgsql(ReliabilityTestSettings.SalesPostgresConnectionString)
+            .UseNpgsql(_fixture.ConnectionString)
             .Options;
 
         await using var db = new SalesDbContext(options, new TestExecutionContext());

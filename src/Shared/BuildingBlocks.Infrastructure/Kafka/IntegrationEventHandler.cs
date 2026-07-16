@@ -42,17 +42,25 @@ public abstract class IntegrationEventHandler<THandler>(
                     context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId,
                     failure?.Attempts, failure?.DeadLettered, sw.ElapsedMilliseconds);
 
-                if (failure?.DeadLettered == true)
+                // No failure recorder means we have nowhere to persist the event for retry, so rethrow
+                // to surface the loss loudly rather than swallow it silently.
+                if (failure is null)
+                {
+                    throw;
+                }
+
+                if (failure.DeadLettered)
                 {
                     logger.LogError(
                         "Inbound message dead-lettered {EventType} {Topic} {GroupId} {Partition} {Offset} {MessageId} {Attempts}",
                         envelope.EventType, context.ConsumerContext.Topic, context.ConsumerContext.GroupId,
                         context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId,
                         failure.Attempts);
-                    return;
                 }
 
-                throw;
+                // Do not rethrow: KafkaFlow commits the offset regardless, so a throw would drop the
+                // event rather than retry it. The failure is now durably recorded in the inbox and the
+                // InboxRedriveService owns retry with exponential backoff and dead-lettering.
             }
         }
     }

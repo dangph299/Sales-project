@@ -63,19 +63,9 @@ public sealed class ApiExceptionHandler(
             return CreateMapping(400, ErrorCodes.Validation, validationException.ToValidationErrors());
         }
 
-        if (IsDomainException(exception))
-        {
-            return CreateMapping(400, ErrorCodes.InvalidOperation);
-        }
-
         if (exception is UnauthorizedAccessException)
         {
             return CreateMapping(401, ErrorCodes.Unauthorized);
-        }
-
-        if (exception.GetType().Name == "ForbiddenException")
-        {
-            return CreateMapping(403, ErrorCodes.Forbidden);
         }
 
         if (exception is BadHttpRequestException badRequestException)
@@ -104,11 +94,5 @@ public sealed class ApiExceptionHandler(
     {
         var error = errorCatalog.Get(errorCode);
         return new ApiExceptionMapping(statusCode, error.Code, error.Description, null, validationErrors);
-    }
-
-    private static bool IsDomainException(Exception exception)
-    {
-        var exceptionType = exception.GetType();
-        return exceptionType.Name == "DomainException" || exceptionType.BaseType?.Name == "DomainException";
     }
 }

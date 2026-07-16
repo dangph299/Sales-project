@@ -182,6 +182,8 @@ publish `StockRejected` rồi Sales consume trễ hơn 30s; sau vài chục giâ
 - Inventory inbox đã nhận event confirm chưa.
 - Inventory outbox có `inventory.stock-reserved.v1` hoặc `inventory.stock-rejected.v1` chưa.
 - Sales inbox có nhận event kết quả từ Inventory chưa.
+- Nếu inbox row có `Status = Failed`, kiểm tra `LastError`, `Attempts`, `NextAttemptAt`, `Payload`; event sẽ được `InventoryInboxRedriveService` hoặc `SalesInboxRedriveService` replay khi đến hạn.
+- Nếu inbox row có `Status = DeadLettered`, sửa nguyên nhân trong `LastError` rồi reset row để redrive lại thay vì chờ Kafka gửi lại.
 - Nếu Inventory đã ghi inbox cho confirm version mới nhưng không publish result, kiểm tra case event giữa confirm/undo đến lệch topic; code hiện dùng `Reservation.LastOrderVersion` để chặn release stale.
 
 ## 6. Bước 4 — Đối chiếu với Seq logs

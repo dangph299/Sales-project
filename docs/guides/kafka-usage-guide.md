@@ -79,7 +79,7 @@ kafka:
 - Trong Docker network, app dùng broker `kafka:9092`.
 - Từ máy host, có thể dùng `localhost:9094`.
 - Kafka chạy KRaft mode, không cần ZooKeeper.
-- Local vẫn bật auto-create topic như fallback, nhưng các topic nghiệp vụ trong `KafkaTopics.cs` được tạo chủ động bởi service `kafka-init` với 3 partitions và replication factor 1.
+- Local tắt `KAFKA_AUTO_CREATE_TOPICS_ENABLE`; toàn bộ topic nghiệp vụ trong `KafkaTopics.cs` được tạo chủ động bởi service `kafka-init` với 3 partitions và replication factor 1. Việc này tránh producer/consumer vô tình auto-create topic sai partition count và làm hỏng ordering theo aggregate.
 
 Chạy:
 
@@ -349,15 +349,18 @@ public sealed class SalesIntegrationEventHandler : IMessageHandler<EventEnvelope
 Logic:
 
 ```text
-1. Insert EventId vào inbox_messages trong transaction
-2. Nếu duplicate EventId -> rollback và return success
-3. Load Order theo AggregateId
-4. Switch EventType:
+1. SalesIntegrationEventHandler deserialize envelope và gọi SalesInventoryEventProcessor
+2. Processor mở transaction và đọc inbox_messages theo EventId
+3. Nếu chưa có row -> insert Inbox Processed
+4. Nếu row Processed/DeadLettered -> rollback và return Duplicate
+5. Nếu row Failed -> chuyển lại Processed để phục vụ redrive
+6. Load Order theo AggregateId
+7. Switch EventType:
    - StockReserved -> order.MarkReserved()
    - StockRejected -> order.RejectInventory(reason)
    - StockReleased -> hiện chưa đổi trạng thái thêm
-5. SaveChanges
-6. Commit transaction
+8. SaveChanges
+9. Commit transaction
 ```
 
 Vì sao insert Inbox trước?
@@ -365,6 +368,7 @@ Vì sao insert Inbox trước?
 - Kafka là at-least-once, message có thể đến lại.
 - `EventId` unique giúp consumer xử lý idempotent.
 - Duplicate thì bỏ qua, không update order lần hai.
+- Row `Failed` được phép xử lý lại để `SalesInboxRedriveService` có thể replay event đã lưu payload.
 
 ## 11. Kafka khởi tạo trong Inventory.Api như thế nào?
 
@@ -429,40 +433,46 @@ sales.order-undo-confirmation-requested.v1
 Logic confirmation:
 
 ```text
-1. Begin transaction Serializable
-2. Insert EventId vào Inbox
-3. Nếu duplicate -> rollback và return success
-4. Deserialize OrderConfirmationRequested
-5. Load Reservation theo orderId
-6. Nếu Reservation đang Active:
+1. InventoryEventHandler deserialize envelope và gọi InventoryIntegrationEventProcessor
+2. Processor map EventType sang ReserveStockCommand hoặc ReleaseStockCommand rồi dispatch qua MediatR
+3. InventoryTransactionBehavior pre-check inbox Processed/DeadLettered để skip duplicate
+4. Begin transaction Serializable
+5. TryRecordAsync insert Inbox Processed hoặc chuyển row Failed -> Processed khi redrive
+6. Nếu duplicate -> rollback và return DuplicateResponse
+7. Handler deserialize OrderConfirmationRequested payload từ command
+8. Load Reservation theo orderId
+9. Nếu Reservation đang Active:
      nếu event version <= LastOrderVersion -> AlreadyReserved
      nếu event version mới hơn -> cập nhật LastOrderVersion, enqueue inventory.stock-reserved.v1
-7. Load InventoryItem theo ProductId
-8. Nếu thiếu hàng:
+10. Load InventoryItem theo ProductId
+11. Nếu thiếu hàng:
      enqueue inventory.stock-rejected.v1 vào Inventory Outbox
-9. Nếu đủ hàng:
+12. Nếu đủ hàng:
      item.Reserve(quantity)
      tạo Reservation hoặc Reactivate reservation đã Released
      enqueue inventory.stock-reserved.v1 vào Inventory Outbox
-10. SaveChanges
-11. Commit
+13. SaveChanges
+14. Commit
 ```
 
 Logic cancellation:
 
 ```text
 1. Load Reservation theo orderId
-2. Nếu không có hoặc đã Released -> return
-3. Nếu envelope.Version <= reservation.LastOrderVersion -> StaleRelease, không release stock
-4. Release từng InventoryItem
-5. reservation.Release(envelope.Version)
-6. enqueue inventory.stock-released.v1 vào Outbox
+2. Nếu không có reservation -> tạo Released tombstone với OrderVersion hiện tại, return ReleasedBeforeReserve
+3. Nếu đã Released -> return AlreadyReleased
+4. Nếu envelope.Version <= reservation.LastOrderVersion -> StaleRelease, không release stock
+5. Release từng InventoryItem
+6. reservation.Release(envelope.Version)
+7. enqueue inventory.stock-released.v1 vào Outbox
 ```
 
 Vì `sales.order-confirmation-requested.v1` và `sales.order-undo-confirmation-requested.v1`
 là 2 topic khác nhau, Kafka không đảm bảo thứ tự tương đối giữa 2 topic. `LastOrderVersion`
 là guard để case `confirm v10` đến trước `undo v9` không làm reservation bị release ngược
-sau đó. Regression chính nằm ở `tests/Playwright/specs/reconfirm-flow.spec.ts`.
+sau đó. Released tombstone đóng thêm case ngược lại: `undo v2` đến trước `confirm v1`,
+để delayed reserve version cũ không giữ tồn kho cho order đã cancel. Regression chính nằm
+ở `tests/Playwright/specs/reconfirm-flow.spec.ts` và test reliability release-before-reserve.
 
 ## 13. Inventory publish event như thế nào?
 
@@ -608,26 +618,62 @@ Max attempts:
 
 ## 16. Inbox hoạt động chi tiết
 
-Inbox là bảng dedup consumer.
+Inbox là bảng dedup consumer và cũng là nơi lưu trạng thái retry cho inbound event xử lý lỗi. Đây là phần quan trọng vì KafkaFlow có thể commit consumer offset sau khi handler lỗi; khi đó Kafka không còn là retry mechanism đáng tin cậy cho message đã fail, nên project dùng inbox redrive.
 
 Sales:
 
 ```text
-inbox_messages(EventId, ProcessedAt, Consumer)
+inbox_messages(EventId, ProcessedAt, Consumer, Status, Attempts, NextAttemptAt, Payload, LastError, DeadLetteredAt, ...)
 ```
 
 Inventory:
 
 ```text
-inbox_messages(EventId, ProcessedAt)
+inbox_messages(EventId, ProcessedAt, Consumer, Status, Attempts, NextAttemptAt, Payload, LastError, DeadLetteredAt, ...)
 ```
 
 Quy tắc:
 
 - `EventId` là primary key.
-- Consumer insert `EventId` trước khi xử lý.
-- Nếu insert bị unique violation, nghĩa là event đã xử lý.
+- Consumer ghi inbox trong cùng transaction với side effect nghiệp vụ.
+- Nếu row `Processed` hoặc `DeadLettered` đã tồn tại, message được coi là duplicate và skip an toàn.
+- Nếu row `Failed` tồn tại, processor được phép xử lý lại để redrive có thể phục hồi message.
 - Duplicate được coi là success để Kafka không retry vô ích.
+
+Khi xử lý inbound event lỗi:
+
+```text
+1. IntegrationEventHandler bắt exception
+2. EfInboxFailureRecorder upsert inbox row
+3. Attempts++
+4. Payload = serialized EventEnvelope
+5. Status = Failed
+6. NextAttemptAt = now + RetryBackoff.ForAttempt(Attempts)
+7. Nếu Attempts >= MaxAttempts -> Status = DeadLettered, DeadLetteredAt = now
+8. Handler không rethrow nếu failure đã được ghi bền vững
+```
+
+Redrive loop:
+
+```text
+Mỗi RedrivePollInterval:
+  1. InboxRedriveService tìm row Status = Failed
+  2. Payload khác null
+  3. NextAttemptAt null hoặc <= now
+  4. Deserialize Payload thành EventEnvelope
+  5. Gọi lại IIntegrationEventProcessor.ProcessAsync(envelope)
+  6. Thành công -> processor mark Processed
+  7. Thất bại -> EfInboxFailureRecorder tăng Attempts/backoff hoặc DeadLettered
+```
+
+Implementation cụ thể:
+
+| Service | Redrive hosted service | Processor được gọi lại |
+|---|---|---|
+| Sales | `SalesInboxRedriveService` | `SalesInventoryEventProcessor` |
+| Inventory | `InventoryInboxRedriveService` | `InventoryIntegrationEventProcessor` |
+
+Lưu ý vận hành: redrive hiện đọc batch bằng truy vấn thông thường theo `Status = Failed`; khi scale nhiều instance production cần claim/lock row trước khi process để tránh hai instance cùng redrive một event.
 
 ## 17. Các flow Kafka quan trọng
 
@@ -684,6 +730,18 @@ Quy tắc:
 7. Consumer dùng Inbox chống duplicate
 ```
 
+### Flow inbound handler lỗi
+
+```text
+1. Kafka consumer nhận event
+2. Handler/processor ném exception khi xử lý business logic hoặc save DB
+3. IntegrationEventHandler ghi failure vào inbox_messages kèm Payload
+4. Kafka offset có thể đã được commit, nên không chờ Kafka redeliver
+5. InboxRedriveService đến hạn sẽ replay Payload qua processor
+6. Nếu thành công -> inbox Status = Processed
+7. Nếu vẫn lỗi đến MaxAttempts -> inbox Status = DeadLettered
+```
+
 ### Bug đã fix: order kẹt PendingInventory sau cold start (consumer group mới)
 
 Triệu chứng: confirm order thỉnh thoảng không bao giờ chuyển từ `PendingInventory`
@@ -691,13 +749,12 @@ sang `Confirmed`/`InventoryRejected` — không có exception nào trong Seq, Ou
 `ProcessedAt` vẫn được set (Sales publish thành công), nhưng phía nhận
 (`inventory-orders-v1` hoặc `sales-inventory-results-v1`) không bao giờ xử lý event đó.
 
-Root cause: `AddConsumer(...)` của Sales và Inventory không set `AutoOffsetReset`,
-nên Confluent.Kafka dùng default `largest` (= `latest`). Kết hợp với
-`KAFKA_AUTO_CREATE_TOPICS_ENABLE: true` (không có bước pre-create topic), mỗi khi
-consumer group chưa có committed offset (lần đầu stack chạy, hoặc sau khi xoá Kafka
-data volume) sẽ có race: nếu producer publish event đầu tiên (tự động tạo topic)
-trước khi consumer group hoàn tất join/assign partition, consumer bắt đầu đọc từ
-`latest` — tức là **sau** message đó — và bỏ lỡ event vĩnh viễn, không log lỗi gì.
+Root cause cũ: `AddConsumer(...)` của Sales và Inventory không set `AutoOffsetReset`,
+nên Confluent.Kafka dùng default `largest` (= `latest`). Khi topic chưa được provision
+chủ động và consumer group chưa có committed offset (lần đầu stack chạy, hoặc sau khi
+xoá Kafka data volume) sẽ có race: nếu producer publish event đầu tiên trước khi
+consumer group hoàn tất join/assign partition, consumer bắt đầu đọc từ `latest` — tức
+là **sau** message đó — và bỏ lỡ event vĩnh viễn, không log lỗi gì.
 `AuditLog.Worker` không bị ảnh hưởng vì nó đã set `WithAutoOffsetReset(AutoOffsetReset.Earliest)` từ đầu.
 
 Bằng chứng verify (2026-07-08): chạy `tests/Playwright/specs/kafka-flow.spec.ts` lặp
@@ -709,9 +766,10 @@ trở đi, khi consumer group đã có committed offset) đều `Confirmed` tron
 
 Fix: thêm `.WithAutoOffsetReset(AutoOffsetReset.Earliest)` vào consumer của Sales
 (`sales-inventory-results-v1`) và Inventory (`inventory-orders-v1`), giống pattern
-đã có sẵn ở `AuditLog.Worker`. `auto.offset.reset` chỉ có tác dụng khi consumer group
-chưa có committed offset hợp lệ, nên fix này an toàn — không đổi hành vi của group đã
-chạy ổn định.
+đã có sẵn ở `AuditLog.Worker`; đồng thời local Compose dùng `kafka-init` để tạo topic
+trước và tắt `KAFKA_AUTO_CREATE_TOPICS_ENABLE`. `auto.offset.reset` chỉ có tác dụng khi
+consumer group chưa có committed offset hợp lệ, nên fix này an toàn — không đổi hành vi
+của group đã chạy ổn định.
 
 Lưu ý khi verify lại: vì `inventory-orders-v1` và `sales-inventory-results-v1` hiện
 đã có committed offset (do đã consume thành công từ `01:15:50Z`), restart
@@ -869,12 +927,16 @@ Local MVP đang ổn cho bài thực hành, nhưng production nên thêm:
 | Sales bus startup | `src/Services/Sales/Sales.Api/Program.cs` |
 | Sales outbox publish loop | `src/Services/Sales/Sales.Infrastructure/Kafka/SalesOutboxPublisher.cs` |
 | Shared Kafka produce + tracing | `src/Shared/BuildingBlocks.Infrastructure/Kafka/KafkaOutboxPublisher.cs` |
+| Shared inbound failure/redrive loop | `src/Shared/BuildingBlocks.Infrastructure/Inbox/InboxRedriveService.cs` |
+| Shared inbound failure recorder | `src/Shared/BuildingBlocks.Infrastructure/Inbox/EfInboxFailureRecorder.cs` |
 | Sales integration consumer | `src/Services/Sales/Sales.Infrastructure/Kafka/SalesIntegrationEventHandler.cs` |
+| Sales inbox redrive hosted service | `src/Services/Sales/Sales.Infrastructure/Kafka/SalesInboxRedriveService.cs` |
 | Sales domain event mapper | `src/Services/Sales/Sales.Infrastructure/Kafka/DomainEventMapper.cs` |
 | Sales outbox/inbox tables | `src/Services/Sales/Sales.Infrastructure/Persistence/SalesDbContext.cs` |
 | Inventory Kafka registration | `src/Services/Inventory/Inventory.Infrastructure/DependencyInjection.cs` |
 | Inventory bus startup | `src/Services/Inventory/Inventory.Api/Program.cs` |
 | Inventory consumer | `src/Services/Inventory/Inventory.Infrastructure/Kafka/InventoryEventHandler.cs` |
+| Inventory inbox redrive hosted service | `src/Services/Inventory/Inventory.Infrastructure/Kafka/InventoryInboxRedriveService.cs` |
 | Inventory outbox publisher | `src/Services/Inventory/Inventory.Infrastructure/Kafka/InventoryOutboxPublisher.cs` |
 | Inventory outbox/inbox tables | `src/Services/Inventory/Inventory.Infrastructure/Persistence/InventoryDbContext.cs` |
 | Audit Kafka registration | `src/Services/AuditLog/AuditLog.Worker/Program.cs` |

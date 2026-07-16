@@ -42,6 +42,39 @@ public sealed class EfInboxFailureRecorderTests
         Assert.Equal(42, row.OriginalOffset);
         Assert.Equal(typeof(InvalidOperationException).FullName, row.LastExceptionType);
         Assert.Equal("missing inventory", row.LastError);
+        // Once dead-lettered there is no next attempt scheduled.
+        Assert.Null(row.NextAttemptAt);
+        // The envelope is retained so the re-drive service can replay it.
+        Assert.NotNull(row.Payload);
+    }
+
+    [Fact]
+    public async Task RecordFailure_below_threshold_retains_payload_and_schedules_next_attempt()
+    {
+        await using var db = new TestInboxDbContext();
+        await db.Database.OpenConnectionAsync();
+        await db.Database.EnsureCreatedAsync();
+
+        var recorder = new TestInboxFailureRecorder(
+            db,
+            Options.Create(new InboxConsumerOptions { MaxAttempts = 5 }));
+        var envelope = CreateEnvelope();
+        var context = new InboundMessageContext("orders.v1", "inventory-v1", 3, 42);
+
+        var before = DateTimeOffset.UtcNow;
+        var result = await recorder.RecordFailureAsync(
+            envelope,
+            context,
+            new InvalidOperationException("transient"));
+
+        var row = await db.Inbox.SingleAsync(x => x.EventId == envelope.EventId);
+        Assert.Equal(new InboundFailureResult(1, false), result);
+        Assert.Equal(InboxMessageStatus.Failed, row.Status);
+        Assert.Null(row.DeadLetteredAt);
+        Assert.NotNull(row.NextAttemptAt);
+        Assert.True(row.NextAttemptAt > before, "next attempt should be scheduled in the future");
+        var storedEnvelope = JsonSerializer.Deserialize<EventEnvelope>(row.Payload!);
+        Assert.Equal(envelope.EventId, storedEnvelope!.EventId);
     }
 
     private static EventEnvelope CreateEnvelope()

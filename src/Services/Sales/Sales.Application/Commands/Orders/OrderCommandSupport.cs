@@ -59,4 +59,33 @@ internal static class OrderCommandSupport
         }
         return orderLineItems;
     }
+
+    /// <summary>
+    /// Revalidates the live product state for existing draft order lines before the order asks
+    /// Inventory to reserve stock.
+    /// </summary>
+    /// <param name="productRepository">Product repository.</param>
+    /// <param name="orderLines">Existing order lines.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <exception cref="NotFoundException">Thrown when an order line product no longer exists or was deleted.</exception>
+    /// <exception cref="Sales.Domain.DomainException">Thrown when an order line product is inactive.</exception>
+    public static async Task EnsureOrderLinesCanStillBeOrdered(
+        this IProductRepository productRepository,
+        IEnumerable<OrderLine> orderLines,
+        CancellationToken cancellationToken)
+    {
+        var lines = orderLines.ToList();
+        var productsById = (await productRepository.GetByIdsAsync(
+            lines.Select(x => x.ProductId),
+            cancellationToken)).ToDictionary(x => x.Id);
+
+        foreach (var line in lines)
+        {
+            if (!productsById.TryGetValue(line.ProductId, out var product))
+                throw new NotFoundException(nameof(Product), line.ProductId);
+
+            if (!product.IsActive)
+                throw new DomainException("Inactive products cannot be ordered.");
+        }
+    }
 }

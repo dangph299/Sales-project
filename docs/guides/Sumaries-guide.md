@@ -28,7 +28,7 @@ Sales.sln
 │   │   ├── BuildingBlocks.Infrastructure/ shared outbox/Kafka/logging/metrics/tracing helpers
 │   │   └── BuildingBlocks.Web/         auth, OpenAPI, API response models, request observability
 │   └── Web/
-│       └── Sales.TestClient/           Angular test client for manual API testing
+│       └── Sales.Web/                  Angular web client for manual API testing
 ├── tests/
 │   ├── Sales.Domain.Tests/
 │   ├── Sales.Application.Tests/
@@ -65,7 +65,7 @@ Cross-service communication chỉ đi qua `BuildingBlocks.Contracts` + Kafka; Sa
 | Search order theo ngày tạo / tên / SĐT khách hàng | ✅ Đủ | `OrderReadService`, index ngày/tên/SĐT trong `SalesDbContext` |
 | Giải quyết 2 người cùng sửa đơn hàng | ✅ Đủ | Optimistic concurrency: `Order.Version` + `ETag`/`If-Match` + 409 Conflict — xem `project-presentation.md` §7, §18 |
 | AuditLog lưu MongoDB, nhận qua Kafka | ✅ Đủ | `AuditLog.Worker` consume Kafka, ghi Mongo unique `EventId`, **giờ log vào Seq** (đã fix, xem mục 5) |
-| Inventory service riêng, bảng riêng, không miss event | ✅ Đủ | `src/Services/Inventory` độc lập, Postgres riêng, Outbox/Inbox transactional, `Reservation.LastOrderVersion` chống event cũ đến trễ |
+| Inventory service riêng, bảng riêng, không miss event | ✅ Đủ | `src/Services/Inventory` độc lập, Postgres riêng, Outbox/Inbox transactional, inbox redrive cho inbound failure, `Reservation.LastOrderVersion` + release tombstone chống event cũ/đảo thứ tự |
 | CQRS (command/query) qua MediatR | ✅ Đủ (Sales + Inventory) | `Sales.Application/Commands`, `Queries`; `Inventory.Application/Commands`, `Queries`, `InventoryTransactionBehavior`; HTTP/Kafka adapters dispatch qua `ISender` |
 | Factory Method | ✅ Đủ | `Product.Create`, `Customer.Create`, `Order.Create`, `ProductSnapshot.Create`, `CustomerSnapshot.Create`, `Money.Vnd` — 6 static factory, đều có private constructor giữ invariant |
 | Repository | ✅ Đủ | `IRepository<T>`/`Repository<T>` + `IProductRepository`/`IOrderRepository` cho query đặc thù |
@@ -138,11 +138,12 @@ private static TypeAdapterConfig CreateConfig()
 
 ## 6. Thay đổi nghiệp vụ mới đã phản ánh trong code
 
-1. **Soft delete Product/Customer.** API mới `DELETE /api/products/{id}` và `DELETE /api/customers/{id}` chỉ set `IsDelete = true`, `DeleteByUser`, `DeletedAt`, cập nhật `UpdatedAt`/`Version`; read/search mặc định ẩn record đã xóa bằng EF query filter. Product cache được invalidate khi delete. Angular test client có nút `Delete` cho cả Product và Customer.
+1. **Soft delete Product/Customer.** API mới `DELETE /api/products/{id}` và `DELETE /api/customers/{id}` chỉ set `IsDelete = true`, `DeleteByUser`, `DeletedAt`, cập nhật `UpdatedAt`/`Version`; read/search mặc định ẩn record đã xóa bằng EF query filter. Product cache được invalidate khi delete. Angular web client có nút `Delete` cho cả Product và Customer.
 2. **Audit timestamp.** `AggregateRoot.Touch()` (`Shared/BuildingBlocks.Domain/Abstractions/AggregateRoot.cs`, dùng chung với Inventory từ 2026-07-10) cập nhật `UpdatedAt`, vì vậy Product/Customer/Order đều trả `updatedAt` trong DTO. Migration Sales mới: `SoftDeleteAndUpdatedAt`.
 3. **Discount input không được thiếu.** `OrderLineInput.DiscountPercent` là nullable và validator bắt buộc `NotNull().InclusiveBetween(0, 100)`; nếu client gửi nhầm key như `discount` thì bị reject thay vì lưu ngầm `0`.
-4. **Reconfirm/undo confirm bền hơn trước event đến trễ.** Inventory `Reservation` lưu `LastOrderVersion`; release event version cũ bị bỏ qua, confirm mới hơn trên active reservation vẫn publish `StockReserved` để Sales không chờ mãi. Migration Inventory mới: `ReservationOrderVersion`.
-5. **Playwright regression specs.** `reconfirm-flow.spec.ts` kiểm tra `create -> confirm -> undo confirm -> confirm`; `over-available-after-undo.spec.ts` kiểm tra `create -> confirm -> undo confirm -> update quantity > available -> confirm` và chờ kết quả `InventoryRejected`.
+4. **Reconfirm/undo confirm bền hơn trước event đến trễ.** Inventory `Reservation` lưu `LastOrderVersion`; release event version cũ bị bỏ qua, confirm mới hơn trên active reservation vẫn publish `StockReserved` để Sales không chờ mãi. Nếu release đến trước reserve, Inventory tạo released tombstone mang version để reserve cũ đến trễ không giữ tồn kho.
+5. **Inbound inbox redrive.** Sales/Inventory lưu failed inbound event vào `inbox_messages.Payload`, đặt `NextAttemptAt`, rồi `SalesInboxRedriveService`/`InventoryInboxRedriveService` replay qua processor cho tới khi `Processed` hoặc `DeadLettered`.
+6. **Playwright regression specs.** `reconfirm-flow.spec.ts` kiểm tra `create -> confirm -> undo confirm -> confirm`; `over-available-after-undo.spec.ts` kiểm tra `create -> confirm -> undo confirm -> update quantity > available -> confirm` và chờ kết quả `InventoryRejected`.
 
 ## 7. Lệnh chạy nhanh tổng hợp
 
@@ -162,8 +163,8 @@ sudo docker compose -f docker/docker-compose.yml up kibana apm-server elasticsea
 # Reliability test cần Postgres/Mongo thật
 RUN_RELIABILITY_TESTS=true dotnet test Sales.sln
 
-# Angular test client
-cd src/Web/Sales.TestClient && npm install && npm start
+# Angular web client
+cd src/Web/Sales.Web && npm install && npm start
 
 # Playwright smoke test
 cd tests/Playwright && npm install && npm run test:smoke

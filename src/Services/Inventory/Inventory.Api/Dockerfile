@@ -16,6 +16,10 @@ RUN --mount=type=cache,id=inventory-api-nuget,target=/root/.nuget/packages,shari
 COPY . .
 RUN --mount=type=cache,id=inventory-api-nuget,target=/root/.nuget/packages,sharing=locked dotnet publish src/Services/Inventory/Inventory.Api/Inventory.Api.csproj -c Release -o /app --no-restore
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
+# curl is used by the container HEALTHCHECK to probe the /health endpoint.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=build /app .
 ENTRYPOINT ["dotnet", "Inventory.Api.dll"]

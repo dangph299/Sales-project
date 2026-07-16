@@ -20,10 +20,17 @@ public sealed class OutboxRetryReliabilityTests
 {
     private static readonly DateTimeOffset T0 = new(2026, 7, 15, 12, 0, 0, TimeSpan.Zero);
 
-    [Fact]
+    private readonly PostgresReliabilityFixture _fixture;
+
+    public OutboxRetryReliabilityTests(PostgresReliabilityFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    [SkippableFact]
     public async Task Transient_publish_failure_is_retried_and_published_exactly_once()
     {
-        if (!ReliabilityTestSettings.Enabled) return;
+        Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
 
         await EnsureMigratedAsync();
 
@@ -57,10 +64,10 @@ public sealed class OutboxRetryReliabilityTests
         Assert.Equal(1, transport.SuccessCountFor(messageId));
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Repeated_publish_failure_dead_letters_after_max_attempts()
     {
-        if (!ReliabilityTestSettings.Enabled) return;
+        Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
 
         await EnsureMigratedAsync();
 
@@ -92,14 +99,14 @@ public sealed class OutboxRetryReliabilityTests
             signal: null!,
             configuration: new ConfigurationBuilder().Build());
 
-    private static async Task RunCycleAsync(SalesOutboxPublisher publisher)
+    private async Task RunCycleAsync(SalesOutboxPublisher publisher)
     {
         // A fresh context per cycle mirrors the publisher's real per-cycle scope.
         await using var db = NewContext();
         await publisher.RunPublishCycleAsync(db);
     }
 
-    private static async Task SeedOutboxRowAsync(Guid id, int attempts, DateTimeOffset? nextAttemptAt)
+    private async Task SeedOutboxRowAsync(Guid id, int attempts, DateTimeOffset? nextAttemptAt)
     {
         await using var db = NewContext();
         db.OutboxMessages.Add(new OutboxMessage
@@ -114,22 +121,22 @@ public sealed class OutboxRetryReliabilityTests
         await db.SaveChangesAsync();
     }
 
-    private static async Task<OutboxMessage> LoadRowAsync(Guid id)
+    private async Task<OutboxMessage> LoadRowAsync(Guid id)
     {
         await using var db = NewContext();
         return await db.OutboxMessages.AsNoTracking().SingleAsync(x => x.Id == id);
     }
 
-    private static async Task EnsureMigratedAsync()
+    private async Task EnsureMigratedAsync()
     {
         await using var db = NewContext();
         await db.Database.MigrateAsync();
     }
 
-    private static SalesDbContext NewContext()
+    private SalesDbContext NewContext()
     {
         var options = new DbContextOptionsBuilder<SalesDbContext>()
-            .UseNpgsql(ReliabilityTestSettings.SalesPostgresConnectionString)
+            .UseNpgsql(_fixture.ConnectionString)
             .Options;
         return new SalesDbContext(options, new TestExecutionContext());
     }

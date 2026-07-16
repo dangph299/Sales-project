@@ -1,3 +1,4 @@
+using System.Text.Json;
 using BuildingBlocks.Contracts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -50,16 +51,21 @@ public abstract class EfInboxFailureRecorder<TDbContext>(
         row.OriginalConsumerGroup = context.GroupId;
         row.OriginalPartition = context.Partition;
         row.OriginalOffset = context.Offset;
+        // Retain the envelope so the inbox re-drive service can replay this event; Kafka will not
+        // redeliver it because the consumer offset was already committed.
+        row.Payload = JsonSerializer.Serialize(envelope);
 
         if (row.Attempts >= maxAttempts)
         {
             row.Status = InboxMessageStatus.DeadLettered;
             row.DeadLetteredAt = now;
+            row.NextAttemptAt = null;
         }
         else
         {
             row.Status = InboxMessageStatus.Failed;
             row.DeadLetteredAt = null;
+            row.NextAttemptAt = now.Add(RetryBackoff.ForAttempt(row.Attempts));
         }
 
         await db.SaveChangesAsync(cancellationToken);

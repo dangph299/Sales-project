@@ -9,13 +9,20 @@ namespace Sales.Infrastructure.Tests;
 [Collection("SalesReliabilityPostgres")]
 public sealed class ConfirmOrderConcurrencyTests
 {
-    [Fact]
+    private readonly PostgresReliabilityFixture _fixture;
+
+    public ConfirmOrderConcurrencyTests(PostgresReliabilityFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    [SkippableFact]
     public async Task Two_confirms_with_the_same_ETag_let_exactly_one_reach_inventory()
     {
-        if (!ReliabilityTestSettings.Enabled) return;
+        Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
 
         var options = new DbContextOptionsBuilder<SalesDbContext>()
-            .UseNpgsql(ReliabilityTestSettings.SalesPostgresConnectionString)
+            .UseNpgsql(_fixture.ConnectionString)
             .Options;
         var executionContext = new TestExecutionContext();
 

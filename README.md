@@ -48,12 +48,12 @@ RUN_RELIABILITY_TESTS=true dotnet test Sales.sln
 
 Default local endpoints are `localhost:5432` and `localhost:27017`; override with `SALES_TEST_POSTGRES`, `INVENTORY_TEST_POSTGRES`, `MONGO_TEST_CONNECTION`, and `MONGO_TEST_DATABASE`.
 
-## Angular test client
+## Sales web
 
-Một FE phụ trợ để test thủ công API nằm ở [src/Web/Sales.TestClient](src/Web/Sales.TestClient).
+Một FE phụ trợ để test thủ công API nằm ở [src/Web/Sales.Web](src/Web/Sales.Web).
 
 ```bash
-cd src/Web/Sales.TestClient
+cd src/Web/Sales.Web
 npm install
 npm start
 ```

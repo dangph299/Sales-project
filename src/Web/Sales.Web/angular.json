@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "sales-test-client": {
+    "sales-web": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -13,7 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/sales-test-client",
+            "outputPath": "dist/sales-web",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
@@ -45,10 +45,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "sales-test-client:build:production"
+              "buildTarget": "sales-web:build:production"
             },
             "development": {
-              "buildTarget": "sales-test-client:build:development"
+              "buildTarget": "sales-web:build:development"
             }
           },
           "defaultConfiguration": "development"

@@ -21,6 +21,8 @@ public sealed class InboxMetrics
 
         Duplicate = meter.CreateCounter<long>($"{prefix}.inbox.duplicate");
         Processed = meter.CreateCounter<long>($"{prefix}.inbox.processed");
+        Retried = meter.CreateCounter<long>($"{prefix}.inbox.retried");
+        DeadLettered = meter.CreateCounter<long>($"{prefix}.inbox.dead_lettered");
     }
 
     /// <summary>Counts inbound Kafka messages skipped because they were already recorded in the Inbox.</summary>
@@ -28,4 +30,10 @@ public sealed class InboxMetrics
 
     /// <summary>Counts inbound Kafka messages processed successfully for the first time.</summary>
     public Counter<long> Processed { get; }
+
+    /// <summary>Counts previously failed inbound messages re-driven to success by the re-drive service.</summary>
+    public Counter<long> Retried { get; }
+
+    /// <summary>Counts inbound messages moved to dead-letter state after exhausting re-drive attempts.</summary>
+    public Counter<long> DeadLettered { get; }
 }

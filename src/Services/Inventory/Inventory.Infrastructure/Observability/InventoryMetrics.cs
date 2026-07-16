@@ -24,6 +24,12 @@ internal static class InventoryMetrics
     /// <summary>Counts inbound Kafka messages processed successfully for the first time.</summary>
     public static Counter<long> InboxProcessed => Inbox.Processed;
 
+    /// <summary>Counts previously failed inbound messages re-driven to success.</summary>
+    public static Counter<long> InboxRetried => Inbox.Retried;
+
+    /// <summary>Counts inbound messages dead-lettered after exhausting re-drive attempts.</summary>
+    public static Counter<long> InboxDeadLettered => Inbox.DeadLettered;
+
     /// <summary>Counts reservation requests rejected due to insufficient stock.</summary>
     public static readonly Counter<long> ReservationRejected = Meter.CreateCounter<long>("inventory.reservation.rejected");
 

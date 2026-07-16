@@ -34,7 +34,7 @@ docker compose -f docker/docker-compose.yml up -d kafka kafka-init
 Một flow demo ngắn:
 
 1. Login vào Sales API bằng user local `admin` / `Admin123!`.
-2. Tạo hoặc cập nhật product/customer/order qua Sales API hoặc Angular test client.
+2. Tạo hoặc cập nhật product/customer/order qua Sales API hoặc Sales Web.
 3. Confirm order để Sales ghi DB và outbox.
 4. Sales outbox publisher gửi Kafka event `sales.order-confirmation-requested.v1`.
 5. Inventory consume event, ghi Inbox, reserve/reject stock và ghi Inventory outbox reply.

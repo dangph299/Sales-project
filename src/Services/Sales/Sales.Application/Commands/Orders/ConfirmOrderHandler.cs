@@ -11,6 +11,7 @@ namespace Sales.Application;
 /// </summary>
 public sealed class ConfirmOrderHandler(
     IOrderRepository orderRepository,
+    IProductRepository productRepository,
     IUnitOfWork unitOfWork,
     ILogger<ConfirmOrderHandler> logger) : IRequestHandler<ConfirmOrder, OrderDto>
 {
@@ -34,6 +35,7 @@ public sealed class ConfirmOrderHandler(
             request.Id,
             request.ExpectedVersion,
             cancellationToken);
+        await productRepository.EnsureOrderLinesCanStillBeOrdered(order.Lines, cancellationToken);
         order.RequestConfirmation();
         logger.LogInformation("Order status changed {OldStatus} -> {NewStatus}", "Draft", "PendingInventory");
 

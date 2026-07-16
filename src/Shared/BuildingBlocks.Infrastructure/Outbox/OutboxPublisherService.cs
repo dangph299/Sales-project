@@ -136,7 +136,7 @@ public abstract class OutboxPublisherService<TDbContext>(
             return;
         }
 
-        row.NextAttemptAt = now.Add(Backoff(row.Attempts));
+        row.NextAttemptAt = now.Add(RetryBackoff.ForAttempt(row.Attempts));
     }
 
     private void MarkPublished(OutboxMessage row)
@@ -154,11 +154,5 @@ public abstract class OutboxPublisherService<TDbContext>(
         var backlog = await outbox.LongCountAsync(x => x.ProcessedAt == null && x.DeadLetteredAt == null, ct);
         var deadLetters = await outbox.LongCountAsync(x => x.DeadLetteredAt != null, ct);
         SetSnapshot(backlog, deadLetters);
-    }
-
-    private static TimeSpan Backoff(int attempts)
-    {
-        var seconds = Math.Min(300, Math.Pow(2, Math.Min(attempts, 8)));
-        return TimeSpan.FromSeconds(seconds);
     }
 }
