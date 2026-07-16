@@ -26,10 +26,22 @@ public static class DependencyInjection
     public static IServiceCollection AddSalesInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddBuildingBlocksInfrastructure(configuration);
-        services.AddDbContext<SalesDbContext>(options => options.UseNpgsql(configuration.GetConnectionString("Sales")));
+        services.AddAuditing(options =>
+        {
+            options.ServiceName = "Sales";
+            options.TopicName = KafkaTopics.SalesAudit;
+            options.IgnoreEntity<OutboxMessage>();
+            options.IgnoreEntity<InboxMessage>();
+            options.IgnoreEntity<ApplicationUser>();
+            options.IgnoreEntity<RefreshToken>();
+        });
+        services.AddDbContext<SalesDbContext>((sp, options) => options
+            .UseNpgsql(configuration.GetConnectionString("Sales"))
+            .AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
         services.AddSalesRepositories();
         services.AddSalesReadServices();
         services.AddSalesExecutionContext();
+        services.AddSalesAuditing();
         services.AddSalesCaching(configuration);
         services.AddSalesMessaging(configuration);
         services.AddSalesHangfireJobs(configuration);
@@ -68,6 +80,14 @@ public static class DependencyInjection
     {
         services.AddHttpContextAccessor();
         services.AddScoped<IExecutionContext, HttpExecutionContext>();
+        return services;
+    }
+
+    private static IServiceCollection AddSalesAuditing(this IServiceCollection services)
+    {
+        services.AddScoped<IAuditContextAccessor, SalesAuditContextAccessor>();
+        services.AddScoped<IAuditAggregateResolver, SalesAuditAggregateResolver>();
+        services.AddScoped<IAuditEnricher, OrderAuditEnricher>();
         return services;
     }
 

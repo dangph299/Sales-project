@@ -26,7 +26,17 @@ public static class DependencyInjection
     public static IServiceCollection AddInventoryInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddBuildingBlocksInfrastructure(configuration);
-        services.AddDbContext<InventoryDbContext>(x => x.UseNpgsql(configuration.GetConnectionString("Inventory")));
+        services.AddAuditing(options =>
+        {
+            options.ServiceName = "Inventory";
+            options.TopicName = KafkaTopics.InventoryAudit;
+            options.IgnoreEntity<OutboxMessage>();
+            options.IgnoreEntity<InboxMessage>();
+            options.IgnoreEntity<InventoryItem>();
+        });
+        services.AddDbContext<InventoryDbContext>((sp, options) => options
+            .UseNpgsql(configuration.GetConnectionString("Inventory"))
+            .AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IReservationRepository, ReservationRepository>();
@@ -38,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<InventoryMaintenanceService>();
         services.AddHostedService<InventoryMaintenanceWorker>();
         services.AddSingleton<IInventoryMetrics, InventoryMetricsAdapter>();
+        services.AddScoped<IAuditAggregateResolver, InventoryAuditAggregateResolver>();
+        services.AddScoped<IAuditEnricher, ReservationAuditEnricher>();
         services.AddScoped<IIntegrationEventProcessor, InventoryIntegrationEventProcessor>();
         services.AddScoped<IInboxFailureRecorder, InventoryInboxFailureRecorder>();
         services.AddSingleton(new ActivitySource(InventoryObservability.KafkaActivitySourceName));

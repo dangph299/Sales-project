@@ -8,94 +8,29 @@ namespace Sales.Infrastructure;
 
 internal static class DomainEventMapper
 {
-    private static readonly IReadOnlyDictionary<string, string> ProductDisplayNames = new Dictionary<string, string>
-    {
-        ["Sku"] = "SKU",
-        ["Name"] = "Product Name",
-        ["Price"] = "Price",
-        ["IsActive"] = "Active"
-    };
-
-    private static readonly IReadOnlyDictionary<string, string> CustomerDisplayNames = new Dictionary<string, string>
-    {
-        ["Name"] = "Customer Name",
-        ["Phone"] = "Phone"
-    };
-
     /// <summary>Converts a Sales domain event into the Kafka topic + envelope ready to enqueue in the Outbox.</summary>
-    public static (string Topic, EventEnvelope Envelope) Map(
+    public static (string Topic, EventEnvelope Envelope)? Map(
         AggregateRoot<Guid> aggregate,
         BuildingBlocks.Domain.IDomainEvent domainEvent,
         IExecutionContext context)
     {
-        var (topic, payload) = MapToPayload(domainEvent);
+        var mapped = MapToPayload(domainEvent);
+        if (mapped is null)
+        {
+            return null;
+        }
+
+        var (topic, payload) = mapped.Value;
         var envelope = EventEnvelopeFactory.Create(aggregate.Id, aggregate.Version, payload, context.Actor, context.CorrelationId);
         return (topic, envelope);
     }
 
-    private static (string Topic, object Payload) MapToPayload(BuildingBlocks.Domain.IDomainEvent domainEvent) => domainEvent switch
+    private static (string Topic, object Payload)? MapToPayload(BuildingBlocks.Domain.IDomainEvent domainEvent) => domainEvent switch
     {
-        ProductCreatedDomainEvent e => MapProductCreated(e),
-        ProductUpdatedDomainEvent e => MapProductUpdated(e),
-        CustomerCreatedDomainEvent e => MapCustomerCreated(e),
-        CustomerUpdatedDomainEvent e => MapCustomerUpdated(e),
-        OrderCreatedDomainEvent e => MapOrderCreated(e),
-        OrderLinesReplacedDomainEvent e => MapOrderLinesReplaced(e),
         OrderConfirmationRequestedDomainEvent e => MapOrderConfirmationRequested(e),
         OrderUndoComfirmedDomainEvent e => MapOrderUndoConfirmed(e),
-        OrderConfirmedDomainEvent e => MapOrderConfirmed(e),
-        OrderInventoryRejectedDomainEvent e => MapOrderInventoryRejected(e),
-        _ => throw new InvalidOperationException($"No integration mapping exists for {domainEvent.GetType().Name}.")
+        _ => null
     };
-
-    private static (string Topic, object Payload) MapProductCreated(ProductCreatedDomainEvent e)
-    {
-        var newValues = new { e.Sku, e.Name, e.Price, IsActive = true };
-        var changes = AuditChangeDetector.Created(newValues, ProductDisplayNames);
-        var audit = new AuditChanged("Product", e.ProductId.ToString(), "Created", changes);
-        return (KafkaTopics.SalesAudit, audit);
-    }
-
-    private static (string Topic, object Payload) MapProductUpdated(ProductUpdatedDomainEvent e)
-    {
-        var oldValues = new { Name = e.OldName, Price = e.OldPrice, IsActive = e.OldIsActive };
-        var newValues = new { Name = e.NewName, Price = e.NewPrice, IsActive = e.NewIsActive };
-        var changes = AuditChangeDetector.Updated(oldValues, newValues, ProductDisplayNames);
-        var audit = new AuditChanged("Product", e.ProductId.ToString(), "Updated", changes);
-        return (KafkaTopics.SalesAudit, audit);
-    }
-
-    private static (string Topic, object Payload) MapCustomerCreated(CustomerCreatedDomainEvent e)
-    {
-        var newValues = new { e.Name, e.Phone };
-        var changes = AuditChangeDetector.Created(newValues, CustomerDisplayNames);
-        var audit = new AuditChanged("Customer", e.CustomerId.ToString(), "Created", changes);
-        return (KafkaTopics.SalesAudit, audit);
-    }
-
-    private static (string Topic, object Payload) MapCustomerUpdated(CustomerUpdatedDomainEvent e)
-    {
-        var oldValues = new { Name = e.OldName, Phone = e.OldPhone };
-        var newValues = new { Name = e.NewName, Phone = e.NewPhone };
-        var changes = AuditChangeDetector.Updated(oldValues, newValues, CustomerDisplayNames);
-        var audit = new AuditChanged("Customer", e.CustomerId.ToString(), "Updated", changes);
-        return (KafkaTopics.SalesAudit, audit);
-    }
-
-    private static (string Topic, object Payload) MapOrderCreated(OrderCreatedDomainEvent e)
-    {
-        var change = AuditChangeDetector.Change("CustomerId", null, e.CustomerId, "Customer", "string");
-        var audit = new AuditChanged("Order", e.OrderId.ToString(), "Created", [change]);
-        return (KafkaTopics.SalesAudit, audit);
-    }
-
-    private static (string Topic, object Payload) MapOrderLinesReplaced(OrderLinesReplacedDomainEvent e)
-    {
-        var quantityChange = AuditChangeDetector.Change("TotalQuantity", null, e.TotalQuantity, "Total Quantity");
-        var totalChange = AuditChangeDetector.Change("Total", null, e.Total, "Total");
-        var audit = new AuditChanged("Order", e.OrderId.ToString(), "LinesReplaced", [quantityChange, totalChange]);
-        return (KafkaTopics.SalesAudit, audit);
-    }
 
     private static (string Topic, object Payload) MapOrderConfirmationRequested(OrderConfirmationRequestedDomainEvent e)
     {
@@ -110,17 +45,4 @@ internal static class DomainEventMapper
         return (KafkaTopics.OrderUndoConfirmationRequested, integrationEvent);
     }
 
-    private static (string Topic, object Payload) MapOrderConfirmed(OrderConfirmedDomainEvent e)
-    {
-        var change = AuditChangeDetector.Change("Status", null, "Confirmed", "Status", "string");
-        var audit = new AuditChanged("Order", e.OrderId.ToString(), "Confirmed", [change]);
-        return (KafkaTopics.SalesAudit, audit);
-    }
-
-    private static (string Topic, object Payload) MapOrderInventoryRejected(OrderInventoryRejectedDomainEvent e)
-    {
-        var change = AuditChangeDetector.Change("RejectionReason", null, e.Reason, "Rejection Reason", "string");
-        var audit = new AuditChanged("Order", e.OrderId.ToString(), "InventoryRejected", [change]);
-        return (KafkaTopics.SalesAudit, audit);
-    }
 }

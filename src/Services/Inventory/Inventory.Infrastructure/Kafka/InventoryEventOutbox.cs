@@ -12,11 +12,25 @@ public sealed class InventoryEventOutbox(InventoryDbContext db) : IInventoryEven
     /// <inheritdoc/>
     public void EnqueueInventoryAdjusted(Guid productId, long version, int quantityDelta, int available, string actor)
     {
-        db.Enqueue(EventEnvelopeFactory.Create(productId, version, new AuditChanged("InventoryItem", productId.ToString(), "Adjusted",
+        var auditEvent = new AuditLogEvent
+        {
+            AuditId = Guid.NewGuid(),
+            ServiceName = "Inventory",
+            EventType = "InventoryItemAdjusted",
+            EntityType = "InventoryItem",
+            EntityId = productId.ToString(),
+            Action = "Adjusted",
+            Description = "Inventory stock was manually adjusted.",
+            ActorId = actor,
+            ActorName = actor,
+            OccurredAt = DateTimeOffset.UtcNow,
+            Changes =
             [
-                AuditChangeDetector.Change("QuantityDelta", null, quantityDelta, "Quantity Delta"),
-                AuditChangeDetector.Change("Available", null, available, "Available")
-            ]), actor), KafkaTopics.InventoryAudit);
+                new AuditChange { PropertyPath = "QuantityDelta", OldValue = null, NewValue = quantityDelta },
+                new AuditChange { PropertyPath = "Available", OldValue = null, NewValue = available }
+            ]
+        };
+        db.Enqueue(EventEnvelopeFactory.Create(productId, version, auditEvent, actor), KafkaTopics.InventoryAudit);
     }
 
     /// <inheritdoc/>

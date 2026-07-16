@@ -4,8 +4,8 @@ using MongoDB.Bson.Serialization.Attributes;
 namespace AuditLog.Infrastructure;
 
 /// <summary>
-/// MongoDB document storing one Kafka event for audit purposes. Upserted keyed by
-/// <see cref="EventId"/> so replays/redeliveries do not create duplicate documents.
+/// MongoDB document storing one audit event. Upserted keyed by <see cref="AuditId"/> so
+/// replays/redeliveries do not create duplicate documents.
 /// </summary>
 public sealed class AuditDocument
 {
@@ -15,18 +15,49 @@ public sealed class AuditDocument
     public ObjectId Id { get; set; } = ObjectId.GenerateNewId();
 
     /// <summary>
-    /// Gets or sets the unique identifier of the audited event.
+    /// Gets or sets the unique audit identifier.
+    /// </summary>
+    [BsonGuidRepresentation(GuidRepresentation.Standard)]
+    public Guid AuditId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the transport event identifier.
     /// </summary>
     [BsonGuidRepresentation(GuidRepresentation.Standard)]
     public Guid EventId { get; set; }
 
     /// <summary>
-    /// Gets or sets the event's type name.
+    /// Gets or sets the service that produced the audit event.
+    /// </summary>
+    public string ServiceName { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the audit event type.
     /// </summary>
     public string EventType { get; set; } = null!;
 
     /// <summary>
-    /// Gets or sets the unique identifier of the aggregate the event relates to.
+    /// Gets or sets the audited entity type.
+    /// </summary>
+    public string EntityType { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the audited entity identifier.
+    /// </summary>
+    public string EntityId { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the audit action.
+    /// </summary>
+    public string Action { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets an optional business description.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Gets or sets the unique identifier of the transport aggregate the event relates to.
     /// </summary>
     [BsonGuidRepresentation(GuidRepresentation.Standard)]
     public Guid AggregateId { get; set; }
@@ -39,14 +70,17 @@ public sealed class AuditDocument
     /// <summary>
     /// Gets or sets the correlation identifier used to trace the request across services.
     /// </summary>
-    [BsonGuidRepresentation(GuidRepresentation.Standard)]
-    public Guid CorrelationId { get; set; }
+    public string? CorrelationId { get; set; }
 
     /// <summary>
     /// Gets or sets the identifier of the event that caused this one, if any.
     /// </summary>
-    [BsonGuidRepresentation(GuidRepresentation.Standard)]
-    public Guid? CausationId { get; set; }
+    public string? CausationId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the trace identifier.
+    /// </summary>
+    public string? TraceId { get; set; }
 
     /// <summary>
     /// Gets or sets the UTC instant the event occurred.
@@ -54,12 +88,37 @@ public sealed class AuditDocument
     public DateTimeOffset OccurredAt { get; set; }
 
     /// <summary>
-    /// Gets or sets the user or system responsible for the event.
+    /// Gets or sets the actor identifier.
+    /// </summary>
+    public string? ActorId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the actor display name.
+    /// </summary>
+    public string? ActorName { get; set; }
+
+    /// <summary>
+    /// Gets or sets the legacy actor from the transport envelope.
     /// </summary>
     public string Actor { get; set; } = null!;
 
     /// <summary>
-    /// Gets or sets the event's raw JSON payload.
+    /// Gets or sets the audit schema version.
+    /// </summary>
+    public int SchemaVersion { get; set; }
+
+    /// <summary>
+    /// Gets or sets the field-level changes.
+    /// </summary>
+    public IReadOnlyCollection<AuditChangeDocument> Changes { get; set; } = [];
+
+    /// <summary>
+    /// Gets or sets optional metadata.
+    /// </summary>
+    public IReadOnlyDictionary<string, object?> Metadata { get; set; } = new Dictionary<string, object?>();
+
+    /// <summary>
+    /// Gets or sets the event's raw JSON payload for diagnostics.
     /// </summary>
     public string Payload { get; set; } = null!;
 
@@ -77,4 +136,30 @@ public sealed class AuditDocument
     /// Gets or sets the Kafka offset the event was consumed from.
     /// </summary>
     public long Offset { get; set; }
+
+    /// <summary>
+    /// Gets or sets when AuditLog received the event.
+    /// </summary>
+    public DateTimeOffset ReceivedAt { get; set; }
+}
+
+/// <summary>
+/// MongoDB representation of one field-level audit change.
+/// </summary>
+public sealed class AuditChangeDocument
+{
+    /// <summary>
+    /// Gets or sets the property path.
+    /// </summary>
+    public string PropertyPath { get; set; } = null!;
+
+    /// <summary>
+    /// Gets or sets the old value.
+    /// </summary>
+    public object? OldValue { get; set; }
+
+    /// <summary>
+    /// Gets or sets the new value.
+    /// </summary>
+    public object? NewValue { get; set; }
 }

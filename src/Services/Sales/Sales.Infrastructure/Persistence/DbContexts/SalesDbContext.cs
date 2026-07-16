@@ -50,8 +50,12 @@ public sealed class SalesDbContext(
         {
             foreach (var domainEvent in aggregate.GetDomainEvents())
             {
-                var (topic, envelope) = DomainEventMapper.Map(aggregate, domainEvent, executionContext);
-                OutboxMessages.Add(OutboxMessage.From(envelope, topic));
+                var mapped = DomainEventMapper.Map(aggregate, domainEvent, executionContext);
+                if (mapped is not null)
+                {
+                    var (topic, envelope) = mapped.Value;
+                    OutboxMessages.Add(OutboxMessage.From(envelope, topic));
+                }
             }
         }
 

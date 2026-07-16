@@ -5,7 +5,7 @@ using BuildingBlocks.Contracts;
 namespace BuildingBlocks.Infrastructure;
 
 /// <summary>
-/// Builds <see cref="AuditChange"/> lists for <see cref="AuditChanged"/> events by reflecting over
+/// Builds <see cref="AuditChange"/> lists for audit events by reflecting over
 /// objects and flattening nested properties into dotted field paths.
 /// </summary>
 public static class AuditChangeDetector
@@ -64,8 +64,15 @@ public static class AuditChangeDetector
     /// <param name="displayName">An optional human-readable label for the field.</param>
     /// <param name="dataType">An optional explicit data type hint; inferred from <paramref name="oldValue"/>/<paramref name="newValue"/> if not supplied.</param>
     /// <returns>Change record.</returns>
-    public static AuditChange Change(string field, object? oldValue, object? newValue, string? displayName = null, string? dataType = null) =>
-        new(field, displayName, Normalize(oldValue), Normalize(newValue), dataType ?? DataType(oldValue ?? newValue));
+    public static AuditChange Change(string field, object? oldValue, object? newValue, string? displayName = null, string? dataType = null)
+    {
+        return new AuditChange
+        {
+            PropertyPath = field,
+            OldValue = Normalize(oldValue),
+            NewValue = Normalize(newValue)
+        };
+    }
 
     private static AuditChange ToChange(string field, IReadOnlyDictionary<string, string>? displayNames, object? oldValue, object? newValue) =>
         Change(field, oldValue, newValue, displayNames?.GetValueOrDefault(field));

@@ -6,10 +6,10 @@ namespace BuildingBlocks.Contracts;
 /// </summary>
 public static class KafkaTopics
 {
-    /// <summary>Topic Sales publishes <see cref="AuditChanged"/> events to.</summary>
+    /// <summary>Topic Sales publishes <see cref="AuditLogEvent"/> events to.</summary>
     public const string SalesAudit = "sales.audit.v1";
 
-    /// <summary>Topic Inventory publishes <see cref="AuditChanged"/> events to.</summary>
+    /// <summary>Topic Inventory publishes <see cref="AuditLogEvent"/> events to.</summary>
     public const string InventoryAudit = "inventory.audit.v1";
 
     /// <summary>Topic Sales publishes <see cref="OrderConfirmationRequested"/> events to.</summary>

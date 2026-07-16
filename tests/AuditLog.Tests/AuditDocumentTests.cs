@@ -5,11 +5,11 @@ namespace AuditLog.Tests;
 public sealed class AuditDocumentTests
 {
     [Fact]
-    public void Event_id_is_the_idempotency_key()
+    public void Audit_id_is_the_idempotency_key()
     {
-        var eventId = Guid.NewGuid();
-        var document = new AuditDocument { EventId = eventId, EventType = "ProductCreated", Actor = "tester", Payload = "{}", Topic = "sales.audit.v1" };
-        Assert.Equal(eventId, document.EventId);
+        var auditId = Guid.NewGuid();
+        var document = new AuditDocument { AuditId = auditId, EventType = "ProductCreated", Actor = "tester", Payload = "{}", Topic = "sales.audit.v1" };
+        Assert.Equal(auditId, document.AuditId);
     }
 
     [Fact]

@@ -26,12 +26,7 @@ public static class DependencyInjection
         services.AddKafka(kafka => kafka.UseMicrosoftLog().AddCluster(cluster => cluster.WithBrokers(brokers)
             .AddConsumer(c => c.Topics([
                     KafkaTopics.SalesAudit,
-                    KafkaTopics.InventoryAudit,
-                    KafkaTopics.OrderConfirmationRequested,
-                    KafkaTopics.OrderUndoConfirmationRequested,
-                    KafkaTopics.StockReserved,
-                    KafkaTopics.StockRejected,
-                    KafkaTopics.StockReleased])
+                    KafkaTopics.InventoryAudit])
                 .WithGroupId(auditGroupId)
                 .WithAutoOffsetReset(AutoOffsetReset.Earliest)
                 .WithBufferSize(200)
