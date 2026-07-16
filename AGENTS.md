@@ -8,7 +8,7 @@ This repository is a .NET 10 sales management system organized by bounded contex
 - `src/Services/Inventory`: Inventory API, application, domain, and infrastructure projects.
 - `src/Services/AuditLog`: Audit worker and Mongo-backed audit infrastructure.
 - `src/Shared`: reusable building blocks for domain, application, contracts, infrastructure, observability, and web hosting.
-- `src/Web/Sales.TestClient`: Angular test client.
+- `src/Web/Sales.Web`: Angular web client.
 - `tests`: xUnit test projects plus `tests/Playwright` browser-flow tests.
 - `docker/docker-compose.yml`: local infrastructure and service image orchestration.
 
@@ -26,10 +26,10 @@ docker compose -f docker/docker-compose.yml build sales-api inventory-api audit-
 docker compose -f docker/docker-compose.yml up
 ```
 
-For the Angular test client:
+For the Angular web client:
 
 ```bash
-cd src/Web/Sales.TestClient
+cd src/Web/Sales.Web
 npm install
 npm start
 ```

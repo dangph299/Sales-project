@@ -1,11 +1,11 @@
-# Sales Angular Test Client
+# Sales Web
 
 FE nhỏ để test thủ công Sales/Inventory API trong bài thực hành DDD.
 
 ## Chạy
 
 ```bash
-cd src/Web/Sales.TestClient
+cd src/Web/Sales.Web
 npm install
 npm start
 ```
