@@ -50,6 +50,28 @@ public sealed class Reservation : AggregateRoot<Guid>
     }
 
     /// <summary>
+    /// Records that a release arrived for an order that has no reservation yet, as a line-less
+    /// <see cref="ReservationStatus.Released"/> tombstone carrying the release's order version. It lets a
+    /// later, newer confirmation still reserve stock via <see cref="Reactivate"/>, while a delayed
+    /// reserve carrying an older-or-equal version is ignored via <see cref="IsStale"/> — closing the
+    /// release-before-reserve out-of-order gap without holding stock for the cancelled order.
+    /// </summary>
+    /// <param name="orderId">Sales order the release was for.</param>
+    /// <param name="orderVersion">Sales order version carried by the release event.</param>
+    /// <returns>A released, line-less reservation acting as a staleness tombstone.</returns>
+    public static Reservation CreateReleasedTombstone(Guid orderId, long orderVersion)
+    {
+        return new Reservation
+        {
+            Id = Guid.NewGuid(),
+            OrderId = orderId,
+            CreatedAt = DateTimeOffset.UtcNow,
+            LastOrderVersion = orderVersion,
+            Status = ReservationStatus.Released
+        };
+    }
+
+    /// <summary>
     /// Determines whether an order-version-carrying command is stale — i.e. carries a version no
     /// newer than the one already applied to this reservation — and should be ignored. This is the
     /// single staleness check used both to gate callers before they mutate other aggregates and by

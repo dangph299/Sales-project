@@ -4,15 +4,23 @@ using Microsoft.EntityFrameworkCore;
 namespace Inventory.Infrastructure.Tests;
 
 [Trait("Category", "Reliability")]
+[Collection("InventoryReliabilityPostgres")]
 public sealed class InventoryPostgresReliabilityTests
 {
-    [Fact]
+    private readonly InventoryPostgresReliabilityFixture _fixture;
+
+    public InventoryPostgresReliabilityTests(InventoryPostgresReliabilityFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    [SkippableFact]
     public async Task Postgres_migration_contains_outbox_reliability_columns()
     {
-        if (!ReliabilityTestSettings.Enabled) return;
+        Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
 
         var options = new DbContextOptionsBuilder<InventoryDbContext>()
-            .UseNpgsql(ReliabilityTestSettings.InventoryPostgresConnectionString)
+            .UseNpgsql(_fixture.ConnectionString)
             .Options;
 
         await using var db = new InventoryDbContext(options);

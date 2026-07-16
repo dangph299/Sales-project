@@ -1,5 +1,6 @@
 using System.Text.Json;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Domain;
 using BuildingBlocks.Infrastructure;
 using BuildingBlocks.Web.ExceptionHandling;
 using BuildingBlocks.Web.Models;
@@ -62,17 +63,33 @@ public sealed class ApiExceptionHandlerTests
     }
 
     [Fact]
-    public async Task Forbidden_exception_maps_to_403()
+    public async Task Domain_exception_maps_to_400_with_shared_code()
     {
         var middleware = CreateMiddleware();
         var context = CreateContext();
 
-        var handled = await middleware.TryHandleAsync(context, new ForbiddenException(), CancellationToken.None);
+        var handled = await middleware.TryHandleAsync(context, new DomainException("Only a draft order can be edited."), CancellationToken.None);
         var response = ReadError(context);
 
         Assert.True(handled);
-        Assert.Equal(403, context.Response.StatusCode);
-        Assert.Equal(ErrorCodes.Forbidden, response.ErrorCode);
+        Assert.Equal(400, context.Response.StatusCode);
+        Assert.Equal(ErrorCodes.InvalidOperation, response.ErrorCode);
+    }
+
+    [Fact]
+    public async Task Domain_exception_subclass_maps_to_400()
+    {
+        // Guards the latent bug in the old string-name check, which only inspected one base-type level
+        // and would map a nested DomainException subclass to 500 instead of 400.
+        var middleware = CreateMiddleware();
+        var context = CreateContext();
+
+        var handled = await middleware.TryHandleAsync(context, new NestedDomainException(), CancellationToken.None);
+        var response = ReadError(context);
+
+        Assert.True(handled);
+        Assert.Equal(400, context.Response.StatusCode);
+        Assert.Equal(ErrorCodes.InvalidOperation, response.ErrorCode);
     }
 
     [Fact]
@@ -200,6 +217,12 @@ public sealed class ApiExceptionHandlerTests
     {
         var errorCatalog = new ErrorCatalogResolver(new SalesErrorMessageProvider());
         var options = new ApiExceptionHandlingOptions();
+        options.Map<DomainException>((_, catalog) =>
+        {
+            var error = catalog.Get(ErrorCodes.InvalidOperation);
+            return new ApiExceptionMapping(400, error.Code, error.Description);
+        });
+
         options.Map<NotFoundException>((_, catalog) =>
         {
             var error = catalog.Get(ErrorCodes.NotFound);
@@ -258,7 +281,9 @@ public sealed class ApiExceptionHandlerTests
         Assert.Fail($"Expected validation error for field '{field}' with message '{message}'.");
     }
 
-    private sealed class ForbiddenException : Exception;
+    private class IntermediateDomainException(string message) : DomainException(message);
+
+    private sealed class NestedDomainException() : IntermediateDomainException("nested domain rule violated");
 
     private sealed class RecordingLogger<T> : ILogger<T>
     {

@@ -15,7 +15,16 @@ public sealed class ReleaseStockCommandHandler(
     public async Task<string> Handle(ReleaseStockCommand request, CancellationToken cancellationToken)
     {
         var reservation = await reservationRepository.GetByOrderIdAsync(request.OrderId, cancellationToken);
-        if (reservation is null || reservation.Status == ReservationStatus.Released) return "AlreadyReleased";
+        if (reservation is null)
+        {
+            // Release arrived before Reserve (out-of-order across the confirmation/undo topics). Record a
+            // version-carrying tombstone so a delayed, older Reserve cannot silently hold stock for this
+            // already-cancelled order. No stock is held yet, so nothing needs to be released here.
+            reservationRepository.Add(Reservation.CreateReleasedTombstone(request.OrderId, request.OrderVersion));
+            return "ReleasedBeforeReserve";
+        }
+
+        if (reservation.Status == ReservationStatus.Released) return "AlreadyReleased";
         if (reservation.IsStale(request.OrderVersion)) return "StaleRelease";
 
         var inventoryItems = await inventoryRepository.GetByProductIdsAsync(

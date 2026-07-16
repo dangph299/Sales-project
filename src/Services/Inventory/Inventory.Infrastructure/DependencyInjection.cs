@@ -43,6 +43,7 @@ public static class DependencyInjection
         services.AddSingleton(new ActivitySource(InventoryObservability.KafkaActivitySourceName));
         services.AddKafkaOutboxPublisher("inventory-outbox");
         services.AddHostedService<InventoryOutboxPublisher>();
+        services.AddHostedService<InventoryInboxRedriveService>();
         var brokers = configuration.GetSection("Kafka:Brokers").GetChildren().Select(x => x.Value!).Where(x => x is not null).ToArray();
         if (brokers.Length == 0) brokers = ["kafka:9092"];
         services.AddKafka(kafka => kafka

@@ -4,15 +4,23 @@ using MongoDB.Driver;
 namespace AuditLog.Tests;
 
 [Trait("Category", "Reliability")]
+[Collection("AuditReliabilityMongo")]
 public sealed class MongoReliabilityTests
 {
-    [Fact]
+    private readonly MongoReliabilityFixture _fixture;
+
+    public MongoReliabilityTests(MongoReliabilityFixture fixture)
+    {
+        _fixture = fixture;
+    }
+
+    [SkippableFact]
     public async Task Mongo_unique_event_id_deduplicates_audit_documents()
     {
-        if (!ReliabilityTestSettings.Enabled) return;
+        Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
 
-        var client = new MongoClient(ReliabilityTestSettings.MongoConnectionString);
-        var database = client.GetDatabase(ReliabilityTestSettings.MongoDatabase);
+        var client = new MongoClient(_fixture.ConnectionString);
+        var database = client.GetDatabase("audit_reliability_tests");
         var collection = database.GetCollection<AuditDocument>("events");
         await collection.DeleteManyAsync(_ => true);
         await collection.Indexes.CreateOneAsync(new CreateIndexModel<AuditDocument>(

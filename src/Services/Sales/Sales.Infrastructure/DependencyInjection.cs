@@ -105,6 +105,7 @@ public static class DependencyInjection
                     .AddMiddlewares(x => x.AddDeserializer<JsonCoreDeserializer>()
                     .AddTypedHandlers(h => h.AddHandler<SalesIntegrationEventHandler>())))));
         services.AddHostedService<SalesOutboxPublisher>();
+        services.AddHostedService<SalesInboxRedriveService>();
         return services;
     }
 }

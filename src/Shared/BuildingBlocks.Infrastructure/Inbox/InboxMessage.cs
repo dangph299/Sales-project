@@ -41,6 +41,19 @@ public sealed class InboxMessage
     public DateTimeOffset? DeadLetteredAt { get; set; }
 
     /// <summary>
+    /// Gets or sets the UTC instant at or after which a failed event becomes eligible for the next
+    /// re-drive attempt, or <see langword="null"/> when it is not awaiting a retry.
+    /// </summary>
+    public DateTimeOffset? NextAttemptAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the serialized event envelope, retained for failed events so the inbox re-drive
+    /// background service can replay them. <see langword="null"/> for events that succeeded on first
+    /// delivery and never needed to be stored for retry.
+    /// </summary>
+    public string? Payload { get; set; }
+
+    /// <summary>
     /// Gets or sets the exception type from the most recent failed attempt.
     /// </summary>
     public string? LastExceptionType { get; set; }

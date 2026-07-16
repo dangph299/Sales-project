@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Domain;
 using BuildingBlocks.Infrastructure;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web;
@@ -54,6 +55,12 @@ public static class ServiceCollectionExtensions
 
     private static void ConfigureSalesExceptions(ApiExceptionHandlingOptions options)
     {
+        options.Map<DomainException>((_, errorCatalog) =>
+        {
+            var error = errorCatalog.Get(ErrorCodes.InvalidOperation);
+            return new ApiExceptionMapping(400, error.Code, error.Description);
+        });
+
         options.Map<NotFoundException>((_, errorCatalog) =>
         {
             var error = errorCatalog.Get(ErrorCodes.NotFound);
