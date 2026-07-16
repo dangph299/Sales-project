@@ -119,36 +119,29 @@ builder.Services.AddOpenTelemetry()
 ```csharp
 internal static class SalesMetrics
 {
-    private static readonly Meter Meter = new("Sales.Infrastructure");
+    private const string MeterName = "Sales.Infrastructure";
 
-    public static readonly Counter<long> OutboxPublished = Meter.CreateCounter<long>("sales.outbox.published");
-    public static readonly Counter<long> OutboxFailed = Meter.CreateCounter<long>("sales.outbox.failed");
-    public static readonly Counter<long> OutboxDeadLettered = Meter.CreateCounter<long>("sales.outbox.deadlettered");
-    public static readonly Counter<long> InboxDuplicate = Meter.CreateCounter<long>("sales.inbox.duplicate");
-    public static readonly Counter<long> InboxProcessed = Meter.CreateCounter<long>("sales.inbox.processed");
+    private static readonly OutboxMetrics Outbox = new(MeterName, "sales");
+    private static readonly InboxMetrics Inbox = new(MeterName, "sales");
 
-    private static long _outboxBacklog;
-    private static long _outboxDeadLetters;
+    public static Counter<long> OutboxPublished => Outbox.Published;
+    public static Counter<long> OutboxFailed => Outbox.Failed;
+    public static Counter<long> OutboxDeadLettered => Outbox.DeadLettered;
+    public static Counter<long> InboxDuplicate => Inbox.Duplicate;
+    public static Counter<long> InboxProcessed => Inbox.Processed;
+    public static Counter<long> InboxRetried => Inbox.Retried;
+    public static Counter<long> InboxDeadLettered => Inbox.DeadLettered;
 
-    static SalesMetrics()
-    {
-        Meter.CreateObservableGauge("sales.outbox.backlog", () => Interlocked.Read(ref _outboxBacklog));
-        Meter.CreateObservableGauge("sales.outbox.deadletters", () => Interlocked.Read(ref _outboxDeadLetters));
-    }
-
-    public static void SetOutboxSnapshot(long backlog, long deadLetters)
-    {
-        Interlocked.Exchange(ref _outboxBacklog, backlog);
-        Interlocked.Exchange(ref _outboxDeadLetters, deadLetters);
-    }
+    public static void SetOutboxSnapshot(long backlog, long deadLetters) =>
+        Outbox.SetSnapshot(backlog, deadLetters);
 }
 ```
 
-`InventoryMetrics` (`src/Services/Inventory/Inventory.Infrastructure/Observability/InventoryMetrics.cs`) cùng hình dạng, thêm 2 counter nghiệp vụ riêng: `inventory.reservation.rejected`, `inventory.reservation.reserved`.
+`InventoryMetrics` (`src/Services/Inventory/Inventory.Infrastructure/Observability/InventoryMetrics.cs`) cùng hình dạng, thêm 2 counter nghiệp vụ riêng: `inventory.reservation.rejected`, `inventory.reservation.reserved`. Outbox/inbox instruments dùng shared helper `BuildingBlocks.Infrastructure.Observability.Metrics.OutboxMetrics` và `InboxMetrics`.
 
 Tên `Meter("Sales.Infrastructure")` / `Meter("Inventory.Infrastructure")` phải khớp chính xác chuỗi truyền vào `AddMeter(...)` ở mục 3 — đây là cách 1 `Meter` custom được đưa vào `MeterProvider` để `AddOtlpExporter()` xuất đi. Sai tên (dù chỉ khác hoa/thường) là counter âm thầm biến mất khỏi Kibana, không có exception nào báo.
 
-**Bẫy đặt tên dễ nhầm**: `sales.outbox.deadlettered` (Counter, tăng dần — 1 event "row vừa bị đưa vào DLQ") khác `sales.outbox.deadletters` (ObservableGauge, snapshot — "hiện có bao nhiêu row đang nằm trong DLQ"). Tên rất giống nhau nhưng khác loại metric. Bảng dashboard ở `observability.md` dùng tên gauge (`deadletters`).
+**Bẫy đặt tên dễ nhầm**: `sales.outbox.deadlettered` (Counter, tăng dần — 1 event "row vừa bị đưa vào DLQ") khác `sales.outbox.deadletters` (ObservableGauge, snapshot — "hiện có bao nhiêu row đang nằm trong DLQ"). Inbox dead-letter counter dùng underscore: `sales.inbox.dead_lettered` / `inventory.inbox.dead_lettered`. Bảng dashboard ở `observability.md` dùng cả outbox gauge (`deadletters`) và inbox counter (`dead_lettered`).
 
 ### Nơi tăng counter
 
@@ -157,10 +150,12 @@ Tên `Meter("Sales.Infrastructure")` / `Meter("Inventory.Infrastructure")` phả
 | `SalesMetrics.OutboxPublished`/`OutboxFailed` | `Sales.Infrastructure/Kafka/SalesOutboxPublisher.cs` | Mỗi vòng publish outbox (2 giây/lần) |
 | `SalesMetrics.OutboxDeadLettered` | `Sales.Infrastructure/Kafka/SalesOutboxPublisher.cs` | Row vượt `MaxAttempts` |
 | `SalesMetrics.SetOutboxSnapshot` | `Sales.Infrastructure/Kafka/SalesOutboxPublisher.cs` | Cập nhật lại backlog/DLQ mỗi vòng |
-| `SalesMetrics.InboxDuplicate`/`InboxProcessed` | `Sales.Infrastructure/Kafka/SalesIntegrationEventHandler.cs` | Insert Inbox trùng/thành công |
+| `SalesMetrics.InboxDuplicate`/`InboxProcessed` | `Sales.Infrastructure/Kafka/SalesIntegrationEventHandler.cs`, `SalesInventoryEventProcessor.cs` | Inbox trùng/thành công |
+| `SalesMetrics.InboxRetried`/`InboxDeadLettered` | `Sales.Infrastructure/Kafka/SalesInboxRedriveService.cs` | Failed inbox row redrive thành công / chuyển dead-letter |
 | `InventoryMetrics.OutboxPublished`/`OutboxFailed`/`OutboxDeadLettered` | `Inventory.Infrastructure/Kafka/InventoryOutboxPublisher.cs` | Tương tự Sales |
-| `InventoryMetrics.InboxDuplicate`/`InboxProcessed` | `Inventory.Infrastructure/Kafka/InventoryEventHandler.cs` | Tương tự Sales |
-| `InventoryMetrics.ReservationRejected`/`ReservationReserved` | `Inventory.Infrastructure/Kafka/InventoryEventHandler.cs` (hàm `Reserve`) | Thiếu hàng / reserve thành công |
+| `InventoryMetrics.InboxDuplicate`/`InboxProcessed` | `Inventory.Application/Services/Behaviors/InventoryTransactionBehavior.cs` | Inbox trùng/thành công qua MediatR command |
+| `InventoryMetrics.InboxRetried`/`InboxDeadLettered` | `Inventory.Infrastructure/Kafka/InventoryInboxRedriveService.cs` | Failed inbox row redrive thành công / chuyển dead-letter |
+| `InventoryMetrics.ReservationRejected`/`ReservationReserved` | `Inventory.Application/Commands/ReserveStock/ReserveStockCommandHandler.cs` | Thiếu hàng / reserve thành công |
 
 Redis cache (`ProductCache`) và HTTP request pipeline hiện **không có** custom metric riêng — chỉ dựa vào `AddAspNetCoreInstrumentation()`/`AddHttpClientInstrumentation()` chuẩn (xem mục 10).
 

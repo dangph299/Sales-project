@@ -13,7 +13,7 @@ Solution hiện tại là .NET 10 sample gồm:
 - Inventory bounded context: API + Application + Domain + Infrastructure.
 - AuditLog bounded context: Worker + Infrastructure.
 - Shared building blocks: domain/application base types, contracts, infrastructure helpers, observability, web middleware.
-- Angular test client để test thủ công API.
+- Angular web client để test thủ công API.
 
 Các pattern chính đang dùng:
 
@@ -153,7 +153,7 @@ src/
 │   ├── BuildingBlocks.Infrastructure/
 │   └── BuildingBlocks.Web/
 └── Web/
-    └── Sales.TestClient/
+    └── Sales.Web/
 
 tests/
 ├── BuildingBlocks.Contracts.Tests/
@@ -511,22 +511,25 @@ Mục tiêu: consumer xử lý event idempotent, không tạo duplicate side-eff
 Sales:
 
 ```text
-Sales.Infrastructure/Persistence/Inbox/
+BuildingBlocks.Infrastructure/Inbox/
 └── InboxMessage.cs
 
 Sales.Infrastructure/Kafka/
-└── SalesIntegrationEventHandler.cs
+├── SalesIntegrationEventHandler.cs
+├── SalesInventoryEventProcessor.cs
+└── SalesInboxRedriveService.cs
 ```
 
 Inventory:
 
 ```text
-Inventory.Infrastructure/Persistence/Inbox/
-└── InboxRow.cs
+BuildingBlocks.Infrastructure/Inbox/
+└── InboxMessage.cs
 
 Inventory.Infrastructure/Kafka/
 ├── InventoryEventHandler.cs
-└── InventoryIntegrationEventProcessor.cs
+├── InventoryIntegrationEventProcessor.cs
+└── InventoryInboxRedriveService.cs
 ```
 
 Rules:
@@ -535,6 +538,7 @@ Rules:
 - Consumer check inbox trước khi xử lý side effect.
 - Nếu message đã xử lý thì skip an toàn.
 - Nếu chưa xử lý thì insert inbox và xử lý nghiệp vụ trong transaction phù hợp.
+- Nếu xử lý inbound event lỗi, ghi failure vào inbox kèm serialized `EventEnvelope`; `InboxRedriveService` replay row `Failed` theo `NextAttemptAt` cho tới khi `Processed` hoặc `DeadLettered`.
 - Không dựa riêng vào Kafka offset để đảm bảo idempotency nghiệp vụ.
 
 ---
@@ -863,12 +867,12 @@ docker compose -f docker/docker-compose.yml config
 
 ---
 
-## 24. Angular Test Client
+## 24. Angular Web Client
 
 Frontend phụ trợ nằm ở:
 
 ```text
-src/Web/Sales.TestClient/
+src/Web/Sales.Web/
 ```
 
 Rules:
