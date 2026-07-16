@@ -251,7 +251,7 @@ RecurringJob.AddOrUpdate<MaintenanceJobs>("sales-cleanup", "maintenance", x => x
 
 ```bash
 sudo docker compose -f docker/docker-compose.yml up -d --build
-docker exec -it $(docker ps -qf name=redis) redis-cli
+sudo docker exec -it $(sudo docker ps -qf name=redis) redis-cli
 ```
 
 Xem cache key của 1 product:
