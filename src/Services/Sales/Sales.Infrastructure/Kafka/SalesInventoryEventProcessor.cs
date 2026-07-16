@@ -21,9 +21,26 @@ public sealed class SalesInventoryEventProcessor(
 
         try
         {
-            // Insert Inbox first. A duplicate EventId means this Inventory reply was already applied.
-            db.InboxMessages.Add(InboxMessage.Create(envelope.EventId, clock.UtcNow, consumer: "sales-v1"));
-            await db.SaveChangesAsync();
+            var inbox = await db.InboxMessages.SingleOrDefaultAsync(x => x.EventId == envelope.EventId);
+            if (inbox is null)
+            {
+                // Insert Inbox first. A duplicate EventId means this Inventory reply was already applied.
+                db.InboxMessages.Add(InboxMessage.Create(envelope.EventId, clock.UtcNow, consumer: "sales-v1"));
+                await db.SaveChangesAsync();
+            }
+            else if (inbox.Status is InboxMessageStatus.Processed or InboxMessageStatus.DeadLettered)
+            {
+                SalesMetrics.InboxDuplicate.Add(1);
+                await transaction.RollbackAsync();
+                logger.LogDebug("Duplicate event skipped {EventId} {Status}", envelope.EventId, inbox.Status);
+                return "Duplicate";
+            }
+            else
+            {
+                inbox.Status = InboxMessageStatus.Processed;
+                inbox.ProcessedAt = clock.UtcNow;
+                inbox.DeadLetteredAt = null;
+            }
         }
         catch (DbUpdateException ex) when (PostgresExceptions.IsUniqueViolation(ex))
         {

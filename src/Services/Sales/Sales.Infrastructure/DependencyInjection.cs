@@ -83,6 +83,7 @@ public static class DependencyInjection
     {
         services.AddSingleton(new ActivitySource(SalesObservability.KafkaActivitySourceName));
         services.AddScoped<IIntegrationEventProcessor, SalesInventoryEventProcessor>();
+        services.AddScoped<IInboxFailureRecorder, SalesInboxFailureRecorder>();
         services.AddKafkaOutboxPublisher("sales-outbox");
         var brokers = configuration.GetSection("Kafka:Brokers").GetChildren().Select(x => x.Value!).Where(x => x is not null).ToArray();
         if (brokers.Length == 0) brokers = ["kafka:9092"];

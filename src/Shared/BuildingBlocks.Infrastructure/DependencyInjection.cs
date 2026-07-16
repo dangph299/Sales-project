@@ -20,6 +20,7 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         return services
+            .Configure<InboxConsumerOptions>(configuration.GetSection("InboxConsumer"))
             .AddSharedLogging()
             .AddSharedOutbox();
     }

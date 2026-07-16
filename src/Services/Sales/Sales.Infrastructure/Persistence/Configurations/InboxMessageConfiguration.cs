@@ -17,5 +17,10 @@ public sealed class InboxMessageConfiguration : IEntityTypeConfiguration<InboxMe
         // Sales always records the consumer id; keep the existing NOT NULL text column unchanged
         // even though the shared entity exposes Consumer as nullable for services that skip it.
         entity.Property(x => x.Consumer).IsRequired();
+        entity.Property(x => x.LastExceptionType).HasMaxLength(512);
+        entity.Property(x => x.LastError).HasMaxLength(2000);
+        entity.Property(x => x.OriginalTopic).HasMaxLength(256);
+        entity.Property(x => x.OriginalConsumerGroup).HasMaxLength(256);
+        entity.HasIndex(x => new { x.Status, x.DeadLetteredAt });
     }
 }

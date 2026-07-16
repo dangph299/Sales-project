@@ -1,4 +1,5 @@
 using BuildingBlocks.Application;
+using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -34,7 +35,7 @@ public sealed class InventoryMaintenanceService(
 
         var cutoff = clock.UtcNow.Subtract(Retention);
         var inboxDeleted = await db.Inbox
-            .Where(x => x.ProcessedAt < cutoff)
+            .Where(x => x.Status == InboxMessageStatus.Processed && x.ProcessedAt < cutoff)
             .ExecuteDeleteAsync(cancellationToken);
         var outboxDeleted = await db.Outbox
             .Where(x => x.ProcessedAt != null && x.ProcessedAt < cutoff)
@@ -46,5 +47,54 @@ public sealed class InventoryMaintenanceService(
             inboxDeleted,
             outboxDeleted,
             cutoff);
+    }
+
+    /// <summary>
+    /// Resets a single inbound dead-lettered message so a Kafka/DLQ replay can process it again.
+    /// </summary>
+    /// <param name="eventId">Inbound event id to reset.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns><see langword="true"/> if a matching dead-lettered inbox row was reset; otherwise <see langword="false"/>.</returns>
+    public async Task<bool> ResetInboxDeadLetterAsync(Guid eventId, CancellationToken cancellationToken = default)
+    {
+        var row = await db.Inbox.SingleOrDefaultAsync(x =>
+            x.EventId == eventId &&
+            x.Status == InboxMessageStatus.DeadLettered,
+            cancellationToken);
+        if (row is null) return false;
+
+        ResetInboxForReplay(row);
+        await db.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// Resets up to <paramref name="take"/> inbound dead-lettered messages so Kafka/DLQ replay can process them again.
+    /// </summary>
+    /// <param name="take">Maximum number of dead-lettered messages to reset. Clamped between 1 and 100.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Number of inbox rows that were reset.</returns>
+    public async Task<int> ResetInboxDeadLettersAsync(int take = 100, CancellationToken cancellationToken = default)
+    {
+        take = Math.Clamp(take, 1, 100);
+        var rows = await db.Inbox
+            .Where(x => x.Status == InboxMessageStatus.DeadLettered)
+            .OrderBy(x => x.DeadLetteredAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        foreach (var row in rows) ResetInboxForReplay(row);
+        await db.SaveChangesAsync(cancellationToken);
+        return rows.Count;
+    }
+
+    private static void ResetInboxForReplay(InboxMessage row)
+    {
+        row.Status = InboxMessageStatus.Failed;
+        row.Attempts = 0;
+        row.LastError = null;
+        row.LastExceptionType = null;
+        row.LastFailedAt = null;
+        row.DeadLetteredAt = null;
     }
 }
