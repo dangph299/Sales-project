@@ -376,7 +376,7 @@ Observability giúp debug hệ thống phân tán:
 
 Code nằm ở:
 
-- Serilog shared: `src/Shared/BuildingBlocks.Infrastructure/Observability/Logging/SerilogBootstrap.cs`
+- Serilog shared: `src/Shared/BuildingBlocks.Observability/SerilogBootstrap.cs`
 - OpenTelemetry shared: `src/Shared/BuildingBlocks.Web/Observability/OpenTelemetryExtensions.cs`
 - Metrics: `src/Shared/BuildingBlocks.Infrastructure/Observability/Metrics/`
 - Docker stack: `docker/docker-compose.yml`

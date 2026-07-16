@@ -4,7 +4,7 @@ Tài liệu này giải thích riêng cách project đang dùng Serilog + Seq: c
 
 ## Tóm tắt nhanh
 
-- Cả 3 service (Sales.Api, Inventory.Api, AuditLog.Worker) dùng **chung 1 helper** để cấu hình Serilog: `BuildingBlocks.Infrastructure.Observability.Logging.SerilogBootstrap.ConfigureSharedSinks(...)` — không còn 3 block cấu hình copy/paste riêng (mục 4).
+- Cả 3 service (Sales.Api, Inventory.Api, AuditLog.Worker) dùng **chung 1 helper** để cấu hình Serilog: `BuildingBlocks.Observability.SerilogBootstrap.ConfigureSharedSinks(...)` — không còn 3 block cấu hình copy/paste riêng (mục 4).
 - Middleware log HTTP request cũng dùng chung 1 class: `BuildingBlocks.Web.RequestObservabilityMiddleware` — không còn `CorrelationLoggingMiddleware`/`HttpLoggingMiddleware` riêng cho từng service (mục 6, 8).
 - MediatR pipeline của Sales có **2 behavior** phụ trách log: `LoggingBehavior` (Debug, theo dõi tiến trình) và `ErrorLoggingBehavior` (Warning/Error, nơi duy nhất log lỗi command/query) — cả 2 giờ nằm ở `Shared/BuildingBlocks.Application/Behaviors/` dùng chung skeleton, không còn trong `Sales.Application` — mục 7.
 - Log body request/response chỉ được đọc/ghi khi log level `Debug` đang bật, không phải luôn luôn — mục 8.
@@ -58,7 +58,7 @@ seq:
 
 Trước đây mỗi service tự viết 1 block `UseSerilog(...)` gần giống hệt nhau (copy/paste). Giờ cả 3 gọi chung 1 extension method.
 
-`src/Shared/BuildingBlocks.Infrastructure/Observability/Logging/SerilogBootstrap.cs`:
+`src/Shared/BuildingBlocks.Observability/SerilogBootstrap.cs`:
 
 ```csharp
 public static LoggerConfiguration ConfigureSharedSinks(this LoggerConfiguration config, IConfiguration configuration, string defaultServiceName)
@@ -80,14 +80,13 @@ public static LoggerConfiguration ConfigureSharedSinks(this LoggerConfiguration 
 
 ### 4.1 Sales.Api / Inventory.Api
 
-`src/Services/Sales/Sales.Api/Program.cs` và `src/Services/Inventory/Inventory.Api/Program.cs` — cả 2 giờ chỉ còn đúng 1 dòng:
+`Sales.Api`/`Inventory.Api` cấu hình logging trong `Extensions/ServiceCollectionExtensions.cs` (`AddApplicationServices`) — cả 2 giờ chỉ còn đúng 1 dòng:
 
 ```csharp
-builder.Host.UseSerilog((context, config) => config.ConfigureSharedSinks(context.Configuration, "sales-api"));
-// Inventory.Api: cùng dòng, chỉ khác "inventory-api"
+builder.AddBuildingBlocksLogging(ServiceName); // ServiceName = "sales-api" / "inventory-api"
 ```
 
-Và sau khi build app, cả 2 dùng chung 1 delegate cấu hình level (mục 8):
+`AddBuildingBlocksLogging` (trong `BuildingBlocks.Observability`) nội bộ gọi `AddSerilog((_, cfg) => cfg.ConfigureSharedSinks(...))` — helper `ConfigureSharedSinks` bên dưới không đổi. Sau khi build app, request-logging delegate (mục 8) nằm trong `app.UseBuildingBlocksRequestPipeline()`, tương đương:
 
 ```csharp
 app.UseSerilogRequestLogging(RequestLoggingDefaults.Configure);
@@ -99,15 +98,13 @@ app.UseSerilogRequestLogging(RequestLoggingDefaults.Configure);
 
 ```csharp
 var builder = Host.CreateApplicationBuilder(args);
-builder.Services.AddSerilog((_, loggerConfig) => loggerConfig.ConfigureSharedSinks(builder.Configuration, "audit-worker"));
+builder.AddBuildingBlocksLogging("audit-worker");
+builder.Services.AddBuildingBlocksObservability("audit-worker", tracingSourceNames: ["AuditLog.Infrastructure.Kafka"]);
 builder.Services.AddAuditLogWorker(builder.Configuration);
-builder.Services.AddOpenTelemetry()
-    .WithTracing(x => x.AddSource("AuditLog.Infrastructure.Kafka").AddOtlpExporter())
-    .WithMetrics(x => x.AddRuntimeInstrumentation().AddOtlpExporter());
 await builder.Build().RunAsync();
 ```
 
-`Host.CreateApplicationBuilder(args)` trả về `HostApplicationBuilder`, không có `.Host`/`IHostBuilder` như `WebApplicationBuilder`, nên dùng overload `services.AddSerilog(Action<IServiceProvider, LoggerConfiguration>, ...)` thay vì `UseSerilog` — cùng gọi `ConfigureSharedSinks`, chỉ khác API bề mặt vì khác kiểu builder. Không có HTTP nên không có `UseSerilogRequestLogging`.
+`AddBuildingBlocksLogging<TBuilder>` nhận generic `IHostApplicationBuilder`, nên cả 3 host gọi y hệt nhau — `WebApplicationBuilder` (API) và `HostApplicationBuilder` (Worker) không còn phải phân biệt `UseSerilog` (qua `.Host`) với `AddSerilog`; helper `ConfigureSharedSinks` vẫn được gọi bên dưới. Base OpenTelemetry (OTLP export + runtime instrumentation) do `AddBuildingBlocksObservability(...)` lo; Worker chỉ khai thêm tracing source `AuditLog.Infrastructure.Kafka`. Không có HTTP nên không có `UseSerilogRequestLogging`.
 
 ### 4.3 `appsettings.json` tương ứng (giống nhau cho cả 3 service)
 
@@ -372,7 +369,7 @@ Environment = 'Development'
 
 Đã fix trong code (không còn là khuyến nghị):
 
-- ✅ Serilog bootstrap dùng chung `BuildingBlocks.Infrastructure.Observability.Logging.SerilogBootstrap.ConfigureSharedSinks(...)` cho cả 3 service — không còn 3 block copy/paste (mục 4).
+- ✅ Serilog bootstrap dùng chung `BuildingBlocks.Observability.SerilogBootstrap.ConfigureSharedSinks(...)` cho cả 3 service — không còn 3 block copy/paste (mục 4).
 - ✅ HTTP request logging dùng chung `BuildingBlocks.Web.RequestObservabilityMiddleware` + `RequestLoggingDefaults` — không còn `CorrelationLoggingMiddleware`/`HttpLoggingMiddleware` riêng per-service (mục 8).
 - ✅ Log giờ có thêm nhánh OTLP (`WriteTo.OpenTelemetry(...)`), nối được `TraceId` giữa Seq và Kibana APM (mục 6, xem [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 6).
 - ✅ Enricher `Environment` (`Enrich.WithProperty("Environment", ...)`) đã có, đọc từ `ASPNETCORE_ENVIRONMENT`/`DOTNET_ENVIRONMENT`.

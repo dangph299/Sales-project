@@ -92,7 +92,7 @@ No Shared project references Sales, Inventory, or AuditLog.
 ### Over-abstraction
 
 - No excessive generic repository was added to Shared. Sales has a local generic `IRepository<T>` and implementation; this should stay service-local until Inventory has the same need.
-- Observability has been folded into `BuildingBlocks.Infrastructure/Observability` because it only contained infrastructure-level Serilog and metric helpers.
+- Observability: the reusable outbox/inbox metric helpers stay under `BuildingBlocks.Infrastructure/Observability/Metrics`, but the shared Serilog sink policy (`SerilogBootstrap`) and the base OpenTelemetry pipeline were later extracted into a dedicated `BuildingBlocks.Observability` capability project, exposed via `AddBuildingBlocksLogging`/`AddBuildingBlocksObservability` (and layered by `BuildingBlocks.Web` for web hosts).
 
 ### Under-abstraction
 

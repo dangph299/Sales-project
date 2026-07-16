@@ -30,6 +30,6 @@ Bảng này giải thích nhanh các từ hay gặp trong dự án.
 | Hangfire | Thư viện chạy background job | Sales cleanup recurring job |
 | Optimistic Concurrency | Phát hiện conflict bằng version | ETag/If-Match trên order |
 | ETag | Version của resource trả qua HTTP header | `Response.SetEtag(order)` |
-| OpenTelemetry | Chuẩn trace/metric/log | `AddApplicationObservability` |
+| OpenTelemetry | Chuẩn trace/metric/log | `AddBuildingBlocksObservability` / `AddBuildingBlocksWebObservability` |
 | Seq | Hệ thống xem log | docker service `seq` |
 | Kibana | UI cho Elasticsearch/APM | docker service `kibana` |
