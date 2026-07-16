@@ -35,10 +35,23 @@ public abstract class IntegrationEventHandler<THandler>(
             }
             catch (Exception ex)
             {
+                var failure = await RecordFailure(context, envelope, ex);
                 logger.LogError(ex,
-                    "Consume failed {EventType} {Topic} {GroupId} {Partition} {Offset} {MessageId} {ElapsedMs}",
+                    "Consume failed {EventType} {Topic} {GroupId} {Partition} {Offset} {MessageId} {Attempts} {DeadLettered} {ElapsedMs}",
                     envelope.EventType, context.ConsumerContext.Topic, context.ConsumerContext.GroupId,
-                    context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId, sw.ElapsedMilliseconds);
+                    context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId,
+                    failure?.Attempts, failure?.DeadLettered, sw.ElapsedMilliseconds);
+
+                if (failure?.DeadLettered == true)
+                {
+                    logger.LogError(
+                        "Inbound message dead-lettered {EventType} {Topic} {GroupId} {Partition} {Offset} {MessageId} {Attempts}",
+                        envelope.EventType, context.ConsumerContext.Topic, context.ConsumerContext.GroupId,
+                        context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId,
+                        failure.Attempts);
+                    return;
+                }
+
                 throw;
             }
         }
@@ -49,5 +62,24 @@ public abstract class IntegrationEventHandler<THandler>(
         await using var scope = scopes.CreateAsyncScope();
         var processor = scope.ServiceProvider.GetRequiredService<IIntegrationEventProcessor>();
         return await processor.ProcessAsync(envelope);
+    }
+
+    private async Task<InboundFailureResult?> RecordFailure(
+        IMessageContext context,
+        EventEnvelope envelope,
+        Exception exception)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var recorder = scope.ServiceProvider.GetService<IInboxFailureRecorder>();
+        if (recorder is null) return null;
+
+        return await recorder.RecordFailureAsync(
+            envelope,
+            new InboundMessageContext(
+                context.ConsumerContext.Topic,
+                context.ConsumerContext.GroupId,
+                context.ConsumerContext.Partition,
+                context.ConsumerContext.Offset),
+            exception);
     }
 }

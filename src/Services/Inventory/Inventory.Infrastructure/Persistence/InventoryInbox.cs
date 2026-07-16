@@ -17,7 +17,10 @@ public sealed class InventoryInbox(
     /// <inheritdoc/>
     public Task<bool> HasBeenProcessedAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
-        return db.Inbox.AnyAsync(row => row.EventId == eventId, cancellationToken);
+        return db.Inbox.AnyAsync(row =>
+            row.EventId == eventId &&
+            (row.Status == InboxMessageStatus.Processed || row.Status == InboxMessageStatus.DeadLettered),
+            cancellationToken);
     }
 
     /// <inheritdoc/>
@@ -25,7 +28,22 @@ public sealed class InventoryInbox(
     {
         try
         {
-            db.Inbox.Add(InboxMessage.Create(eventId, clock.UtcNow, consumer: "inventory-v1"));
+            var row = await db.Inbox.SingleOrDefaultAsync(x => x.EventId == eventId, cancellationToken);
+            if (row is null)
+            {
+                db.Inbox.Add(InboxMessage.Create(eventId, clock.UtcNow, consumer: "inventory-v1"));
+            }
+            else if (row.Status is InboxMessageStatus.Processed or InboxMessageStatus.DeadLettered)
+            {
+                return false;
+            }
+            else
+            {
+                row.Status = InboxMessageStatus.Processed;
+                row.ProcessedAt = clock.UtcNow;
+                row.DeadLetteredAt = null;
+            }
+
             await db.SaveChangesAsync(cancellationToken);
             return true;
         }

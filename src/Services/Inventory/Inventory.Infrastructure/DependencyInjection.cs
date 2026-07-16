@@ -39,6 +39,7 @@ public static class DependencyInjection
         services.AddHostedService<InventoryMaintenanceWorker>();
         services.AddSingleton<IInventoryMetrics, InventoryMetricsAdapter>();
         services.AddScoped<IIntegrationEventProcessor, InventoryIntegrationEventProcessor>();
+        services.AddScoped<IInboxFailureRecorder, InventoryInboxFailureRecorder>();
         services.AddSingleton(new ActivitySource(InventoryObservability.KafkaActivitySourceName));
         services.AddKafkaOutboxPublisher("inventory-outbox");
         services.AddHostedService<InventoryOutboxPublisher>();

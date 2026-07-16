@@ -7,7 +7,7 @@ namespace Sales.Infrastructure;
 
 /// <summary>
 /// Hangfire recurring/on-demand jobs for maintaining Sales data: cleaning up old Inbox/Outbox rows,
-/// and replaying outbox messages that failed or were dead-lettered.
+/// replaying outbox messages, and resetting inbound dead letters after an operator fix.
 /// </summary>
 public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer redis, IClock clock)
 {
@@ -26,7 +26,9 @@ public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer re
         try
         {
             var cutoff = clock.UtcNow.AddDays(-14);
-            await db.InboxMessages.Where(x => x.ProcessedAt < cutoff).ExecuteDeleteAsync();
+            await db.InboxMessages
+                .Where(x => x.Status == InboxMessageStatus.Processed && x.ProcessedAt < cutoff)
+                .ExecuteDeleteAsync();
             await db.OutboxMessages.Where(x => x.ProcessedAt != null && x.ProcessedAt < cutoff).ExecuteDeleteAsync();
         }
         finally
@@ -71,6 +73,42 @@ public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer re
         return rows.Count;
     }
 
+    /// <summary>
+    /// Resets a single inbound dead-lettered message so a Kafka/DLQ replay can process it again.
+    /// </summary>
+    /// <param name="eventId">Inbound event id to reset.</param>
+    /// <returns><see langword="true"/> if a matching dead-lettered inbox row was reset; otherwise <see langword="false"/>.</returns>
+    public async Task<bool> ResetInboxDeadLetterAsync(Guid eventId)
+    {
+        var row = await db.InboxMessages.SingleOrDefaultAsync(x =>
+            x.EventId == eventId &&
+            x.Status == InboxMessageStatus.DeadLettered);
+        if (row is null) return false;
+
+        ResetInboxForReplay(row);
+        await db.SaveChangesAsync();
+        return true;
+    }
+
+    /// <summary>
+    /// Resets up to <paramref name="take"/> inbound dead-lettered messages so Kafka/DLQ replay can process them again.
+    /// </summary>
+    /// <param name="take">Maximum number of dead-lettered messages to reset. Clamped between 1 and 100.</param>
+    /// <returns>Number of inbox rows that were reset.</returns>
+    public async Task<int> ResetInboxDeadLettersAsync(int take = ReplayBatchLimit)
+    {
+        take = Math.Clamp(take, 1, ReplayBatchLimit);
+        var rows = await db.InboxMessages
+            .Where(x => x.Status == InboxMessageStatus.DeadLettered)
+            .OrderBy(x => x.DeadLetteredAt)
+            .Take(take)
+            .ToListAsync();
+
+        foreach (var row in rows) ResetInboxForReplay(row);
+        await db.SaveChangesAsync();
+        return rows.Count;
+    }
+
     private void ResetForReplay(OutboxMessage row)
     {
         row.Attempts = 0;
@@ -79,5 +117,15 @@ public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer re
         row.DeadLetteredAt = null;
         row.LockId = null;
         row.LockedUntil = null;
+    }
+
+    private static void ResetInboxForReplay(InboxMessage row)
+    {
+        row.Status = InboxMessageStatus.Failed;
+        row.Attempts = 0;
+        row.LastError = null;
+        row.LastExceptionType = null;
+        row.LastFailedAt = null;
+        row.DeadLetteredAt = null;
     }
 }

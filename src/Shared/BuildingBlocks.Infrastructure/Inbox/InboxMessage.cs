@@ -20,6 +20,57 @@ public sealed class InboxMessage
     public DateTimeOffset ProcessedAt { get; set; }
 
     /// <summary>
+    /// Gets or sets the processing status for this consumed event.
+    /// </summary>
+    public InboxMessageStatus Status { get; set; } = InboxMessageStatus.Processed;
+
+    /// <summary>
+    /// Gets or sets how many failed processing attempts have been recorded for this event.
+    /// Successful duplicate deliveries keep this value unchanged.
+    /// </summary>
+    public int Attempts { get; set; }
+
+    /// <summary>
+    /// Gets or sets the UTC instant of the most recent failed attempt.
+    /// </summary>
+    public DateTimeOffset? LastFailedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the UTC instant this inbound event was dead-lettered after repeated failures.
+    /// </summary>
+    public DateTimeOffset? DeadLetteredAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the exception type from the most recent failed attempt.
+    /// </summary>
+    public string? LastExceptionType { get; set; }
+
+    /// <summary>
+    /// Gets or sets a shortened error message from the most recent failed attempt.
+    /// </summary>
+    public string? LastError { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Kafka topic the failed event was consumed from.
+    /// </summary>
+    public string? OriginalTopic { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Kafka partition the failed event was consumed from.
+    /// </summary>
+    public int? OriginalPartition { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Kafka offset the failed event was consumed from.
+    /// </summary>
+    public long? OriginalOffset { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Kafka consumer group that failed to process this event.
+    /// </summary>
+    public string? OriginalConsumerGroup { get; set; }
+
+    /// <summary>
     /// Gets or sets an optional identifier for the consumer that processed this event, or
     /// <see langword="null"/> when the service does not track it.
     /// </summary>
@@ -36,6 +87,7 @@ public sealed class InboxMessage
     {
         EventId = eventId,
         ProcessedAt = processedAt,
+        Status = InboxMessageStatus.Processed,
         Consumer = consumer
     };
 }
