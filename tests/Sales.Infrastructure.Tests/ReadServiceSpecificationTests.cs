@@ -51,7 +51,7 @@ public sealed class ReadServiceSpecificationTests
     }
 
     [Fact]
-    public async Task Product_search_excludes_inactive_products()
+    public async Task Product_search_includes_inactive_products()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
         var active = Product.Create("sku-active", "Keyboard", 100);
@@ -63,7 +63,8 @@ public sealed class ReadServiceSpecificationTests
 
         var result = await service.SearchAsync(null, 1, 20);
 
-        Assert.Equal([active.Id], result.Items.Select(x => x.Id).ToArray());
+        Assert.Equal([active.Id, inactive.Id], result.Items.Select(x => x.Id).ToArray());
+        Assert.Contains(result.Items, x => x.Id == inactive.Id && !x.IsActive);
     }
 
     [Fact]

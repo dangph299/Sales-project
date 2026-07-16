@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using BuildingBlocks.Domain;
 using Sales.Domain;
 
 namespace Sales.Application.Tests;
@@ -8,9 +9,14 @@ public sealed class ConfirmOrderHandlerTests
     [Fact]
     public async Task Confirm_moves_order_to_pending_inventory_and_logs_start_and_completion()
     {
-        var order = CreateOrder();
+        var product = Product.Create("sku", "Product", 100);
+        var order = CreateOrder(product);
         var logger = new RecordingLogger<ConfirmOrderHandler>();
-        var handler = new ConfirmOrderHandler(new FakeOrderRepository(order), new FakeUnitOfWork(), logger);
+        var handler = new ConfirmOrderHandler(
+            new FakeOrderRepository(order),
+            new FakeProductRepository(product),
+            new FakeUnitOfWork(),
+            logger);
 
         var dto = await handler.Handle(new ConfirmOrder(order.Id, order.Version), CancellationToken.None);
 
@@ -26,7 +32,11 @@ public sealed class ConfirmOrderHandlerTests
         // ConfirmOrderHandler itself no longer catches/logs - ErrorLoggingBehavior owns the single
         // Error log for every command, so the handler must let the exception propagate untouched.
         var logger = new RecordingLogger<ConfirmOrderHandler>();
-        var handler = new ConfirmOrderHandler(new FakeOrderRepository(null), new FakeUnitOfWork(), logger);
+        var handler = new ConfirmOrderHandler(
+            new FakeOrderRepository(null),
+            new FakeProductRepository(),
+            new FakeUnitOfWork(),
+            logger);
 
         await Assert.ThrowsAsync<NotFoundException>(
             () => handler.Handle(new ConfirmOrder(Guid.NewGuid(), 1), CancellationToken.None));
@@ -34,9 +44,45 @@ public sealed class ConfirmOrderHandlerTests
         Assert.DoesNotContain(logger.Entries, e => e.Level >= LogLevel.Warning);
     }
 
-    private static Order CreateOrder()
+    [Fact]
+    public async Task Confirm_rejects_when_an_order_line_product_was_deleted_after_draft_creation()
+    {
+        var order = CreateOrder();
+        var logger = new RecordingLogger<ConfirmOrderHandler>();
+        var handler = new ConfirmOrderHandler(
+            new FakeOrderRepository(order),
+            new FakeProductRepository(),
+            new FakeUnitOfWork(),
+            logger);
+
+        await Assert.ThrowsAsync<NotFoundException>(
+            () => handler.Handle(new ConfirmOrder(order.Id, order.Version), CancellationToken.None));
+
+        Assert.Equal(OrderStatus.Draft, order.Status);
+    }
+
+    [Fact]
+    public async Task Confirm_rejects_when_an_order_line_product_was_deactivated_after_draft_creation()
     {
         var product = Product.Create("sku", "Product", 100);
+        var order = CreateOrder(product);
+        product.Update(product.Name, product.Price.Amount, isActive: false);
+        var logger = new RecordingLogger<ConfirmOrderHandler>();
+        var handler = new ConfirmOrderHandler(
+            new FakeOrderRepository(order),
+            new FakeProductRepository(product),
+            new FakeUnitOfWork(),
+            logger);
+
+        await Assert.ThrowsAsync<DomainException>(
+            () => handler.Handle(new ConfirmOrder(order.Id, order.Version), CancellationToken.None));
+
+        Assert.Equal(OrderStatus.Draft, order.Status);
+    }
+
+    private static Order CreateOrder(Product? product = null)
+    {
+        product ??= Product.Create("sku", "Product", 100);
         return Order.Create(
             CustomerSnapshot.Create(Guid.NewGuid(), "A", "0901234567"),
             [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, true), 1, 0)]);
@@ -57,6 +103,37 @@ public sealed class ConfirmOrderHandlerTests
         public Task AddAsync(Order aggregate, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public void Update(Order aggregate) { }
         public void Delete(Order aggregate) { }
+    }
+
+    private sealed class FakeProductRepository : IProductRepository
+    {
+        private readonly IReadOnlyList<Product> _products;
+
+        public FakeProductRepository()
+        {
+            _products = [];
+        }
+
+        public FakeProductRepository(Product product)
+        {
+            _products = [product];
+        }
+
+        public Task<Product?> GetBySkuAsync(string sku, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_products.SingleOrDefault(x => x.Sku == sku));
+
+        public Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+            Task.FromResult(_products.SingleOrDefault(x => x.Id == id));
+
+        public Task<IReadOnlyList<Product>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+        {
+            var idSet = ids.ToHashSet();
+            return Task.FromResult<IReadOnlyList<Product>>(_products.Where(x => idSet.Contains(x.Id)).ToArray());
+        }
+
+        public Task AddAsync(Product aggregate, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public void Update(Product aggregate) { }
+        public void Delete(Product aggregate) { }
     }
 
     private sealed class FakeUnitOfWork : IUnitOfWork

@@ -25,8 +25,7 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
     public async Task<PagedResult<ProductDto>> SearchAsync(string? name, int page, int pageSize, CancellationToken ct = default)
     {
         (page, pageSize) = Paging.Normalize(page, pageSize);
-        var activeProduct = new ActiveProductSpecification();
-        var query = db.Products.AsNoTracking().Where(activeProduct.ToExpression());
+        var query = db.Products.AsNoTracking().Where(x => !x.IsDelete);
         if (!string.IsNullOrWhiteSpace(name)) query = query.Where(x => EF.Functions.ILike(x.Name, $"%{name.Trim()}%"));
         var total = await query.LongCountAsync(ct);
         var products = await query.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
