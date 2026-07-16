@@ -92,12 +92,17 @@ public static class DependencyInjection
                 .WithBrokers(brokers)
                 .AddProducer("sales-outbox", producer => producer.AddMiddlewares(x => x.AddSerializer<JsonCoreSerializer>()))
                 .AddConsumer(consumer => consumer
-                    .Topics([KafkaTopics.StockReserved, KafkaTopics.StockRejected, KafkaTopics.StockReleased])
+                    .Topics([
+                        KafkaTopics.StockReserved, 
+                        KafkaTopics.StockRejected, 
+                        KafkaTopics.StockReleased
+                    ])
                     .WithGroupId(KafkaConsumerGroups.SalesInventoryResults)
                     .WithAutoOffsetReset(AutoOffsetReset.Earliest)
                     .WithBufferSize(100)
                     .WithWorkersCount(4)
-                    .AddMiddlewares(x => x.AddDeserializer<JsonCoreDeserializer>().AddTypedHandlers(h => h.AddHandler<SalesIntegrationEventHandler>())))));
+                    .AddMiddlewares(x => x.AddDeserializer<JsonCoreDeserializer>()
+                    .AddTypedHandlers(h => h.AddHandler<SalesIntegrationEventHandler>())))));
         services.AddHostedService<SalesOutboxPublisher>();
         return services;
     }

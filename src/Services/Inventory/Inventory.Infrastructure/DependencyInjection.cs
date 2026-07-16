@@ -44,11 +44,22 @@ public static class DependencyInjection
         services.AddHostedService<InventoryOutboxPublisher>();
         var brokers = configuration.GetSection("Kafka:Brokers").GetChildren().Select(x => x.Value!).Where(x => x is not null).ToArray();
         if (brokers.Length == 0) brokers = ["kafka:9092"];
-        services.AddKafka(kafka => kafka.UseMicrosoftLog().AddCluster(cluster => cluster.WithBrokers(brokers)
-            .AddProducer("inventory-outbox", p => p.AddMiddlewares(x => x.AddSerializer<JsonCoreSerializer>()))
-            .AddConsumer(c => c.Topics([KafkaTopics.OrderConfirmationRequested, KafkaTopics.OrderUndoConfirmationRequested])
-                .WithGroupId(KafkaConsumerGroups.InventoryOrders).WithAutoOffsetReset(AutoOffsetReset.Earliest).WithBufferSize(100).WithWorkersCount(4)
-                .AddMiddlewares(x => x.AddDeserializer<JsonCoreDeserializer>().AddTypedHandlers(h => h.AddHandler<InventoryEventHandler>())))));
+        services.AddKafka(kafka => kafka
+            .UseMicrosoftLog()
+            .AddCluster(cluster => cluster
+                .WithBrokers(brokers)
+                .AddProducer("inventory-outbox", producer => producer.AddMiddlewares(x => x.AddSerializer<JsonCoreSerializer>()))
+                .AddConsumer(consumer => consumer
+                    .Topics([
+                        KafkaTopics.OrderConfirmationRequested,
+                        KafkaTopics.OrderUndoConfirmationRequested
+                    ])
+                    .WithGroupId(KafkaConsumerGroups.InventoryOrders)
+                    .WithAutoOffsetReset(AutoOffsetReset.Earliest)
+                    .WithBufferSize(100)
+                    .WithWorkersCount(4)
+                    .AddMiddlewares(x => x.AddDeserializer<JsonCoreDeserializer>()
+                    .AddTypedHandlers(h => h.AddHandler<InventoryEventHandler>())))));
         return services;
     }
 }

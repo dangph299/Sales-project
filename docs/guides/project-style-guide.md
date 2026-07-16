@@ -812,7 +812,7 @@ Rules:
 Rules:
 
 - Log structured bằng Serilog.
-- Shared sink policy dùng `BuildingBlocks.Infrastructure/Observability/Logging/SerilogBootstrap.cs`.
+- Shared sink policy dùng `BuildingBlocks.Observability/SerilogBootstrap.cs`.
 - HTTP request observability dùng `BuildingBlocks.Web` middleware/extensions.
 - Không log password/token/raw sensitive payload.
 - Exception phải được log ở boundary phù hợp.

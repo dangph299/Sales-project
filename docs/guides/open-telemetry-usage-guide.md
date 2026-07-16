@@ -5,7 +5,7 @@ Tài liệu này giải thích riêng phần **code trong solution** dùng OpenT
 ## Tóm tắt nhanh
 
 - 3 service (`Sales.Api`, `Inventory.Api`, `AuditLog.Worker`) đều bật `AddOpenTelemetry()` cho **traces** và **metrics**, export qua OTLP gRPC tới `otel-collector:4317` (mục 2–3).
-- **Log cũng đi qua OTLP rồi**, không chỉ Console/Seq — Serilog dùng chung 1 helper (`BuildingBlocks.Infrastructure.Observability.Logging.SerilogBootstrap.ConfigureSharedSinks`) có thêm `WriteTo.OpenTelemetry(...)` (mục 6). Đây là điểm nhiều người dễ tưởng nhầm là "log tách biệt hoàn toàn với OTel" — không còn đúng.
+- **Log cũng đi qua OTLP rồi**, không chỉ Console/Seq — Serilog dùng chung 1 helper (`BuildingBlocks.Observability.SerilogBootstrap.ConfigureSharedSinks`) có thêm `WriteTo.OpenTelemetry(...)` (mục 6). Đây là điểm nhiều người dễ tưởng nhầm là "log tách biệt hoàn toàn với OTel" — không còn đúng.
 - Kafka publish/consume có tracing thủ công qua `ActivitySource` riêng của từng service, propagate W3C `traceparent`/`tracestate` qua Kafka header thật (mục 5) — nối được span HTTP request ban đầu với span Kafka consumer ở service khác.
 - Custom metric nghiệp vụ (`sales.outbox.*`, `inventory.reservation.*`...) nằm ở `SalesMetrics`/`InventoryMetrics` (mục 4).
 - Muốn xem danh sách panel Kibana cần dựng, xem [observability.md](observability.md). Muốn hiểu APM Server/Elasticsearch/Kibana pipeline, xem [Elastic-usage-guide.md](Elastic-usage-guide.md).
@@ -41,9 +41,23 @@ OpenTelemetry.Instrumentation.EntityFrameworkCore 1.16.0-beta.1
 
 ## 3. Khởi tạo tracing + metrics trong từng service
 
+> **Từ refactor building-blocks**: base pipeline (OTLP exporter + `AddRuntimeInstrumentation`) nằm trong `AddBuildingBlocksObservability` (`BuildingBlocks.Observability`); phần web instrumentation + source/meter riêng của service nằm trong `AddBuildingBlocksWebObservability` (`BuildingBlocks.Web`), được `AddBuildingBlocksWeb` gọi. Service không còn tự viết `AddOpenTelemetry()` trong `Program.cs` — chỉ truyền tên qua options. Các snippet `AddOpenTelemetry()` bên dưới là cấu hình **tương đương** để giải thích từng instrumentation.
+
 ### 3.1 Sales.Api
 
-`src/Services/Sales/Sales.Api/Program.cs`:
+`Sales.Api` cấu hình trong `Extensions/ServiceCollectionExtensions.cs` (`AddApplicationServices`):
+
+```csharp
+builder.Services.AddBuildingBlocksWeb(builder.Configuration, options =>
+{
+    options.ServiceName = ServiceName;                                        // "sales-api"
+    options.ActivitySourceName = SalesObservability.KafkaActivitySourceName;  // "Sales.Infrastructure.Kafka"
+    options.MeterName = "Sales.Infrastructure";
+    // ... ApiTitle, JwtClockSkew, ConfigureExceptions, ...
+});
+```
+
+Tương đương cấu hình OTel:
 
 ```csharp
 builder.Services.AddOpenTelemetry()
@@ -61,7 +75,7 @@ builder.Services.AddOpenTelemetry()
 
 ### 3.2 Inventory.Api
 
-`src/Services/Inventory/Inventory.Api/Program.cs` — cấu trúc giống hệt Sales.Api, chỉ khác tên:
+`Inventory.Api` — cùng facade `AddBuildingBlocksWeb`, chỉ khác tên (`ActivitySourceName = InventoryObservability.KafkaActivitySourceName`, `MeterName = "Inventory.Infrastructure"`). Tương đương cấu hình OTel:
 
 ```csharp
 builder.Services.AddOpenTelemetry()
@@ -73,7 +87,13 @@ builder.Services.AddOpenTelemetry()
 
 ### 3.3 AuditLog.Worker
 
-`src/Services/AuditLog/AuditLog.Worker/Program.cs` — không phải web host nên không có ASP.NET Core/HttpClient/EF Core instrumentation, không có custom Meter, nhưng vẫn có `AddSource` cho Kafka:
+`src/Services/AuditLog/AuditLog.Worker/Program.cs` — không phải web host nên không có ASP.NET Core/HttpClient/EF Core instrumentation, không có custom Meter, nhưng vẫn có `AddSource` cho Kafka. Worker gọi thẳng base pipeline (không qua `BuildingBlocks.Web`):
+
+```csharp
+builder.Services.AddBuildingBlocksObservability("audit-worker", tracingSourceNames: ["AuditLog.Infrastructure.Kafka"]);
+```
+
+Tương đương cấu hình OTel:
 
 ```csharp
 builder.Services.AddOpenTelemetry()
@@ -231,7 +251,7 @@ activity?.SetTag("messaging.kafka.consumer.group", context.ConsumerContext.Group
 
 Đây là điểm dễ nhầm nhất nếu chỉ đọc code cũ hoặc tài liệu cũ: **log không còn tách biệt hoàn toàn khỏi OTel nữa.**
 
-`src/Shared/BuildingBlocks.Infrastructure/Observability/Logging/SerilogBootstrap.cs`:
+`src/Shared/BuildingBlocks.Observability/SerilogBootstrap.cs`:
 
 ```csharp
 public static LoggerConfiguration ConfigureSharedSinks(this LoggerConfiguration config, IConfiguration configuration, string defaultServiceName)
@@ -256,9 +276,9 @@ public static LoggerConfiguration ConfigureSharedSinks(this LoggerConfiguration 
 }
 ```
 
-Cả 3 service gọi đúng 1 helper này (`Sales.Api`/`Inventory.Api` qua `builder.Host.UseSerilog((ctx, cfg) => cfg.ConfigureSharedSinks(...))`, `AuditLog.Worker` qua `builder.Services.AddSerilog((_, cfg) => cfg.ConfigureSharedSinks(...))` vì dùng `HostApplicationBuilder` không có `.Host`) — không còn 3 block cấu hình Serilog copy/paste riêng như trước.
+Cả 3 service gọi đúng 1 helper này qua `builder.AddBuildingBlocksLogging(serviceName)` — extension nhận generic `IHostApplicationBuilder` nên `Sales.Api`/`Inventory.Api` (`WebApplicationBuilder`) và `AuditLog.Worker` (`HostApplicationBuilder`) gọi y hệt nhau, nội bộ đều `AddSerilog((_, cfg) => cfg.ConfigureSharedSinks(...))`. Không còn 3 block cấu hình Serilog copy/paste riêng như trước.
 
-Package: `Serilog.Sinks.OpenTelemetry` `4.2.0`, khai trong `BuildingBlocks.Infrastructure.csproj` — đóng gói cùng `Serilog`, `Serilog.Sinks.Console`, `Serilog.Sinks.Seq`.
+Package: `Serilog.Sinks.OpenTelemetry` `4.2.0`, khai trong `BuildingBlocks.Observability.csproj` — đóng gói cùng `Serilog`, `Serilog.Sinks.Console`, `Serilog.Sinks.Seq`, `Serilog.Extensions.Hosting`.
 
 Hệ quả:
 
@@ -347,7 +367,7 @@ Vì `Meter("Sales.Infrastructure")` đã được đăng ký từ trước (mụ
 ### Nếu cần `ActivitySource` mới cho 1 luồng khác Kafka
 
 1. Tạo tên source rõ nghĩa trong class observability của service, hoặc đăng ký một `ActivitySource` singleton riêng qua DI nếu cần nhiều source.
-2. Thêm `.AddSource("Tên.ActivitySource")` vào `.WithTracing(...)` ở `Program.cs` — thiếu bước này thì span tạo ra không bao giờ tới Kibana.
+2. Khai báo activity source cho service — với API set `options.ActivitySourceName` trong `AddBuildingBlocksWeb(...)`, với Worker truyền `tracingSourceNames:` vào `AddBuildingBlocksObservability(...)` (cả hai cuối cùng thành `.AddSource("Tên.ActivitySource")` trong `.WithTracing(...)`) — thiếu bước này thì span tạo ra không bao giờ tới Kibana.
 3. Inject `ActivitySource` hoặc dùng static source hiện có, rồi gọi `StartActivity(...)` bọc quanh đoạn code cần trace. Set tag theo [semantic convention của OTel](https://opentelemetry.io/docs/specs/semconv/) nếu có (ví dụ `messaging.system`, `db.system`) để field hiển thị nhất quán trong Kibana.
 
 ## 10. Nên cải thiện trong production
@@ -364,7 +384,7 @@ Local MVP đang ổn cho bài thực hành, nhưng production nên thêm:
 
 | Mục | File |
 |---|---|
-| Serilog + OTLP log sink dùng chung | `src/Shared/BuildingBlocks.Infrastructure/Observability/Logging/SerilogBootstrap.cs` |
+| Serilog + OTLP log sink dùng chung | `src/Shared/BuildingBlocks.Observability/SerilogBootstrap.cs` |
 | HTTP request logging middleware dùng chung | `src/Shared/BuildingBlocks.Web/RequestObservabilityMiddleware.cs`, `RequestLoggingDefaults.cs` |
 | Trace context parser dùng chung (Kafka consumer) | `src/Shared/BuildingBlocks.Infrastructure/Tracing/TraceContextParser.cs` |
 | Header W3C traceparent/tracestate | `src/Shared/BuildingBlocks.Contracts/Messaging/MessageHeaders.cs` |

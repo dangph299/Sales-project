@@ -22,7 +22,7 @@ public sealed class SalesInventoryEventProcessor(
         try
         {
             // Insert Inbox first. A duplicate EventId means this Inventory reply was already applied.
-            db.InboxMessages.Add(new InboxMessage { EventId = envelope.EventId, ProcessedAt = clock.UtcNow, Consumer = "sales-v1" });
+            db.InboxMessages.Add(InboxMessage.Create(envelope.EventId, clock.UtcNow, consumer: "sales-v1"));
             await db.SaveChangesAsync();
         }
         catch (DbUpdateException ex) when (PostgresExceptions.IsUniqueViolation(ex))

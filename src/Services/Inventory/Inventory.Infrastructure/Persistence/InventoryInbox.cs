@@ -25,7 +25,7 @@ public sealed class InventoryInbox(
     {
         try
         {
-            db.Inbox.Add(new InboxRow { EventId = eventId, ProcessedAt = clock.UtcNow });
+            db.Inbox.Add(InboxMessage.Create(eventId, clock.UtcNow, consumer: "inventory-v1"));
             await db.SaveChangesAsync(cancellationToken);
             return true;
         }

@@ -611,7 +611,7 @@ Trạng thái: đã đáp ứng phần chính; demo monitoring được mô tả
 
 Code chính:
 
-- Shared Serilog: `src/Shared/BuildingBlocks.Infrastructure/Observability/Logging/SerilogBootstrap.cs`
+- Shared Serilog: `src/Shared/BuildingBlocks.Observability/SerilogBootstrap.cs`
 - OpenTelemetry registration: `src/Shared/BuildingBlocks.Web/Observability/OpenTelemetryExtensions.cs`
 - Request observability middleware: `src/Shared/BuildingBlocks.Web/RequestObservabilityMiddleware.cs`
 - Sales metrics: `src/Services/Sales/Sales.Infrastructure/Observability/`

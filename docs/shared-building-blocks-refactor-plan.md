@@ -59,7 +59,7 @@ No Shared project references Sales, Inventory, or AuditLog.
 - `SalesOutboxPublisher` and `InventoryOutboxPublisher` are near-duplicates: claim rows, lock rows, publish, retry/backoff, dead-letter, update metrics.
 - `SalesIntegrationEventHandler`, `InventoryEventHandler`, and `AuditEventHandler` repeat Kafka consume logging scope setup and tracing/log shape.
 - Sales and Inventory each configure the shared `OutboxMessage` EF mapping separately; this is acceptable for service-owned tables, but common configuration conventions could be extracted later if duplication grows.
-- Inbox idempotency is implemented separately as `Sales.Infrastructure.InboxMessage` and `Inventory.Infrastructure.Persistence.Inbox.InboxRow`; a shared abstraction is missing.
+- Inbox idempotency now uses a shared `BuildingBlocks.Infrastructure.InboxMessage` entity (mirroring `OutboxMessage`), with each service owning its own `IEntityTypeConfiguration<InboxMessage>` mapping to `inbox_messages`. The `Consumer` column is a nullable superset: Sales maps it `IsRequired()` (unchanged NOT NULL text), Inventory adds it nullable. The access patterns stay service-specific (Sales inline dedup, Inventory's `IInventoryInbox` port).
 
 ### Code in the wrong layer
 
@@ -92,7 +92,7 @@ No Shared project references Sales, Inventory, or AuditLog.
 ### Over-abstraction
 
 - No excessive generic repository was added to Shared. Sales has a local generic `IRepository<T>` and implementation; this should stay service-local until Inventory has the same need.
-- Observability has been folded into `BuildingBlocks.Infrastructure/Observability` because it only contained infrastructure-level Serilog and metric helpers.
+- Observability: the reusable outbox/inbox metric helpers stay under `BuildingBlocks.Infrastructure/Observability/Metrics`, but the shared Serilog sink policy (`SerilogBootstrap`) and the base OpenTelemetry pipeline were later extracted into a dedicated `BuildingBlocks.Observability` capability project, exposed via `AddBuildingBlocksLogging`/`AddBuildingBlocksObservability` (and layered by `BuildingBlocks.Web` for web hosts).
 
 ### Under-abstraction
 
@@ -230,7 +230,7 @@ Add later:
 | Extract message log context | repeated `LogContext.PushProperty` in consumer handlers | `BuildingBlocks.Infrastructure/Messaging/Logging/*` | Serilog implementation in Infrastructure/Observability only | Medium; log shape must stay compatible | consumer tests, log assertions if any |
 | Extract outbox store/processor | `SalesOutboxPublisher.cs`, `InventoryOutboxPublisher.cs` | deferred | Add shared abstractions only with service stores/processors in the same phase | High; reliability behavior must not regress | outbox reliability tests |
 | Add publisher decorators | `KafkaOutboxPublisher.cs` | decorators in `BuildingBlocks.Infrastructure/Messaging/Publishing` | DI registration order becomes explicit | Medium | unit tests for decorator order/behavior |
-| Add inbox abstraction | `Sales.Infrastructure/Persistence/Inbox/InboxMessage.cs`, `Inventory.Infrastructure/Persistence/Inbox/InboxRow.cs` | deferred | Add only when consumers stop touching DbContext inbox sets directly | Medium | consumer idempotency tests |
+| Unify inbox entity | `Sales.Infrastructure/Persistence/Inbox/InboxMessage.cs`, `Inventory.Infrastructure/Persistence/Inbox/InboxRow.cs` | **done** — shared `BuildingBlocks.Infrastructure/Inbox/InboxMessage.cs`, per-service `IEntityTypeConfiguration<InboxMessage>` | `Consumer` nullable superset (Sales `IsRequired()`, Inventory nullable) | inbox/idempotency tests pass |
 | Cleanup stale folders | `src/Shared/BuildingBlocks.{Auditing,Messaging,Outbox,Persistence}/obj` | delete folders | no project dependency change | Low | `dotnet sln Sales.sln list`, build |
 
 Recommended phase commands:
