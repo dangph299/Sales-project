@@ -2,10 +2,10 @@ using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
-namespace Sales.Infrastructure;
+namespace Inventory.Infrastructure;
 
 /// <summary>
-/// Persistence mapping for processed Sales messages (shared <see cref="InboxMessage"/> entity).
+/// Persistence mapping for processed Inventory messages (shared <see cref="InboxMessage"/> entity).
 /// </summary>
 public sealed class InboxMessageConfiguration : IEntityTypeConfiguration<InboxMessage>
 {
@@ -14,8 +14,6 @@ public sealed class InboxMessageConfiguration : IEntityTypeConfiguration<InboxMe
     {
         entity.ToTable("inbox_messages");
         entity.HasKey(x => x.EventId);
-        // Sales always records the consumer id; keep the existing NOT NULL text column unchanged
-        // even though the shared entity exposes Consumer as nullable for services that skip it.
-        entity.Property(x => x.Consumer).IsRequired();
+        entity.Property(x => x.Consumer).HasMaxLength(64);
     }
 }

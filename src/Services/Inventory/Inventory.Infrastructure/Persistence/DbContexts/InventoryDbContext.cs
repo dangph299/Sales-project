@@ -21,7 +21,7 @@ public sealed class InventoryDbContext(
     public DbSet<Reservation> Reservations => Set<Reservation>();
 
     /// <summary>Processed inbound messages.</summary>
-    public DbSet<InboxRow> Inbox => Set<InboxRow>();
+    public DbSet<InboxMessage> Inbox => Set<InboxMessage>();
 
     /// <summary>Outbound messages awaiting publication.</summary>
     public DbSet<OutboxMessage> Outbox => Set<OutboxMessage>();
