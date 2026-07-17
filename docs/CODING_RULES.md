@@ -87,11 +87,14 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 <Service>.Application
 ├── Features
 │   ├── Sales:     Products | Customers | Orders
-│   ├── Inventory: InventoryItems | Reservations
-│   │   ├── Commands | Queries | DTOs | Validators | Interfaces
-│   │   └── Mapping/<Aggregate>MappingRegister.cs
+│   └── Inventory: InventoryItems | Reservations
+│      ├── Commands | Queries | DTOs | Validators | Interfaces
+│      └── Mapping/<Aggregate>MappingRegister.cs
 ├── Common
-│   ├── Interfaces | Exceptions | Extensions | Behaviors
+│   ├── Interfaces
+│   ├── Exceptions
+│   ├── Extensions
+│   └── Behaviors
 └── DependencyInjection.cs
 ```
 
