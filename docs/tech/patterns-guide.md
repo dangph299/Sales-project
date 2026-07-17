@@ -101,15 +101,15 @@ Trong repo này, Sales dùng CQRS với MediatR.
 
 Code nằm ở:
 
-- Command: `src/Services/Sales/Sales.Application/Commands/`
-- Query: `src/Services/Sales/Sales.Application/Queries/`
+- Command: `src/Services/Sales/Sales.Application/Features/<Aggregate>/Commands/`
+- Query: `src/Services/Sales/Sales.Application/Features/<Aggregate>/Queries/`
 - CQRS marker: `src/Shared/BuildingBlocks.Application/Abstractions/Messaging/`
 - MediatR registration: `src/Services/Sales/Sales.Api/Extensions/ServiceCollectionExtensions.cs`
 
 Quy tắc:
 
-- Command record đặt trong `Commands/<Aggregate>/`.
-- Query record đặt trong `Queries/<Aggregate>/`.
+- Command record đặt trong `Features/<Aggregate>/Commands/`.
+- Query record đặt trong `Features/<Aggregate>/Queries/`.
 - Handler là class riêng, cùng folder với command/query.
 - Command handler gọi repository/domain/unit of work.
 - Query handler gọi read service.
@@ -220,10 +220,12 @@ Mapping chuyển domain object sang DTO.
 
 Code nằm ở:
 
-- `src/Services/Sales/Sales.Application/DTOs/DtoMapping.cs`
+- Mapping register theo feature: `src/Services/Sales/Sales.Application/Features/<Aggregate>/Mapping/<Aggregate>MappingRegister.cs`
+- Đăng ký mapping dùng chung: `src/Shared/BuildingBlocks.Application/Mapping/MappingRegistrationExtensions.cs`
 
 Quy tắc:
 
+- Mapping của một feature đặt trong `Mapping/` của chính feature đó.
 - Mapping đơn giản dùng Mapster.
 - Mapping phức tạp map tay.
 - Không đặt rule nghiệp vụ mới trong mapping.
@@ -257,7 +259,7 @@ Distributed lock giúp nhiều instance không chạy cùng một job tại mộ
 
 Code nằm ở:
 
-- `src/Services/Sales/Sales.Infrastructure/Hangfire/MaintenanceJobs.cs`
+- `src/Services/Sales/Sales.Infrastructure/Hangfire/Jobs/MaintenanceCleanupJob.cs`
 
 Cách đang dùng:
 
@@ -285,8 +287,29 @@ Code nằm ở:
 
 - Registration: `src/Services/Sales/Sales.Api/Extensions/ServiceCollectionExtensions.cs`
 - Dashboard: `src/Services/Sales/Sales.Api/Extensions/ApplicationBuilderExtensions.cs`
-- Job class: `src/Services/Sales/Sales.Infrastructure/Hangfire/MaintenanceJobs.cs`
+- Job class: `src/Services/Sales/Sales.Infrastructure/Hangfire/Jobs/MaintenanceCleanupJob.cs`
 - Register recurring job: `src/Services/Sales/Sales.Api/Extensions/StartupTaskExtensions.cs`
+
+Mỗi recurring job tách thành ba phần, mỗi phần một file:
+
+```text
+Sales.Infrastructure/Hangfire/
+├── Jobs/           # chỉ logic thực thi job, không biết cron/queue/job ID
+├── Definitions/    # đăng ký job: job ID, queue, cron, job type, method, time zone
+├── Options/        # SalesRecurringJobsOptions (root) + options riêng từng job
+├── SalesRecurringJobIds.cs        # job ID cố định của Sales
+└── SalesRecurringJobsExtensions.cs # DI cho Sales recurring jobs
+```
+
+Phần kỹ thuật dùng chung nằm ở `src/Shared/BuildingBlocks.Infrastructure/Hangfire/`:
+
+- `IRecurringJobDefinition`: contract một method `Register()`.
+- `RecurringJobDefinitionBase`: job `Enabled` thì `AddOrUpdate`, job disabled thì
+  `RemoveIfExists` khỏi storage.
+- `RecurringJobSettings`: `Enabled`/`Cron`/`Queue` + validate cron/queue. Không chứa
+  `JobId` — ID là hằng số của từng service.
+- `RecurringJobRegistrarExtensions`: `serviceProvider.RegisterRecurringJobs()` gọi tất cả
+  definitions; không biết gì về Sales hay Inventory.
 
 Inventory không dùng Hangfire cho cleanup. Inventory dùng hosted worker riêng để dọn
 processed Inbox/Outbox bằng Postgres advisory lock.
@@ -296,6 +319,11 @@ Quy tắc:
 - Job đặt trong Infrastructure nếu nó làm việc với database/cache.
 - Job nên idempotent.
 - Nếu job có thể chạy trên nhiều instance, cần lock hoặc cơ chế tránh duplicate.
+- Job implementation không được biết cron, queue, job ID hay cách gọi `AddOrUpdate`.
+- Options nghiệp vụ **compose** `RecurringJobSettings` (property `Schedule`), không kế thừa,
+  để shared settings không bị mở rộng bởi thuộc tính nghiệp vụ.
+- Thao tác recovery thủ công (replay/reset dead-letter) **không phải** recurring job — đặt ở
+  `Sales.Infrastructure/Maintenance/SalesMaintenanceService.cs`, không đặt trong `Hangfire/`.
 - Queue name phải rõ nghĩa, ví dụ `maintenance`.
 
 ## 14. Kafka
@@ -360,8 +388,10 @@ Cách làm:
 
 Code nằm ở:
 
-- Sales inbox: `src/Services/Sales/Sales.Infrastructure/Persistence/Inbox/InboxMessage.cs`
-- Inventory inbox: `src/Services/Inventory/Inventory.Infrastructure/Persistence/Inbox/InboxRow.cs`
+- Inbox entity dùng chung: `src/Shared/BuildingBlocks.Infrastructure/Inbox/InboxMessage.cs`
+- EF mapping Sales: `src/Services/Sales/Sales.Infrastructure/Persistence/Configurations/InboxMessageConfiguration.cs`
+- EF mapping Inventory: `src/Services/Inventory/Inventory.Infrastructure/Persistence/Configurations/InboxMessageConfiguration.cs`
+- Inbox adapter Inventory: `src/Services/Inventory/Inventory.Infrastructure/Persistence/InventoryInbox.cs`
 - Sales processor: `src/Services/Sales/Sales.Infrastructure/Kafka/SalesInventoryEventProcessor.cs`
 - Inventory adapter: `src/Services/Inventory/Inventory.Infrastructure/Kafka/InventoryIntegrationEventProcessor.cs`
 - Inventory command handlers: `src/Services/Inventory/Inventory.Application/Commands/ReserveStock/`, `src/Services/Inventory/Inventory.Application/Commands/ReleaseStock/`
@@ -382,7 +412,7 @@ Code nằm ở:
 - Version field: `AggregateRoot`
 - EF concurrency token: `OrderConfiguration`
 - HTTP ETag: `ControllerEtagExtensions`
-- Command expected version: order commands trong `Sales.Application/Commands/Orders/`
+- Command expected version: order commands trong `Sales.Application/Features/Orders/Commands/`
 
 Quy tắc:
 

@@ -881,10 +881,11 @@ Publisher xử lý:
 
 Outbox replay:
 
-- Sales có Hangfire job:
-  - `ReplayOutboxMessageAsync(Guid eventId)`
-  - `ReplayDeadLettersAsync(int take)`
-- Inventory hiện có retry/backoff/DLQ trong `InventoryOutboxPublisher`; chưa có Hangfire replay endpoint riêng như Sales.
+- Sales có thao tác recovery thủ công trên `SalesMaintenanceService` (**không phải** Hangfire
+  recurring job, hiện chưa có production caller):
+  - `ReplayOutboxMessageAsync(Guid outboxMessageId)`
+  - `ReplayDeadLetterOutboxMessagesAsync(int maximumMessageCount)`
+- Inventory hiện có retry/backoff/DLQ trong `InventoryOutboxPublisher`; chưa có thao tác replay outbox như Sales.
 - Outbox replay reset:
   - `Attempts = 0`
   - `DeadLetteredAt = null`
@@ -953,11 +954,18 @@ Hangfire dùng trong Sales API:
   - `default`
   - `maintenance`
 
-Job hiện có:
+Recurring job hiện có (được Hangfire schedule):
 
-- `CleanupAsync`: xóa inbox/outbox cũ.
+- `MaintenanceCleanupJob.CleanupAsync`: xóa inbox/outbox cũ — job `sales-cleanup`, queue
+  `maintenance`, cron `0 0 * * *`.
+- `CancelExpiredPendingOrdersJob.ExecuteAsync`: hủy pending order hết hạn — job
+  `orders:cancel-expired`, queue `critical`, cron `*/5 * * * *`.
+
+Thao tác recovery thủ công trên `SalesMaintenanceService` — **không** được Hangfire schedule,
+hiện chưa có production caller:
+
 - `ReplayOutboxMessageAsync`: replay 1 event.
-- `ReplayDeadLettersAsync`: replay batch DLQ.
+- `ReplayDeadLetterOutboxMessagesAsync`: replay batch DLQ.
 - `ResetInboxDeadLetterAsync`: reset 1 inbound dead-letter để redrive lại.
 - `ResetInboxDeadLettersAsync`: reset batch inbound dead-letter.
 

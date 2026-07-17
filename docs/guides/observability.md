@@ -43,12 +43,12 @@ Create a Kibana dashboard named `Sales Management Reliability` with these Lens p
 
 ## Replay operations
 
-Sales exposes on-demand replay operations on `SalesMaintenanceService`:
+Sales exposes on-demand replay operations on `SalesMaintenanceService`. These are not recurring jobs and currently have no production caller:
 
-- `ReplayOutboxMessageAsync(Guid eventId)` resets a specific outbox message.
-- `ReplayDeadLettersAsync(int take)` resets up to 100 dead-lettered outbox messages.
+- `ReplayOutboxMessageAsync(Guid outboxMessageId)` resets a specific outbox message.
+- `ReplayDeadLetterOutboxMessagesAsync(int maximumMessageCount)` resets up to 100 dead-lettered outbox messages.
 - `ResetInboxDeadLetterAsync(Guid eventId)` resets a specific dead-lettered inbox message to `Failed`.
-- `ResetInboxDeadLettersAsync(int take)` resets up to 100 dead-lettered inbox messages.
+- `ResetInboxDeadLettersAsync(int maximumMessageCount)` resets up to 100 dead-lettered inbox messages.
 
 After replay, the outbox publisher will pick rows where `ProcessedAt is null`, `DeadLetteredAt is null`, and `NextAttemptAt <= now`.
 After inbox reset, `SalesInboxRedriveService` will pick rows where `Status = Failed`, `Payload is not null`, and `NextAttemptAt is null or <= now`.

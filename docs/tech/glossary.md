@@ -11,7 +11,7 @@ Bảng này giải thích nhanh các từ hay gặp trong dự án.
 | Value Object | Object không có identity riêng, so sánh theo giá trị | `Money`, `ProductSnapshot` |
 | Domain Event | Sự kiện nội bộ domain | `OrderConfirmationRequestedDomainEvent` |
 | Integration Event | Sự kiện gửi giữa các service | `OrderConfirmationRequested`, `StockReserved` |
-| CQRS | Tách command ghi dữ liệu và query đọc dữ liệu | `Commands/`, `Queries/` trong Sales.Application |
+| CQRS | Tách command ghi dữ liệu và query đọc dữ liệu | `Features/<Aggregate>/Commands/`, `Features/<Aggregate>/Queries/` trong Sales.Application |
 | Command | Request làm thay đổi state | `CreateOrder`, `ConfirmOrder` |
 | Query | Request chỉ đọc dữ liệu | `SearchOrders`, `GetProduct` |
 | Handler | Class xử lý command/query | `CreateOrderHandler` |
@@ -19,9 +19,9 @@ Bảng này giải thích nhanh các từ hay gặp trong dự án.
 | Repository | Cổng truy cập aggregate ở command-side | `IOrderRepository`, `Repository<T>` |
 | Unit of Work | Gom nhiều thay đổi và commit một lần | `IUnitOfWork.SaveChangesAsync` |
 | DTO | Object dùng để trả/nhận data qua API hoặc read side | `OrderDto`, `ProductDto` |
-| Mapster | Thư viện mapping object sang DTO | `DtoMapping.cs` |
+| Mapster | Thư viện mapping object sang DTO | `ProductMappingRegister`, `OrderMappingRegister` |
 | Outbox | Bảng tạm lưu event cần publish Kafka | `OutboxMessage` |
-| Inbox | Bảng lưu event đã consume để tránh xử lý duplicate | `InboxMessage`, `InboxRow` |
+| Inbox | Bảng lưu event đã consume để tránh xử lý duplicate | `InboxMessage` (dùng chung Sales/Inventory) |
 | Kafka Topic | Kênh message | `sales.order-confirmation-requested.v1` |
 | Consumer Group | Nhóm consumer cùng xử lý topic | `inventory-orders-v1` |
 | Partition | Phần chia nhỏ của topic trong Kafka | partition/offset trong log Kafka |
