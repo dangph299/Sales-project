@@ -9,6 +9,7 @@ using BuildingBlocks.Web.Models;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Sales.Api.Middleware;
 using Sales.Application;
 using Sales.Application.Common.Exceptions;
@@ -54,25 +55,25 @@ public static class ServiceCollectionExtensions
         return builder;
     }
 
-    private static void ConfigureSalesExceptions(ApiExceptionHandlingOptions options)
+    internal static void ConfigureSalesExceptions(ApiExceptionHandlingOptions options)
     {
         options.Map<DomainException>((_, errorCatalog) =>
         {
             var error = errorCatalog.Get(ErrorCodes.InvalidOperation);
-            return new ApiExceptionMapping(400, error.Code, error.Description);
+            return new ApiExceptionMapping(400, error.Code, error.Description, LogLevel: LogLevel.Information);
         });
 
         options.Map<NotFoundException>((_, errorCatalog) =>
         {
             var error = errorCatalog.Get(ErrorCodes.NotFound);
-            return new ApiExceptionMapping(404, error.Code, error.Description);
+            return new ApiExceptionMapping(404, error.Code, error.Description, LogLevel: LogLevel.Information);
         });
 
         options.Map<ConflictException>((exception, errorCatalog) =>
         {
             var error = errorCatalog.Get(ErrorCodes.ConcurrencyConflict);
             var errors = new[] { new ApiError("current_version", exception.CurrentVersion.ToString()) };
-            return new ApiExceptionMapping(409, error.Code, error.Description, errors);
+            return new ApiExceptionMapping(409, error.Code, error.Description, errors, LogLevel: LogLevel.Warning);
         });
     }
 

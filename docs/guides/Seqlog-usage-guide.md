@@ -6,7 +6,8 @@ Tài liệu này giải thích riêng cách project đang dùng Serilog + Seq: c
 
 - Cả 3 service (Sales.Api, Inventory.Api, AuditLog.Worker) dùng **chung 1 helper** để cấu hình Serilog: `BuildingBlocks.Observability.SerilogBootstrap.ConfigureSharedSinks(...)` — không còn 3 block cấu hình copy/paste riêng (mục 4).
 - Middleware log HTTP request cũng dùng chung 1 class: `BuildingBlocks.Web.RequestObservabilityMiddleware` — không còn `CorrelationLoggingMiddleware`/`HttpLoggingMiddleware` riêng cho từng service (mục 6, 8).
-- MediatR pipeline của Sales có **2 behavior** phụ trách log: `LoggingBehavior` (Debug, theo dõi tiến trình) và `ErrorLoggingBehavior` (Warning/Error, nơi duy nhất log lỗi command/query) — cả 2 giờ nằm ở `Shared/BuildingBlocks.Application/Behaviors/` dùng chung skeleton, không còn trong `Sales.Application` — mục 7.
+- MediatR pipeline **không** log lỗi trên mức Debug. Mỗi execution path tự log lỗi của mình **đúng 1 lần** tại boundary của nó: `ApiExceptionHandler` cho HTTP (kèm `ErrorCode`/`StatusCode`), `IntegrationEventHandler` cho Kafka (kèm topic/partition/offset), outbox/inbox service cho cycle của chúng, Hangfire cho job — mục 7.
+- `TraceId` mà API trả về cho client **chính là** `TraceId` trong Seq/Kibana (W3C, 32 ký tự hex) — client dán thẳng vào Seq là ra, mục 6.
 - Log body request/response chỉ được đọc/ghi khi log level `Debug` đang bật, không phải luôn luôn — mục 8.
 - Muốn tra 1 workflow end-to-end trong Seq, filter theo `CorrelationId`; muốn nối tiếp sang trace Kibana, dùng `TraceId` (cùng field, đẩy vào cả Seq lẫn OTLP) — mục 6, 9.
 
@@ -175,16 +176,15 @@ using (LogContext.PushProperty("TraceId", activity?.TraceId.ToHexString()))
 
 ## 7. MediatR pipeline behavior — shared behaviors plus service-specific extensions
 
-**Cập nhật 2026-07-10**: các shared behavior chuyển từ `Sales.Application/Services/Behaviors/` sang `Shared/BuildingBlocks.Application/Behaviors/` (namespace `BuildingBlocks.Application`), dùng chung cho các service CQRS. `Sales.Application/DependencyInjection.cs` (`AddSalesApplication()`) đăng ký `SalesApplicationExceptionClassifier` của riêng Sales rồi gọi `BuildingBlocks.Application.DependencyInjection.AddApplicationBuildingBlocks()`. `Inventory.Application/DependencyInjection.cs` (`AddInventoryApplication()`) cũng gọi `AddApplicationBuildingBlocks()` và đăng ký thêm `InventoryTransactionBehavior` cho idempotent commands. Extension shared đăng ký 4 pipeline behavior theo thứ tự:
+**Cập nhật 2026-07-10**: các shared behavior chuyển từ `Sales.Application/Services/Behaviors/` sang `Shared/BuildingBlocks.Application/Behaviors/` (namespace `BuildingBlocks.Application`), dùng chung cho các service CQRS. `Inventory.Application/DependencyInjection.cs` (`AddInventoryApplication()`) cũng gọi `AddApplicationBuildingBlocks()` và đăng ký thêm `InventoryTransactionBehavior` cho idempotent commands. Extension shared đăng ký 3 pipeline behavior theo thứ tự:
 
 ```csharp
-services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ErrorLoggingBehavior<,>));
 services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 services.AddScoped(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
 services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
 ```
 
-Thứ tự đăng ký = thứ tự bọc từ ngoài vào trong: `ErrorLoggingBehavior` bọc ngoài cùng (thấy được exception từ các behavior phía trong), rồi `LoggingBehavior`, `PerformanceBehavior`, và `ValidationBehavior`.
+Thứ tự đăng ký = thứ tự bọc từ ngoài vào trong: `LoggingBehavior` bọc ngoài cùng, rồi `PerformanceBehavior`, và `ValidationBehavior`.
 
 ### 7.1 `LoggingBehavior` — theo dõi tiến trình, mức Debug
 
@@ -216,44 +216,32 @@ public sealed class LoggingBehavior<TRequest, TResponse>(ILogger<LoggingBehavior
 
 Log ở mức **Debug** (không phải Information như trước) — mặc định `Serilog:MinimumLevel:Default` là `Information` nên dòng "Pipeline started/completed/failed" **không** xuất hiện trừ khi bật Debug (giống cách bật lại SQL log EF Core ở mục 11). Mục đích: theo dõi tiến trình khi cần debug sâu, không làm ồn log Information hằng ngày.
 
-### 7.2 `ErrorLoggingBehavior` — nơi duy nhất log lỗi command/query
+### 7.2 Lỗi được log ở đâu — mỗi boundary đúng 1 lần
 
-`src/Shared/BuildingBlocks.Application/Behaviors/ErrorLoggingBehavior.cs`:
+**Cập nhật 2026-07-17**: `ErrorLoggingBehavior` và `IApplicationExceptionClassifier`/`DefaultApplicationExceptionClassifier`/`SalesApplicationExceptionClassifier` **đã bị xoá**.
 
-```csharp
-public sealed class ErrorLoggingBehavior<TRequest, TResponse>(
-    ILogger<ErrorLoggingBehavior<TRequest, TResponse>> logger,
-    IApplicationExceptionClassifier exceptionClassifier) : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : notnull
-{
-    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken cancellationToken)
-    {
-        var sw = Stopwatch.StartNew();
-        try
-        {
-            return await next(cancellationToken);
-        }
-        catch (Exception ex) when (exceptionClassifier.IsExpected(ex))
-        {
-            logger.LogWarning(ex, "{RequestName} rejected {ElapsedMs} {@Request}", typeof(TRequest).Name, sw.ElapsedMilliseconds, request);
-            throw;
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "{RequestName} failed {ElapsedMs} {@Request}", typeof(TRequest).Name, sw.ElapsedMilliseconds, request);
-            throw;
-        }
-    }
-}
-```
+Lý do: mọi execution path dispatch MediatR đều đã tự log lỗi tại boundary của nó, nên behavior này nhân đôi mọi failure trong Seq và làm sai phép đếm error rate:
 
-**Cập nhật 2026-07-10**: việc phân loại "exception nào là expected rejection" đã tách khỏi `ErrorLoggingBehavior` vào `IApplicationExceptionClassifier` (`src/Shared/BuildingBlocks.Application/Exceptions/IApplicationExceptionClassifier.cs`), injected qua DI thay vì hard-code trong 1 static method riêng của Sales. Lý do: `ErrorLoggingBehavior` giờ dùng chung được cho service khác mà không cần biết trước `NotFoundException`/`ConflictException` là type của Sales.
+| Execution path | Nơi log lỗi | Context riêng mà chỉ boundary đó có |
+|---|---|---|
+| HTTP | `ApiExceptionHandler` | `ErrorCode`, `StatusCode`, `RequestMethod`, `RequestPath` |
+| Kafka consumer | `IntegrationEventHandler` | topic, partition, offset, attempts, dead-lettered |
+| Outbox / Inbox | `OutboxPublisherService` / `InboxRedriveService` | event id, retry count |
+| Hangfire job | Hangfire log provider (`Hangfire.AspNetCore`) | job id, retry attempt |
 
-`DefaultApplicationExceptionClassifier` (`src/Shared/BuildingBlocks.Application/Exceptions/DefaultApplicationExceptionClassifier.cs`) coi **Warning** cho `ValidationException`, `DomainException`, và `DbUpdateConcurrencyException` (nhận diện qua tên type vì `BuildingBlocks.Application` không được reference EF Core) là expected; `SalesApplicationExceptionClassifier` (`src/Services/Sales/Sales.Application/Services/SalesApplicationExceptionClassifier.cs`) mở rộng thêm `NotFoundException`/`ConflictException` — đăng ký qua `services.AddSingleton<IApplicationExceptionClassifier, SalesApplicationExceptionClassifier>()` trong `Sales.Application/DependencyInjection.cs`, **trước** khi gọi `AddApplicationBuildingBlocks()` (extension đó dùng `TryAddSingleton` nên không ghi đè classifier Sales đã đăng ký). Mọi exception khác vẫn là **Error**. `{@Request}` log nguyên object request (structured, destructure toàn bộ property) — hữu ích để biết chính xác input nào gây lỗi khi tra Seq.
+Classifier bị xoá vì nó chỉ tồn tại để chọn Warning-vs-Error. Quyết định đó giờ thuộc về `ApiExceptionMapping.LogLevel` — nơi duy nhất biết cả `ErrorCode` lẫn `StatusCode`, nên phân loại được **3 mức** thay vì 2 như interface `bool IsExpected` cũ. Việc này cũng bỏ được hack so khớp `DbUpdateConcurrencyException` bằng tên type (`BuildingBlocks.Application` không reference được EF Core); `ApiExceptionHandler` dùng `IPersistenceExceptionClassifier` ở tầng Infrastructure, nơi reference EF Core trực tiếp được.
 
-**Vì sao tách riêng 2 behavior thay vì gộp vào 1**: `LoggingBehavior` trả lời "tiến trình đang chạy tới đâu" (cần khi trace 1 request đang treo/chậm), `ErrorLoggingBehavior` trả lời "cái gì vừa thất bại và tại sao" (cần khi có lỗi thật). Gộp chung sẽ ép cùng 1 log level cho 2 mục đích khác nhau — tách ra cho phép bật Debug để xem tiến trình mà không kéo theo log ồn ào ở mức Warning/Error.
+Mức log theo loại lỗi (`ApiExceptionHandler` + `ConfigureSalesExceptions`):
 
-Inventory dùng các behavior shared tương tự qua `AddInventoryApplication()`. Ngoài ra `InventoryTransactionBehavior` mở serializable transaction, ghi Inbox cho idempotent commands, gọi handler, `IUnitOfWork.SaveChangesAsync`, rồi commit; behavior này không log thay cho `ErrorLoggingBehavior`.
+| Mức | Lỗi | Vì sao |
+|---|---|---|
+| `Information` | `validation`, `not_found`, `invalid_operation` (DomainException), `invalid_request`, `operation_cancelled` | Do client gây ra, vận hành bình thường. Để ở Warning sẽ làm mức Warning mất hết ý nghĩa cảnh báo. |
+| `Warning` | `concurrency_conflict`, `unique_violation`, `unauthorized` | Tranh chấp thật sự đáng chú ý; 401 là security-relevant. |
+| `Error` | `internal_server_error` và mọi thứ chưa map | Cần người xử lý. |
+
+`LoggingBehavior` vẫn giữ `{@Request}` nhưng **chỉ ở mức Debug** — cùng chính sách với việc log body request/response ở mục 8, để object command (có thể chứa input nhạy cảm) không vào sink production.
+
+Inventory dùng các behavior shared tương tự qua `AddInventoryApplication()`. Ngoài ra `InventoryTransactionBehavior` mở serializable transaction, ghi Inbox cho idempotent commands, gọi handler, `IUnitOfWork.SaveChangesAsync`, rồi commit.
 
 ## 8. HTTP request logging — dùng chung `RequestObservabilityMiddleware`
 
@@ -373,7 +361,7 @@ Environment = 'Development'
 - ✅ HTTP request logging dùng chung `BuildingBlocks.Web.RequestObservabilityMiddleware` + `RequestLoggingDefaults` — không còn `CorrelationLoggingMiddleware`/`HttpLoggingMiddleware` riêng per-service (mục 8).
 - ✅ Log giờ có thêm nhánh OTLP (`WriteTo.OpenTelemetry(...)`), nối được `TraceId` giữa Seq và Kibana APM (mục 6, xem [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 6).
 - ✅ Enricher `Environment` (`Enrich.WithProperty("Environment", ...)`) đã có, đọc từ `ASPNETCORE_ENVIRONMENT`/`DOTNET_ENVIRONMENT`.
-- ✅ `ErrorLoggingBehavior` tách riêng khỏi `LoggingBehavior` — 1 nơi duy nhất log lỗi command/query, phân biệt Warning (nghiệp vụ) và Error (bất ngờ) (mục 7).
+- ✅ Mỗi execution path log lỗi đúng 1 lần tại boundary của nó, mức log theo loại lỗi (Information/Warning/Error), `ErrorCode` là property truy vấn được trong Seq (mục 7).
 - ✅ `AuditLog.Worker` log vào Seq.
 - ✅ `Serilog:MinimumLevel` cho `Inventory.Api/appsettings.json` khớp Sales.Api.
 - ✅ SQL log của EF Core bật/tắt được thuần qua `appsettings.json` (mục 11).

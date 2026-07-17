@@ -9,6 +9,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- So the exception-mapping tests bind the real ConfigureSalesExceptions instead of a copy of it. -->
+    <InternalsVisibleTo Include="Sales.Api.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Hangfire dashboard + Postgres storage are configured directly in this host. -->
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.23" />
     <PackageReference Include="Hangfire.PostgreSql" Version="1.21.1" />

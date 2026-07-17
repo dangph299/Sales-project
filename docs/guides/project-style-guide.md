@@ -264,7 +264,7 @@ Sales.Application/
 │   └── Products/
 ├── DTOs/
 ├── Interfaces/
-├── Services/            (ConflictException, NotFoundException, SalesApplicationExceptionClassifier)
+├── Common/Exceptions/   (ConflictException, NotFoundException)
 ├── Validators/
 ├── Common/
 └── DependencyInjection.cs
