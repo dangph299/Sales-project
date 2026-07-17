@@ -1,5 +1,7 @@
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
-using Sales.Application;
+using Sales.Application.Features.Orders.DTOs;
+using Sales.Application.Features.Orders.Interfaces;
 using Sales.Domain;
 
 namespace Sales.Infrastructure;
@@ -8,13 +10,13 @@ namespace Sales.Infrastructure;
 /// Read-side order lookup service for query handlers.
 /// Search filters are composed from <see cref="Specification{T}"/> rules.
 /// </summary>
-public sealed class OrderReadService(SalesDbContext db) : IOrderReadService
+public sealed class OrderReadService(SalesDbContext db, IMapper mapper) : IOrderReadService
 {
     /// <inheritdoc/>
     public async Task<OrderDto?> GetAsync(Guid id, CancellationToken ct = default)
     {
         var order = await db.Orders.Include(x => x.Lines).AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
-        return order?.ToDto();
+        return order is null ? null : mapper.Map<OrderDto>(order);
     }
 
     /// <inheritdoc/>
@@ -31,7 +33,7 @@ public sealed class OrderReadService(SalesDbContext db) : IOrderReadService
 
         var total = await query.LongCountAsync(ct);
         var orders = await query.OrderByDescending(x => x.CreatedAt).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
-        return new(orders.Select(x => x.ToDto()).ToArray(), page, pageSize, total);
+        return new(mapper.Map<OrderDto[]>(orders), page, pageSize, total);
     }
 
     private static Specification<Order> Compose(Specification<Order>? current, Specification<Order> next) => current is null ? next : current.And(next);

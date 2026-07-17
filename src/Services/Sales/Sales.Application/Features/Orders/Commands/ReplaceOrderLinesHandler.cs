@@ -1,0 +1,42 @@
+using MapsterMapper;
+using MediatR;
+using Microsoft.Extensions.Logging;
+using Sales.Application.Common.Exceptions;
+using Sales.Application.Features.Orders.DTOs;
+using Sales.Domain;
+
+namespace Sales.Application.Features.Orders.Commands;
+
+/// <summary>
+/// Handles <see cref="ReplaceOrderLines"/> by loading a draft order under an optimistic concurrency
+/// check and replacing its lines.
+/// </summary>
+public sealed class ReplaceOrderLinesHandler(
+    IOrderRepository orderRepository,
+    IProductRepository productRepository,
+    IUnitOfWork unitOfWork,
+    ILogger<ReplaceOrderLinesHandler> logger,
+    IMapper mapper)
+    : IRequestHandler<ReplaceOrderLines, OrderDto>
+{
+    /// <summary>
+    /// Loads the order, resolves the new requested lines, replaces them, and commits the unit of work.
+    /// </summary>
+    /// <param name="request">Command identifying the order, its expected version, and the new lines.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Order with its new lines, mapped to an <see cref="OrderDto"/>.</returns>
+    /// <exception cref="NotFoundException">Thrown when the order or one of the requested products does not exist.</exception>
+    /// <exception cref="ConflictException">Thrown when the order's actual version does not match <see cref="ReplaceOrderLines.ExpectedVersion"/>.</exception>
+    /// <exception cref="Sales.Domain.DomainException">Thrown when the order is not in the Draft status, a requested product is inactive, or the requested lines are empty or contain a repeated product.</exception>
+    public async Task<OrderDto> Handle(ReplaceOrderLines request, CancellationToken cancellationToken)
+    {
+        var order = await orderRepository.LoadAndCheck(
+            request.Id,
+            request.ExpectedVersion,
+            cancellationToken);
+        order.ReplaceLines(await productRepository.Materialize(request.Lines, cancellationToken));
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        logger.LogInformation("Order lines replaced {OrderId} {TotalQuantity}", order.Id, order.TotalQuantity);
+        return mapper.Map<OrderDto>(order);
+    }
+}

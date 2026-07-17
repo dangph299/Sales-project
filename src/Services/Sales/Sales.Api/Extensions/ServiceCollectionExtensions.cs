@@ -11,6 +11,7 @@ using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Identity;
 using Sales.Api.Middleware;
 using Sales.Application;
+using Sales.Application.Common.Exceptions;
 using Sales.Infrastructure;
 
 namespace Sales.Api.Extensions;

@@ -1,6 +1,6 @@
 using BuildingBlocks.Contracts;
 using Microsoft.EntityFrameworkCore;
-using Sales.Application;
+using Sales.Application.Common.Interfaces;
 using Sales.Domain;
 
 namespace Sales.Infrastructure.Tests;

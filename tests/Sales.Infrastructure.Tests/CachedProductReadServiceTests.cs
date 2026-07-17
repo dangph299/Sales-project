@@ -2,6 +2,8 @@ using BuildingBlocks.Application;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sales.Application;
+using Sales.Application.Features.Products.DTOs;
+using Sales.Application.Features.Products.Interfaces;
 using Sales.Domain;
 
 namespace Sales.Infrastructure.Tests;
@@ -45,7 +47,7 @@ public sealed class CachedProductReadServiceTests
         var product = Product.Create("sku-active", "Keyboard", 100);
         await fixture.SeedAsync(product);
         var cache = new RecordingProductCache();
-        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext()), cache);
+        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create()), cache);
 
         var result = await service.GetAsync(product.Id);
 
@@ -62,7 +64,7 @@ public sealed class CachedProductReadServiceTests
         await fixture.SeedAsync(product);
         var stale = ProductDto(product.Id, isActive: false, isDelete: false);
         var cache = new RecordingProductCache(stale);
-        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext()), cache);
+        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create()), cache);
 
         var result = await service.GetAsync(product.Id);
 
@@ -80,7 +82,7 @@ public sealed class CachedProductReadServiceTests
         await fixture.SeedAsync(product);
         var stale = ProductDto(product.Id, isActive: true, isDelete: true);
         var cache = new RecordingProductCache(stale);
-        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext()), cache);
+        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create()), cache);
 
         var result = await service.GetAsync(product.Id);
 
@@ -98,7 +100,7 @@ public sealed class CachedProductReadServiceTests
         await fixture.SeedAsync(product);
         var stale = ProductDto(product.Id, isActive: false, isDelete: false);
         var cache = new RecordingProductCache(stale);
-        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext()), cache);
+        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create()), cache);
 
         var result = await service.GetAsync(product.Id);
 
@@ -115,7 +117,7 @@ public sealed class CachedProductReadServiceTests
         var id = Guid.NewGuid();
         var stale = ProductDto(id, isActive: false, isDelete: false);
         var cache = new RecordingProductCache(stale);
-        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext()), cache);
+        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create()), cache);
 
         var result = await service.GetAsync(id);
 
@@ -129,7 +131,7 @@ public sealed class CachedProductReadServiceTests
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
         var cache = new RecordingProductCache();
-        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext()), cache);
+        var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create()), cache);
 
         var result = await service.GetAsync(Guid.NewGuid());
 
@@ -165,6 +167,7 @@ public sealed class CachedProductReadServiceTests
             })
             .Build();
 
+        services.AddSalesApplication();
         services.AddSalesInfrastructure(configuration);
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions

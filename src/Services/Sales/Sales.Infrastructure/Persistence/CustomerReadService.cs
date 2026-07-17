@@ -1,5 +1,8 @@
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
-using Sales.Application;
+using Sales.Application.Features.Customers.DTOs;
+using Sales.Application.Features.Customers.Enums;
+using Sales.Application.Features.Customers.Interfaces;
 using Sales.Domain;
 
 namespace Sales.Infrastructure;
@@ -7,7 +10,7 @@ namespace Sales.Infrastructure;
 /// <summary>
 /// Read-side customer lookup service for query handlers.
 /// </summary>
-public sealed class CustomerReadService(SalesDbContext db) : ICustomerReadService
+public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICustomerReadService
 {
     /// <inheritdoc/>
     public async Task<CustomerDto?> GetAsync(Guid id, CancellationToken ct = default)
@@ -16,7 +19,7 @@ public sealed class CustomerReadService(SalesDbContext db) : ICustomerReadServic
         var customer = await db.Customers.AsNoTracking()
             .Where(activeCustomer.ToExpression())
             .SingleOrDefaultAsync(x => x.Id == id, ct);
-        return customer?.ToDto();
+        return customer is null ? null : mapper.Map<CustomerDto>(customer);
     }
 
     /// <inheritdoc/>
@@ -35,6 +38,6 @@ public sealed class CustomerReadService(SalesDbContext db) : ICustomerReadServic
         }
         var total = await query.LongCountAsync(ct);
         var customers = await query.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
-        return new(customers.Select(x => x.ToDto()).ToArray(), page, pageSize, total);
+        return new(mapper.Map<CustomerDto[]>(customers), page, pageSize, total);
     }
 }

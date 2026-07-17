@@ -5,7 +5,7 @@ using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
-using Sales.Application;
+using Sales.Application.Common.Interfaces;
 
 namespace Sales.Infrastructure.Tests;
 

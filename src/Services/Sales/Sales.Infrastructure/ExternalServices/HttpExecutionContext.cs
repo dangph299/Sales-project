@@ -1,7 +1,7 @@
-using System.Security.Claims;
 using System.Diagnostics;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
-using Sales.Application;
+using Sales.Application.Common.Interfaces;
 
 namespace Sales.Infrastructure;
 

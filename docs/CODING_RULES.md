@@ -59,9 +59,12 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 | Integration event (giao tiếp liên service) | `Shared/BuildingBlocks.Contracts/IntegrationEvents/{Common,Sales,Inventory}/` |
 | Repository interface | `<Service>.Domain/Repositories/` (ownership theo Domain trong solution này) |
 | Repository implementation | `<Service>.Infrastructure/Repositories/` |
-| CQRS command/query + handler | `<Service>.Application/Commands/<Aggregate>/`, `Queries/<Aggregate>/` — mỗi record và mỗi handler một file riêng |
-| FluentValidation validator | `<Service>.Application/Validators/<Aggregate>/` |
-| MediatR pipeline behavior | `Shared/BuildingBlocks.Application/Behaviors/` (shared behaviors: `ErrorLoggingBehavior`, `LoggingBehavior`, `ValidationBehavior`); service-specific behavior (nếu có) vẫn ở `<Service>.Application/Services/Behaviors/` |
+| CQRS command/query + handler | **`Sales.Application`: feature-first** — `Sales.Application/Features/<Feature>/Commands/`, `Features/<Feature>/Queries/` (xem mục 6.1). Service chưa migrate (`Inventory.Application`) vẫn dùng `<Service>.Application/Commands/<Aggregate>/`, `Queries/<Aggregate>/`. Mỗi record và mỗi handler một file riêng |
+| FluentValidation validator | `Sales.Application/Features/<Feature>/Validators/`; service chưa migrate: `<Service>.Application/Validators/<Aggregate>/` |
+| DTO / read model | `Sales.Application/Features/<Feature>/DTOs/` (xem mục 6.1) |
+| Mapster mapping register (`IRegister`) | `Sales.Application/Features/<Feature>/Mapping/<Aggregate>MappingRegister.cs` — một Aggregate Root = một register (xem mục 6.1) |
+| Mapster registration dùng chung (scan + `TypeAdapterConfig` + `IMapper`) | `Shared/BuildingBlocks.Application/Mapping/MappingRegistrationExtensions.cs` (`AddApplicationMapping`) |
+| MediatR pipeline behavior | `Shared/BuildingBlocks.Application/Behaviors/` (shared behaviors: `ErrorLoggingBehavior`, `LoggingBehavior`, `ValidationBehavior`); service-specific behavior (nếu có) ở `Sales.Application/Common/Behaviors/`, service chưa migrate: `<Service>.Application/Services/Behaviors/` |
 | Aggregate/entity base type, domain event, domain exception dùng chung | `Shared/BuildingBlocks.Domain/Abstractions/` (`AggregateRoot<TId>`, `Entity<TId>`, `IDomainEvent`/`DomainEvent`), `Shared/BuildingBlocks.Domain/Exceptions/` (`DomainException`) |
 | `IUnitOfWork`, pagination (`PagedResult<T>`/`Paging`) dùng chung | `Shared/BuildingBlocks.Application/Persistence/`, `Shared/BuildingBlocks.Application/Pagination/` |
 | DbContext | `<Service>.Infrastructure/Persistence/DbContexts/` |
@@ -73,12 +76,63 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 | Hangfire job | `<Service>.Infrastructure/Hangfire/` |
 | DI registration extension | `<Service>.<Layer>/DependencyInjection.cs` (`AddXApplication`, `AddXInfrastructure`, `AddXWorker`...) |
 | Options / strongly-typed config | `<Service>.Infrastructure/Options/` |
-| Enum dùng chung nhiều layer trong 1 service (không thuộc riêng 1 query/command) | `<Service>.Application/Common/Enums/` (ví dụ `PhoneMatch`, dùng ở cả query, Infrastructure read-service, và controller) |
+| Enum dùng chung nhiều layer nhưng chỉ thuộc 1 feature | Feature sở hữu nó — ví dụ `PhoneMatch` ở `Sales.Application/Features/Customers/Enums/` (dùng ở query, Infrastructure read-service, và controller, nhưng chỉ của feature Customers) |
+| Enum/abstraction dùng chung **nhiều feature** trong 1 service | `Sales.Application/Common/` (`Interfaces/`, `Exceptions/`, `Extensions/`) — chỉ khi có từ 2 feature dùng thật |
+
+## 6.1 Feature-first trong `Sales.Application`
+
+`Sales.Application` tổ chức theo **feature**, không theo technical layer:
+
+```text
+Sales.Application
+├── Features
+│   ├── Products | Customers | Orders
+│   │   ├── Commands | Queries | DTOs | Validators | Interfaces
+│   │   └── Mapping/<Aggregate>MappingRegister.cs
+├── Common
+│   ├── Interfaces | Exceptions | Extensions
+└── DependencyInjection.cs
+```
+
+Quy tắc:
+
+- **Đặt theo phạm vi sử dụng.** Chỉ một feature dùng → nằm trong feature đó. Từ hai feature trở lên dùng thật → cân nhắc `Common/`. Không đưa vào `Common/` chỉ vì "chưa biết đặt đâu".
+- **Không tạo folder rỗng** để cho giống template. Chỉ tạo khi có file thật (mục 3 vẫn áp dụng cho folder kiến trúc dự trù có `.gitkeep`).
+- **Mapping: một Aggregate Root = một `MappingRegister`.** Toàn bộ mapping của aggregate gom vào một file, ví dụ `Product -> ProductDto` trong `ProductMappingRegister`. Không tách một register cho mỗi cặp source/destination.
+- **Entity con map trong register của Aggregate Root sở hữu nó** — `OrderLine -> OrderLineDto` nằm trong `OrderMappingRegister`, không có `OrderLineMappingRegister` riêng vì `OrderLine` không có lifecycle ngoài `Order`.
+- **Mapper không chứa business logic.** Chỉ được flatten value object (`source.Price.Amount`) hoặc đổi biểu diễn (`source.Status.ToString()`). Không `DateTime.UtcNow`, `Guid.NewGuid()`, repository, HTTP, hay business rule trong mapping — rule thuộc Domain/use case, mapper chỉ đọc kết quả.
+- **Dùng `IMapper` inject vào handler/service**, không tạo extension `ToDto()` cho từng DTO và không bọc `IMapper` bằng abstraction mới (`IDtoMapper`, `IObjectMapper`...).
+- **Một `TypeAdapterConfig` cho mỗi service**, tạo bởi `AddApplicationMapping(typeof(DependencyInjection).Assembly)` (singleton) + `IMapper` (scoped) dùng đúng config đó. Không dùng `TypeAdapterConfig.GlobalSettings`. Không `AppDomain.CurrentDomain.GetAssemblies()` — luôn scan assembly tường minh.
+- **Mapping nghiệp vụ không được đặt trong `BuildingBlocks.Application`** — nơi đó chỉ chứa cơ chế (scan/registration).
+
+### Query projection
+
+- Read query ưu tiên projection (`ProjectToType`/`Select`) khi mapping translate được sang SQL.
+- **Ngoại lệ đã biết trong Sales** (giữ load-then-map có chủ đích): `Money` được map bằng `ValueConverter<Money, decimal>` nên EF không dịch được `x.Price.Amount`; `Order.Total`, `Order.TotalQuantity`, `OrderLine.LineTotal` là computed property C# (`LineTotal` còn bị `Ignore()`). Vì vậy `ProductReadService`/`CustomerReadService`/`OrderReadService` load entity rồi map bằng `IMapper`. Không dùng `AsEnumerable()` sớm để né lỗi translation.
 
 ## 7. Namespace
 
-- Namespace của một project là **phẳng theo tên project** (ví dụ mọi file trong `Sales.Infrastructure` dùng `namespace Sales.Infrastructure;` dù nằm ở `Persistence/Outbox/` hay `Kafka/`). Không đổi namespace theo từng sub-folder — đây là convention đã có từ trước trong solution, giữ nguyên để tránh phải sửa hàng loạt `using`.
-- IDE có thể gợi ý (hint) namespace nên khớp folder — bỏ qua gợi ý này, đây là chủ ý.
+Solution hiện có **hai convention**, chọn theo project. Không trộn lẫn trong cùng một project.
+
+### 7.1 `Sales.Application` — namespace khớp folder (feature-first)
+
+- Từ đợt refactor feature-first (xem mục 6.1), `Sales.Application` dùng namespace **khớp đúng cấu trúc folder**:
+  ```csharp
+  namespace Sales.Application.Features.Products.Commands;
+  namespace Sales.Application.Features.Orders.Mapping;
+  namespace Sales.Application.Features.Customers.DTOs;
+  namespace Sales.Application.Common.Exceptions;
+  ```
+- Lý do đổi so với convention phẳng cũ: namespace phẳng làm mọi type của cả 3 aggregate nằm chung một namespace, nên không thể hiện được feature boundary và không chặn được coupling chéo giữa các feature. Namespace theo feature khiến mọi `using` cross-feature hiện rõ trong code review.
+- Chỉ `DependencyInjection` giữ namespace gốc `Sales.Application` (composition root của layer, cũng là assembly marker cho scan).
+- Chi phí đã trả một lần: toàn bộ `using` ở `Sales.Infrastructure`, `Sales.Api` và `tests/` đã được cập nhật.
+
+### 7.2 Các project còn lại — namespace phẳng theo tên project
+
+- `Sales.Infrastructure`, `Sales.Api`, `Sales.Domain`, `Inventory.*`, `AuditLog.*`, `BuildingBlocks.*` (trừ `BuildingBlocks.Application.Mapping`) vẫn dùng namespace **phẳng theo tên project** — ví dụ mọi file trong `Sales.Infrastructure` dùng `namespace Sales.Infrastructure;` dù nằm ở `Persistence/Outbox/` hay `Kafka/`.
+- Giữ nguyên để tránh sửa hàng loạt `using` mà không thu được feature boundary nào (các project này không tổ chức theo feature).
+- IDE có thể gợi ý (hint) namespace nên khớp folder ở các project này — bỏ qua gợi ý này, đây là chủ ý.
+- Nếu một service khác được migrate sang feature-first, áp dụng 7.1 cho service đó và cập nhật mục này.
 
 ## 8. Trước khi coi một thay đổi cấu trúc là an toàn
 
@@ -113,7 +167,8 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 - Khi đổi sang block body, **tách biến trung gian có tên rõ nghĩa** cho từng bước (ví dụ `eventType`, `payload`, `lines`) thay vì giữ nguyên toàn bộ biểu thức lồng nhau trong `return` — ưu tiên đọc hiểu hơn viết gọn.
 - Không đổi behavior/signature/access modifier/generic type/null handling khi refactor thuần style — chỉ đổi cách trình bày.
 - Sau khi refactor style, build lại toàn solution và chạy lại test suite trước khi coi là xong (mục 8 vẫn áp dụng).
-- Ví dụ đã áp dụng trong solution: `EventEnvelopeFactory.Create<T>` (Sales & Inventory — 6 tham số + ternary + serialization + object creation), `DtoMapping.ToDto(this Order order)` (10 tham số + object creation lồng cho `Lines`), `ReservationLine.Create` (object initializer 5 property). Ngược lại `Repository<T>.GetByIdAsync`, `Paging.Normalize`, `CustomerReadService.GetAsync` giữ nguyên `=>` vì chỉ 1 pipeline/phép chiếu đơn giản, không rơi vào điều kiện nào ở trên.
+- Ví dụ đã áp dụng trong solution: `EventEnvelopeFactory.Create<T>` (Sales & Inventory — 6 tham số + ternary + serialization + object creation), `ReservationLine.Create` (object initializer 5 property), `MappingRegistrationExtensions.AddApplicationMapping` (guard clause + nhiều bước registration). Ngược lại `Repository<T>.GetByIdAsync`, `Paging.Normalize`, `CommonValidationRules.ValidAggregateId` giữ nguyên `=>` vì chỉ 1 pipeline/phép chiếu đơn giản, không rơi vào điều kiện nào ở trên.
+- Riêng `IRegister.Register(TypeAdapterConfig config)` trong `Features/<Feature>/Mapping/` luôn dùng block body — mỗi register gồm nhiều `NewConfig`/`Map` nối tiếp nhau.
 
 ## 12. Strongly typed model thay vì tuple cho business data
 

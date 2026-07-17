@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
-using Sales.Application;
+using Sales.Application.Features.Orders.Commands;
 
 namespace Sales.Infrastructure;
 

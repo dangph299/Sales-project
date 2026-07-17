@@ -1,14 +1,17 @@
 using System.Diagnostics;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
+using KafkaFlow;
+using KafkaFlow.Serializer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Sales.Application;
-using KafkaFlow;
-using KafkaFlow.Serializer;
-using StackExchange.Redis;
+using Sales.Application.Common.Interfaces;
+using Sales.Application.Features.Customers.Interfaces;
+using Sales.Application.Features.Orders.Interfaces;
+using Sales.Application.Features.Products.Interfaces;
 using Sales.Domain;
+using StackExchange.Redis;
 
 namespace Sales.Infrastructure;
 

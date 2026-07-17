@@ -1,5 +1,7 @@
+using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
-using Sales.Application;
+using Sales.Application.Features.Products.DTOs;
+using Sales.Application.Features.Products.Interfaces;
 using Sales.Domain;
 
 namespace Sales.Infrastructure;
@@ -9,7 +11,7 @@ namespace Sales.Infrastructure;
 /// Not cached itself — see <see cref="CachedProductReadService"/> for the cache-aside decorator
 /// registered as <see cref="IProductReadService"/>.
 /// </summary>
-public sealed class ProductReadService(SalesDbContext db) : IProductReadService
+public sealed class ProductReadService(SalesDbContext db, IMapper mapper) : IProductReadService
 {
     /// <inheritdoc/>
     public async Task<ProductDto?> GetAsync(Guid id, CancellationToken ct = default)
@@ -18,7 +20,7 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
         var product = await db.Products.AsNoTracking()
             .Where(activeProduct.ToExpression())
             .SingleOrDefaultAsync(x => x.Id == id, ct);
-        return product?.ToDto();
+        return product is null ? null : mapper.Map<ProductDto>(product);
     }
 
     /// <inheritdoc/>
@@ -29,6 +31,6 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
         if (!string.IsNullOrWhiteSpace(name)) query = query.Where(x => EF.Functions.ILike(x.Name, $"%{name.Trim()}%"));
         var total = await query.LongCountAsync(ct);
         var products = await query.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);
-        return new(products.Select(x => x.ToDto()).ToArray(), page, pageSize, total);
+        return new(mapper.Map<ProductDto[]>(products), page, pageSize, total);
     }
 }
