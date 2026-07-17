@@ -1,4 +1,6 @@
 using Inventory.Application;
+using Inventory.Application.Common.Interfaces;
+using Inventory.Application.Features.InventoryItems.Commands;
 using Inventory.Domain;
 
 namespace Inventory.Tests;
@@ -12,7 +14,7 @@ public sealed class AdjustInventoryCommandHandlerTests
         var item = InventoryItem.Create(productId, "sku", 10);
         var inventory = new FakeInventoryRepository(item);
         var outbox = new FakeOutbox();
-        var handler = new AdjustInventoryCommandHandler(inventory, outbox);
+        var handler = new AdjustInventoryCommandHandler(inventory, outbox, InventoryMapperFactory.Create());
 
         var snapshot = await handler.Handle(new AdjustInventoryCommand(productId, "sku", 5, "tester"), CancellationToken.None);
 
@@ -27,7 +29,7 @@ public sealed class AdjustInventoryCommandHandlerTests
         var productId = Guid.NewGuid();
         var inventory = new FakeInventoryRepository(existing: null);
         var outbox = new FakeOutbox();
-        var handler = new AdjustInventoryCommandHandler(inventory, outbox);
+        var handler = new AdjustInventoryCommandHandler(inventory, outbox, InventoryMapperFactory.Create());
 
         var snapshot = await handler.Handle(new AdjustInventoryCommand(productId, "sku", 3, "tester"), CancellationToken.None);
 

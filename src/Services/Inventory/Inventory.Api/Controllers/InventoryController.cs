@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using BuildingBlocks.Web.Extensions;
 using Inventory.Api.Models.Requests;
-using Inventory.Application;
+using Inventory.Application.Features.InventoryItems.Commands;
+using Inventory.Application.Features.InventoryItems.Queries;
+using Inventory.Application.Features.Reservations.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

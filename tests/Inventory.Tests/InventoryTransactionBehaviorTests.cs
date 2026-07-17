@@ -1,5 +1,7 @@
 using BuildingBlocks.Application;
 using Inventory.Application;
+using Inventory.Application.Common.Behaviors;
+using Inventory.Application.Common.Interfaces;
 
 namespace Inventory.Tests;
 

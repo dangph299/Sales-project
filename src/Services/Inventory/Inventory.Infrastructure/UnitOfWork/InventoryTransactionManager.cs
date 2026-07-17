@@ -1,5 +1,6 @@
 using System.Data;
 using Inventory.Application;
+using Inventory.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 

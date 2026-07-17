@@ -59,12 +59,12 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 | Integration event (giao tiếp liên service) | `Shared/BuildingBlocks.Contracts/IntegrationEvents/{Common,Sales,Inventory}/` |
 | Repository interface | `<Service>.Domain/Repositories/` (ownership theo Domain trong solution này) |
 | Repository implementation | `<Service>.Infrastructure/Repositories/` |
-| CQRS command/query + handler | **`Sales.Application`: feature-first** — `Sales.Application/Features/<Feature>/Commands/`, `Features/<Feature>/Queries/` (xem mục 6.1). Service chưa migrate (`Inventory.Application`) vẫn dùng `<Service>.Application/Commands/<Aggregate>/`, `Queries/<Aggregate>/`. Mỗi record và mỗi handler một file riêng |
-| FluentValidation validator | `Sales.Application/Features/<Feature>/Validators/`; service chưa migrate: `<Service>.Application/Validators/<Aggregate>/` |
-| DTO / read model | `Sales.Application/Features/<Feature>/DTOs/` (xem mục 6.1) |
-| Mapster mapping register (`IRegister`) | `Sales.Application/Features/<Feature>/Mapping/<Aggregate>MappingRegister.cs` — một Aggregate Root = một register (xem mục 6.1) |
+| CQRS command/query + handler | **Feature-first** — `<Service>.Application/Features/<Feature>/Commands/`, `Features/<Feature>/Queries/` (xem mục 6.1). Mỗi record và mỗi handler một file riêng |
+| FluentValidation validator | `<Service>.Application/Features/<Feature>/Validators/` |
+| DTO / read model | `<Service>.Application/Features/<Feature>/DTOs/` (xem mục 6.1) |
+| Mapster mapping register (`IRegister`) | `<Service>.Application/Features/<Feature>/Mapping/<Aggregate>MappingRegister.cs` — một Aggregate Root = một register (xem mục 6.1) |
 | Mapster registration dùng chung (scan + `TypeAdapterConfig` + `IMapper`) | `Shared/BuildingBlocks.Application/Mapping/MappingRegistrationExtensions.cs` (`AddApplicationMapping`) |
-| MediatR pipeline behavior | `Shared/BuildingBlocks.Application/Behaviors/` (shared behaviors: `ErrorLoggingBehavior`, `LoggingBehavior`, `ValidationBehavior`); service-specific behavior (nếu có) ở `Sales.Application/Common/Behaviors/`, service chưa migrate: `<Service>.Application/Services/Behaviors/` |
+| MediatR pipeline behavior | `Shared/BuildingBlocks.Application/Behaviors/` (shared behaviors: `ErrorLoggingBehavior`, `LoggingBehavior`, `ValidationBehavior`); service-specific behavior (nếu có) ở `<Service>.Application/Common/Behaviors/` — ví dụ `InventoryTransactionBehavior` |
 | Aggregate/entity base type, domain event, domain exception dùng chung | `Shared/BuildingBlocks.Domain/Abstractions/` (`AggregateRoot<TId>`, `Entity<TId>`, `IDomainEvent`/`DomainEvent`), `Shared/BuildingBlocks.Domain/Exceptions/` (`DomainException`) |
 | `IUnitOfWork`, pagination (`PagedResult<T>`/`Paging`) dùng chung | `Shared/BuildingBlocks.Application/Persistence/`, `Shared/BuildingBlocks.Application/Pagination/` |
 | DbContext | `<Service>.Infrastructure/Persistence/DbContexts/` |
@@ -77,22 +77,25 @@ Repositories/OrderRepository.cs             -> class OrderRepository
 | DI registration extension | `<Service>.<Layer>/DependencyInjection.cs` (`AddXApplication`, `AddXInfrastructure`, `AddXWorker`...) |
 | Options / strongly-typed config | `<Service>.Infrastructure/Options/` |
 | Enum dùng chung nhiều layer nhưng chỉ thuộc 1 feature | Feature sở hữu nó — ví dụ `PhoneMatch` ở `Sales.Application/Features/Customers/Enums/` (dùng ở query, Infrastructure read-service, và controller, nhưng chỉ của feature Customers) |
-| Enum/abstraction dùng chung **nhiều feature** trong 1 service | `Sales.Application/Common/` (`Interfaces/`, `Exceptions/`, `Extensions/`) — chỉ khi có từ 2 feature dùng thật |
+| Enum/abstraction dùng chung **nhiều feature** trong 1 service | `<Service>.Application/Common/` (`Interfaces/`, `Exceptions/`, `Extensions/`, `Behaviors/`) — chỉ khi có từ 2 feature dùng thật |
 
-## 6.1 Feature-first trong `Sales.Application`
+## 6.1 Feature-first trong `<Service>.Application`
 
-`Sales.Application` tổ chức theo **feature**, không theo technical layer:
+`Sales.Application` và `Inventory.Application` tổ chức theo **feature**, không theo technical layer:
 
 ```text
-Sales.Application
+<Service>.Application
 ├── Features
-│   ├── Products | Customers | Orders
+│   ├── Sales:     Products | Customers | Orders
+│   ├── Inventory: InventoryItems | Reservations
 │   │   ├── Commands | Queries | DTOs | Validators | Interfaces
 │   │   └── Mapping/<Aggregate>MappingRegister.cs
 ├── Common
-│   ├── Interfaces | Exceptions | Extensions
+│   ├── Interfaces | Exceptions | Extensions | Behaviors
 └── DependencyInjection.cs
 ```
+
+Tên feature = tên Aggregate Root số nhiều. Mỗi feature sở hữu read-side port của riêng nó (`IInventoryItemReadService`, `IReservationReadService`) — một interface phục vụ nhiều aggregate sẽ buộc `Common/` phải phụ thuộc ngược vào mọi feature, nên phải tách. Một class Infrastructure vẫn được implement nhiều port (`InventoryReadService`).
 
 Quy tắc:
 
@@ -109,27 +112,28 @@ Quy tắc:
 
 - Read query ưu tiên projection (`ProjectToType`/`Select`) khi mapping translate được sang SQL.
 - **Ngoại lệ đã biết trong Sales** (giữ load-then-map có chủ đích): `Money` được map bằng `ValueConverter<Money, decimal>` nên EF không dịch được `x.Price.Amount`; `Order.Total`, `Order.TotalQuantity`, `OrderLine.LineTotal` là computed property C# (`LineTotal` còn bị `Ignore()`). Vì vậy `ProductReadService`/`CustomerReadService`/`OrderReadService` load entity rồi map bằng `IMapper`. Không dùng `AsEnumerable()` sớm để né lỗi translation.
+- **Inventory**: `InventoryReadService` giữ load-then-map như trước refactor. Query đọc một entity theo khoá (`SingleOrDefaultAsync`) nên projection không giảm được số cột đáng kể, và đổi sang `ProjectToType` sẽ đổi SQL sinh ra — nằm ngoài phạm vi một refactor mapping. Đổi sang projection khi nào có read query trả về nhiều dòng và đo được lợi ích.
 
 ## 7. Namespace
 
 Solution hiện có **hai convention**, chọn theo project. Không trộn lẫn trong cùng một project.
 
-### 7.1 `Sales.Application` — namespace khớp folder (feature-first)
+### 7.1 `Sales.Application` / `Inventory.Application` — namespace khớp folder (feature-first)
 
-- Từ đợt refactor feature-first (xem mục 6.1), `Sales.Application` dùng namespace **khớp đúng cấu trúc folder**:
+- Từ đợt refactor feature-first (xem mục 6.1), hai project này dùng namespace **khớp đúng cấu trúc folder**:
   ```csharp
   namespace Sales.Application.Features.Products.Commands;
   namespace Sales.Application.Features.Orders.Mapping;
-  namespace Sales.Application.Features.Customers.DTOs;
-  namespace Sales.Application.Common.Exceptions;
+  namespace Inventory.Application.Features.Reservations.Commands;
+  namespace Inventory.Application.Common.Interfaces;
   ```
-- Lý do đổi so với convention phẳng cũ: namespace phẳng làm mọi type của cả 3 aggregate nằm chung một namespace, nên không thể hiện được feature boundary và không chặn được coupling chéo giữa các feature. Namespace theo feature khiến mọi `using` cross-feature hiện rõ trong code review.
-- Chỉ `DependencyInjection` giữ namespace gốc `Sales.Application` (composition root của layer, cũng là assembly marker cho scan).
-- Chi phí đã trả một lần: toàn bộ `using` ở `Sales.Infrastructure`, `Sales.Api` và `tests/` đã được cập nhật.
+- Lý do đổi so với convention phẳng cũ: namespace phẳng làm mọi type của mọi aggregate nằm chung một namespace, nên không thể hiện được feature boundary và không chặn được coupling chéo giữa các feature. Namespace theo feature khiến mọi `using` cross-feature hiện rõ trong code review.
+- Chỉ `DependencyInjection` giữ namespace gốc (`Sales.Application`, `Inventory.Application`) — composition root của layer, cũng là assembly marker cho scan.
+- Chi phí đã trả một lần: toàn bộ `using` ở `<Service>.Infrastructure`, `<Service>.Api` và `tests/` đã được cập nhật.
 
 ### 7.2 Các project còn lại — namespace phẳng theo tên project
 
-- `Sales.Infrastructure`, `Sales.Api`, `Sales.Domain`, `Inventory.*`, `AuditLog.*`, `BuildingBlocks.*` (trừ `BuildingBlocks.Application.Mapping`) vẫn dùng namespace **phẳng theo tên project** — ví dụ mọi file trong `Sales.Infrastructure` dùng `namespace Sales.Infrastructure;` dù nằm ở `Persistence/Outbox/` hay `Kafka/`.
+- `Sales.Infrastructure`, `Sales.Api`, `Sales.Domain`, `Inventory.Infrastructure`, `Inventory.Api`, `Inventory.Domain`, `AuditLog.*`, `BuildingBlocks.*` (trừ `BuildingBlocks.Application.Mapping`) vẫn dùng namespace **phẳng theo tên project** — ví dụ mọi file trong `Sales.Infrastructure` dùng `namespace Sales.Infrastructure;` dù nằm ở `Persistence/Outbox/` hay `Kafka/`.
 - Giữ nguyên để tránh sửa hàng loạt `using` mà không thu được feature boundary nào (các project này không tổ chức theo feature).
 - IDE có thể gợi ý (hint) namespace nên khớp folder ở các project này — bỏ qua gợi ý này, đây là chủ ý.
 - Nếu một service khác được migrate sang feature-first, áp dụng 7.1 cho service đó và cập nhật mục này.
@@ -267,7 +271,7 @@ Solution hiện có **hai convention**, chọn theo project. Không trộn lẫn
 
 - Trước khi tạo folder, class, interface, command, query, handler, DTO, validator, mapper, behavior, repository, service, decorator hoặc wrapper mới, phải tìm trong toàn solution theo thứ tự: `BuildingBlocks.Application`, shared project phù hợp khác, Application/Domain của service hiện tại, rồi implementation hiện có trong Infrastructure.
 - Ưu tiên dùng trực tiếp abstraction shared đã có trong `BuildingBlocks.Application`, ví dụ `IUnitOfWork`, CQRS marker, pagination model, clock, exception classifier và MediatR pipeline behaviors. Không tạo alias/wrapper theo tên service nếu không bổ sung hành vi thật.
-- `Inventory.Application/Abstractions` hoặc folder tương tự ở service khác chỉ chứa contract đặc thù use case của service đó. Không đặt abstraction dùng chung hoặc contract domain-agnostic trùng với BuildingBlocks vào đây.
+- `<Service>.Application/Common/Interfaces` (port dùng từ 2 feature trở lên) và `<Service>.Application/Features/<Feature>/Interfaces` (port của riêng một feature) chỉ chứa contract đặc thù use case của service đó. Không đặt abstraction dùng chung hoặc contract domain-agnostic trùng với BuildingBlocks vào đây.
 - Không tạo folder theo template như `Abstractions`, `Common`, `Interfaces`, `Services`, `Mappings`, `Validators`, `Behaviors`, `Models` nếu chưa có file thật cần đặt vào đó. Không giữ folder rỗng để chuẩn bị cho tương lai.
 - Không đưa abstraction domain-specific vào BuildingBlocks quá sớm. Chỉ chuyển vào shared project khi có ít nhất hai service dùng thật, contract ổn định, domain-agnostic, và không làm service coupling với nhau.
 - Application không được phụ thuộc Infrastructure, API hoặc Application của service khác. Implementation của Application abstractions đặt ở Infrastructure.

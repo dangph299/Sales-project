@@ -2,6 +2,8 @@ using System.Text.Json;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
 using Inventory.Application;
+using Inventory.Application.Common.Interfaces;
+using Inventory.Application.Features.Reservations.Commands;
 using MediatR;
 
 namespace Inventory.Infrastructure;

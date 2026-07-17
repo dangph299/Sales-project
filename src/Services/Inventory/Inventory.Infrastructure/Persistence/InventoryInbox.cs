@@ -1,6 +1,7 @@
 using BuildingBlocks.Application;
 using BuildingBlocks.Infrastructure;
 using Inventory.Application;
+using Inventory.Application.Common.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
