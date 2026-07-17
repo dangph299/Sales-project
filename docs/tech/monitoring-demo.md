@@ -116,7 +116,7 @@ Inventory serialization conflict/deadlock cũng được map thành `409` ở AP
 2. Confirm một order — business transaction commit, outbox row ở trạng thái pending, publish thất bại và retry.
 3. Quan sát metric `sales.outbox.backlog` tăng (panel *Outbox health*) và log `Publish failed {EventId} {RetryCount}` trong Seq.
 4. Khởi động lại Kafka: `docker compose -f docker/docker-compose.yml start kafka`. Publisher publish lại, backlog về 0, không tạo bản ghi trùng (Inbox khử trùng lặp phía consumer).
-5. Nếu để lỗi kéo dài quá `MaxAttempts`, row chuyển dead-letter (`sales.outbox.deadletters` > 0); replay bằng `MaintenanceJobs.ReplayDeadLettersAsync`.
+5. Nếu để lỗi kéo dài quá `MaxAttempts`, row chuyển dead-letter (`sales.outbox.deadletters` > 0); replay bằng `SalesMaintenanceService.ReplayDeadLetterOutboxMessagesAsync`.
 
 ## Screenshot/dashboard
 

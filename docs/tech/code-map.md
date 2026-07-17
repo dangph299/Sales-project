@@ -9,7 +9,7 @@ src/
   Services/
     Sales/
       Sales.Api/              HTTP API, controllers, auth, middleware
-      Sales.Application/      commands, queries, DTO, validators, ports
+      Sales.Application/      feature-first: Features/<Aggregate>/{Commands,Queries,DTOs,Validators,Mapping}, Common/
       Sales.Domain/           aggregates, entities, value objects, domain events
       Sales.Infrastructure/   EF Core, repositories, Kafka, Redis, Hangfire
     Inventory/
@@ -147,8 +147,8 @@ HTTP POST /api/products
 File liên quan:
 
 - `Sales.Api/Controllers/ProductsController.cs`
-- `Sales.Application/Commands/Products/CreateProduct.cs`
-- `Sales.Application/Commands/Products/CreateProductHandler.cs`
+- `Sales.Application/Features/Products/Commands/CreateProduct.cs`
+- `Sales.Application/Features/Products/Commands/CreateProductHandler.cs`
 - `Sales.Domain/Aggregates/Product.cs`
 - `Sales.Infrastructure/Persistence/DbContexts/SalesDbContext.cs`
 - `BuildingBlocks.Infrastructure/Auditing/AuditSaveChangesInterceptor.cs`
@@ -192,9 +192,9 @@ HTTP POST /api/orders
 File liên quan:
 
 - `Sales.Api/Controllers/OrdersController.cs`
-- `Sales.Application/Commands/Orders/CreateOrder.cs`
-- `Sales.Application/Commands/Orders/CreateOrderHandler.cs`
-- `Sales.Application/Commands/Orders/OrderCommandSupport.cs`
+- `Sales.Application/Features/Orders/Commands/CreateOrder.cs`
+- `Sales.Application/Features/Orders/Commands/CreateOrderHandler.cs`
+- `Sales.Application/Features/Orders/Commands/OrderCommandSupport.cs`
 - `Sales.Domain/Aggregates/Order.cs`
 - `Sales.Domain/Entities/OrderLine.cs`
 
@@ -218,9 +218,9 @@ Client PUT /api/orders/{id}/lines
 File liên quan:
 
 - `Sales.Api/Extensions/ControllerEtagExtensions.cs`
-- `Sales.Application/Commands/Orders/ReplaceOrderLines.cs`
-- `Sales.Application/Commands/Orders/ReplaceOrderLinesHandler.cs`
-- `Sales.Application/Commands/Orders/OrderCommandSupport.cs`
+- `Sales.Application/Features/Orders/Commands/ReplaceOrderLines.cs`
+- `Sales.Application/Features/Orders/Commands/ReplaceOrderLinesHandler.cs`
+- `Sales.Application/Features/Orders/Commands/OrderCommandSupport.cs`
 - `Sales.Infrastructure/Persistence/Configurations/OrderConfiguration.cs`
 
 ## 7. Flow: confirm đơn hàng và reserve stock
@@ -248,7 +248,7 @@ Client POST /api/orders/{id}/confirm
 
 File liên quan:
 
-- `Sales.Application/Commands/Orders/ConfirmOrderHandler.cs`
+- `Sales.Application/Features/Orders/Commands/ConfirmOrderHandler.cs`
 - `Sales.Domain/Aggregates/Order.cs`
 - `Sales.Infrastructure/Kafka/DomainEventMapper.cs`
 - `Sales.Infrastructure/Persistence/DbContexts/SalesDbContext.cs`
@@ -328,15 +328,17 @@ File liên quan:
 - `Inventory.Infrastructure/Kafka/InventoryIntegrationEventProcessor.cs`
 - `Inventory.Application/Commands/ReserveStock/ReserveStockCommandHandler.cs`
 - `Inventory.Application/Commands/ReleaseStock/ReleaseStockCommandHandler.cs`
-- `Sales.Infrastructure/Persistence/Inbox/InboxMessage.cs`
-- `Inventory.Infrastructure/Persistence/Inbox/InboxRow.cs`
+- `BuildingBlocks.Infrastructure/Inbox/InboxMessage.cs` (entity inbox dùng chung cho Sales và Inventory)
+- `Sales.Infrastructure/Persistence/Configurations/InboxMessageConfiguration.cs`
+- `Inventory.Infrastructure/Persistence/Configurations/InboxMessageConfiguration.cs`
+- `Inventory.Infrastructure/Persistence/InventoryInbox.cs`
 
 ## 11. Checklist khi thêm tính năng mới
 
 Nếu tính năng ghi dữ liệu Sales:
 
 1. Thêm/sửa method trong aggregate Domain nếu có rule mới.
-2. Thêm command record trong `Sales.Application/Commands/<Aggregate>/`.
+2. Thêm command record trong `Sales.Application/Features/<Aggregate>/Commands/`.
 3. Thêm validator.
 4. Thêm handler.
 5. Nếu cần DB access đặc thù, thêm repository method/interface.

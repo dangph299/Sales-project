@@ -13,9 +13,6 @@ public sealed class CancelExpiredPendingOrdersJob(
     IClock clock,
     ILogger<CancelExpiredPendingOrdersJob> logger)
 {
-    /// <summary>Recurring Hangfire job identifier.</summary>
-    public const string JobId = SalesRecurringJobIds.CancelExpiredPendingOrders;
-
     /// <summary>
     /// Executes one expired order cancellation batch.
     /// </summary>

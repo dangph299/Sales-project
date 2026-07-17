@@ -32,7 +32,7 @@ Hai package phục vụ 2 mục đích khác nhau:
 | Package | Interface | Dùng cho |
 |---|---|---|
 | `Microsoft.Extensions.Caching.StackExchangeRedis` | `IDistributedCache` | Cache-aside (`CacheService<T>`) |
-| `StackExchange.Redis` | `IConnectionMultiplexer` / `IDatabase` | Distributed lock (`MaintenanceJobs`) |
+| `StackExchange.Redis` | `IConnectionMultiplexer` / `IDatabase` | Distributed lock (`MaintenanceCleanupJob`) |
 
 ## 3. Redis khởi tạo trong DI như thế nào?
 
@@ -197,28 +197,45 @@ Soft delete Product có handler riêng (`DeleteProductHandler`) và handler này
 
 ## 6. Distributed lock cho Hangfire cleanup job
 
-`src/Services/Sales/Sales.Infrastructure/Hangfire/MaintenanceJobs.cs`:
+`src/Services/Sales/Sales.Infrastructure/Hangfire/Jobs/MaintenanceCleanupJob.cs`:
 
 ```csharp
-public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer redis)
+public sealed class MaintenanceCleanupJob(SalesDbContext db, IConnectionMultiplexer redis, IClock clock)
 {
+    private const string CleanupLockKey = "lock:jobs:sales-cleanup";
+    private static readonly TimeSpan CleanupLockDuration = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan Retention = TimeSpan.FromDays(14);
+
     public async Task CleanupAsync()
     {
         var cache = redis.GetDatabase();
-        var token = Guid.NewGuid().ToString("N");
-        const string key = "lock:jobs:sales-cleanup";
-        if (!await cache.StringSetAsync(key, token, TimeSpan.FromMinutes(5), When.NotExists)) return;
+        var lockToken = Guid.NewGuid().ToString("N");
+
+        var lockAcquired = await cache.StringSetAsync(
+            CleanupLockKey, lockToken, CleanupLockDuration, When.NotExists);
+
+        if (!lockAcquired)
+        {
+            return;
+        }
+
         try
         {
-            var cutoff = DateTimeOffset.UtcNow.AddDays(-14);
-            await db.InboxMessages.Where(x => x.ProcessedAt < cutoff).ExecuteDeleteAsync();
-            await db.OutboxMessages.Where(x => x.ProcessedAt != null && x.ProcessedAt < cutoff).ExecuteDeleteAsync();
+            var cutoff = clock.UtcNow.Subtract(Retention);
+
+            await db.InboxMessages
+                .Where(inboxMessage => inboxMessage.Status == InboxMessageStatus.Processed
+                    && inboxMessage.ProcessedAt < cutoff)
+                .ExecuteDeleteAsync();
+
+            await db.OutboxMessages
+                .Where(outboxMessage => outboxMessage.ProcessedAt != null
+                    && outboxMessage.ProcessedAt < cutoff)
+                .ExecuteDeleteAsync();
         }
         finally
         {
-            await cache.ScriptEvaluateAsync(
-                "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del', KEYS[1]) else return 0 end",
-                [key], [token]);
+            await cache.ScriptEvaluateAsync(ReleaseLockScript, [CleanupLockKey], [lockToken]);
         }
     }
 }
@@ -232,15 +249,23 @@ public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer re
 | Acquire | `SET key token NX PX 300000` qua `StringSetAsync(..., When.NotExists)` |
 | Token | `Guid.NewGuid()` random mỗi lần acquire, dùng để release an toàn |
 | TTL | 5 phút — tự hết hạn nếu process crash giữa chừng, tránh deadlock vĩnh viễn |
-| Acquire thất bại | `return` ngay, không log, không retry — job coi như no-op ở lần chạy này, Hangfire sẽ tự chạy lại theo `Cron.Daily` |
+| Acquire thất bại | `return` ngay, không log, không retry — job coi như no-op ở lần chạy này, Hangfire sẽ tự chạy lại theo cron cấu hình (`SalesRecurringJobs:MaintenanceCleanup:Cron`, mặc định `0 0 * * *`) |
 | Release | Lua script compare-and-delete trong `finally`, chỉ xóa key nếu value vẫn đúng bằng token của chính mình |
 
 **Vì sao cần Lua script khi release thay vì `KeyDeleteAsync` thẳng?** Nếu chỉ `DEL` đơn thuần, có thể xảy ra race: instance A giữ lock 5 phút, job chạy lâu hơn 5 phút, lock tự hết hạn, instance B acquire được lock mới; sau đó A chạy xong và `DEL` — vô tình xóa mất lock của B. Script Lua đảm bảo A chỉ xóa lock nếu value vẫn là token của A.
 
-Job được đăng ký trong `src/Services/Sales/Sales.Api/Program.cs`:
+Job được đăng ký trong `Hangfire/Definitions/MaintenanceCleanupJobDefinition.cs`, và
+`StartupTaskExtensions` gọi `app.Services.RegisterRecurringJobs()` lúc khởi động:
 
 ```csharp
-RecurringJob.AddOrUpdate<MaintenanceJobs>("sales-cleanup", "maintenance", x => x.CleanupAsync(), Cron.Daily);
+protected override void AddOrUpdate()
+{
+    RecurringJobManager.AddOrUpdateRecurringJob<MaintenanceCleanupJob>(
+        SalesRecurringJobIds.MaintenanceCleanup,
+        Settings.Queue,
+        Settings.Cron,
+        maintenanceCleanupJob => maintenanceCleanupJob.CleanupAsync());
+}
 ```
 
 **Vì sao cần Redis lock nếu Hangfire tự quản lý recurring job?** Hangfire không đảm bảo chỉ 1 instance chạy 1 recurring job nếu bạn scale `sales-api` ra nhiều container cùng trỏ vào 1 Hangfire storage — nhiều instance có thể fire job gần như đồng thời khi tick trùng giờ. Redis lock đảm bảo chỉ 1 instance thực sự dọn dữ liệu.

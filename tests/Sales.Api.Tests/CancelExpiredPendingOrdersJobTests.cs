@@ -77,14 +77,12 @@ public sealed class CancelExpiredPendingOrdersJobTests
     {
         Assert.Equal("sales-cleanup", SalesRecurringJobIds.MaintenanceCleanup);
         Assert.Equal("orders:cancel-expired", SalesRecurringJobIds.CancelExpiredPendingOrders);
-        Assert.Equal(SalesRecurringJobIds.CancelExpiredPendingOrders, CancelExpiredPendingOrdersJob.JobId);
     }
 
     [Fact]
-    public void Sales_recurring_job_options_define_expected_configuration_keys()
+    public void Sales_recurring_jobs_bind_a_single_root_configuration_section()
     {
-        Assert.Equal("SalesRecurringJobs:MaintenanceCleanup", MaintenanceCleanupRecurringJobRegistration.SectionPath);
-        Assert.Equal("SalesRecurringJobs:CancelExpiredPendingOrders", CancelExpiredPendingOrdersRecurringJobRegistration.SectionPath);
+        Assert.Equal("SalesRecurringJobs", SalesRecurringJobsOptions.SectionName);
     }
 
     private sealed class FakeClock(DateTimeOffset currentUtc) : IClock

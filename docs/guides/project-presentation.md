@@ -139,7 +139,7 @@ Dùng để nối Application với database, Redis, Kafka, Hangfire.
 | `Persistence` | EF Core DbContext, migration, read service | `SalesDbContext`, `SalesReadServices` |
 | `Repositories` | Repository implementation | `OrderRepository` |
 | `Kafka` | Outbox publisher, Inbox consumer, map domain event sang integration event | `SalesOutboxPublisher`, `DomainEventMapper` |
-| `Hangfire` | Job cleanup/replay | `MaintenanceJobs` |
+| `Hangfire` | Recurring cleanup + expired order cancellation | `MaintenanceCleanupJob`, `CancelExpiredPendingOrdersJob` |
 | `ExternalServices` | Redis cache, execution context | `ProductCache`, `HttpExecutionContext` |
 | `Observability` | Custom metrics | `SalesMetrics` |
 
@@ -189,14 +189,14 @@ public OrdersController(ISender sender)
 | 2 người cùng sửa order | Optimistic concurrency bằng `Version`, `ETag`, `If-Match` | `OrdersController`, `ControllerEtagExtensions`, `OrderCommandSupport.LoadAndCheck` |
 | AuditLog MongoDB qua Kafka | Kafka consumer lưu `AuditLogEvent` vào Mongo, unique `AuditId` | `MongoAuditWriter.cs` |
 | Inventory service riêng | Inventory Domain/Application/Infrastructure/API riêng, Postgres riêng | `src/Services/Inventory` |
-| Không miss event | Transactional Outbox/Inbox, retry, backoff, DLQ, inbound redrive, replay | `SalesOutboxPublisher`, `InventoryOutboxPublisher`, `InboxRedriveService`, `MaintenanceJobs` |
+| Không miss event | Transactional Outbox/Inbox, retry, backoff, DLQ, inbound redrive, replay | `SalesOutboxPublisher`, `InventoryOutboxPublisher`, `InboxRedriveService`, `SalesMaintenanceService` |
 | CQRS | Command/query tách riêng, MediatR | `Sales.Application/Commands`, `Sales.Application/Queries` |
 | Factory Method | Static factory tạo aggregate/value object | `Product.Create`, `Customer.Create`, `Order.Create`, `Money.Vnd` |
 | Repository | Interface ở Domain, implement ở Infrastructure | `Repositories.cs` |
 | Unit of Work | Shared `IUnitOfWork`; Sales wrapper delegates to `SalesDbContext.SaveChangesAsync` | `UnitOfWork.cs`, `SalesDbContext.cs` |
 | Mapster | Mapping domain sang DTO | `DTOs/Models.cs` |
-| Redis cache | Cache-aside cho product detail, Redis lock cho cleanup job | `ProductCache.cs`, `MaintenanceJobs.cs` |
-| Hangfire | Scheduled cleanup/replay job | `Program.cs`, `MaintenanceJobs.cs` |
+| Redis cache | Cache-aside cho product detail, Redis lock cho cleanup job | `ProductCache.cs`, `MaintenanceCleanupJob.cs` |
+| Hangfire | Scheduled cleanup/replay job | `MaintenanceCleanupJob.cs`, `SalesMaintenanceService.cs` |
 | KafkaFlow | Producer/consumer Kafka | `DependencyInjection.cs`, Kafka folder |
 | Postgres/Mongo | Postgres cho Sales/Inventory/Hangfire, Mongo cho Audit | `docker-compose.yml` |
 | Monitoring | Seq + OTel + Elastic APM/Kibana + custom metrics | `Program.cs`, `SalesMetrics`, `InventoryMetrics`, `docs/observability.md` |
@@ -881,10 +881,11 @@ Publisher xử lý:
 
 Outbox replay:
 
-- Sales có Hangfire job:
-  - `ReplayOutboxMessageAsync(Guid eventId)`
-  - `ReplayDeadLettersAsync(int take)`
-- Inventory hiện có retry/backoff/DLQ trong `InventoryOutboxPublisher`; chưa có Hangfire replay endpoint riêng như Sales.
+- Sales có thao tác recovery thủ công trên `SalesMaintenanceService` (**không phải** Hangfire
+  recurring job, hiện chưa có production caller):
+  - `ReplayOutboxMessageAsync(Guid outboxMessageId)`
+  - `ReplayDeadLetterOutboxMessagesAsync(int maximumMessageCount)`
+- Inventory hiện có retry/backoff/DLQ trong `InventoryOutboxPublisher`; chưa có thao tác replay outbox như Sales.
 - Outbox replay reset:
   - `Attempts = 0`
   - `DeadLetteredAt = null`
@@ -953,11 +954,18 @@ Hangfire dùng trong Sales API:
   - `default`
   - `maintenance`
 
-Job hiện có:
+Recurring job hiện có (được Hangfire schedule):
 
-- `CleanupAsync`: xóa inbox/outbox cũ.
+- `MaintenanceCleanupJob.CleanupAsync`: xóa inbox/outbox cũ — job `sales-cleanup`, queue
+  `maintenance`, cron `0 0 * * *`.
+- `CancelExpiredPendingOrdersJob.ExecuteAsync`: hủy pending order hết hạn — job
+  `orders:cancel-expired`, queue `critical`, cron `*/5 * * * *`.
+
+Thao tác recovery thủ công trên `SalesMaintenanceService` — **không** được Hangfire schedule,
+hiện chưa có production caller:
+
 - `ReplayOutboxMessageAsync`: replay 1 event.
-- `ReplayDeadLettersAsync`: replay batch DLQ.
+- `ReplayDeadLetterOutboxMessagesAsync`: replay batch DLQ.
 - `ResetInboxDeadLetterAsync`: reset 1 inbound dead-letter để redrive lại.
 - `ResetInboxDeadLettersAsync`: reset batch inbound dead-letter.
 

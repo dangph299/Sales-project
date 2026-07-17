@@ -2,24 +2,27 @@ using Hangfire;
 
 namespace BuildingBlocks.Infrastructure;
 
-public abstract class RecurringJobRegistrationBase<TOptions> : IRecurringJobRegistration
-    where TOptions : RecurringJobScheduleOptions
+/// <summary>
+/// Applies the enable/disable flow shared by every recurring job definition: an enabled job is added
+/// or updated, a disabled job is removed from Hangfire storage so it stops firing.
+/// </summary>
+public abstract class RecurringJobDefinitionBase : IRecurringJobDefinition
 {
-    protected RecurringJobRegistrationBase(IRecurringJobManager recurringJobManager, TOptions options)
+    protected RecurringJobDefinitionBase(IRecurringJobManager recurringJobManager, RecurringJobSettings settings)
     {
         RecurringJobManager = recurringJobManager;
-        Options = options;
+        Settings = settings;
     }
 
     protected IRecurringJobManager RecurringJobManager { get; }
 
-    protected TOptions Options { get; }
+    protected RecurringJobSettings Settings { get; }
 
     protected abstract string JobId { get; }
 
     public void Register()
     {
-        if (!Options.Enabled)
+        if (!Settings.Enabled)
         {
             RemoveIfExists();
             return;
@@ -33,13 +36,5 @@ public abstract class RecurringJobRegistrationBase<TOptions> : IRecurringJobRegi
     protected virtual void RemoveIfExists()
     {
         RecurringJobManager.RemoveIfExists(JobId);
-    }
-
-    protected static RecurringJobOptions CreateUtcRecurringJobOptions()
-    {
-        return new RecurringJobOptions
-        {
-            TimeZone = TimeZoneInfo.Utc
-        };
     }
 }

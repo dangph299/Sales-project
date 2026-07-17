@@ -109,16 +109,18 @@ Cần lưu ý:
 - Không tạo thêm command/query giả định nếu chưa có use case thật.
 - Chi tiết audit nằm ở [inventory-cqrs-refactor-audit.md](inventory-cqrs-refactor-audit.md).
 
-### README cũ có link docs không tồn tại
+### Tổ chức tài liệu và link trong README
 
-Trạng thái:
+Trạng thái hiện tại:
 
-- README cũ có một số link docs như `docs/project-presentation.md`, `docs/kafka-usage-guide.md`, `docs/Redis-cache-usage-guide.md` nhưng trong repo hiện tại không có các file đó.
+- README trỏ về `docs/tech/README.md` làm điểm vào chính, kèm link `docs/architecture.md`, `docs/CODING_RULES.md`, `docs/ARCHITECTURE_CHECKLIST.md`, `docs/tech/requirements-map.md` và `docs/tech/monitoring-demo.md`. Các link này đều hợp lệ.
+- Bộ tài liệu chia hai nhóm: `docs/tech/` là tài liệu kỹ thuật chính (yêu cầu, pattern, code map, audit, reliability); `docs/guides/` là hướng dẫn sử dụng từng công nghệ (Kafka, Redis, Seq, Elastic, OpenTelemetry, style guide, presentation).
+- Các link kiểu `docs/kafka-usage-guide.md` từng bị hỏng trong README cũ nay đã được giải quyết: file nằm ở `docs/guides/kafka-usage-guide.md`.
 
-Đã xử lý:
+Cần lưu ý:
 
-- README hiện trỏ về `docs/tech/README.md`.
-- Bộ tài liệu chính nằm trong `docs/tech/`.
+- Khi thêm guide mới, đặt trong `docs/guides/` và link từ `docs/tech/README.md` nếu người mới cần đọc.
+- Không link tới `docs/<tên-guide>.md` ở root `docs/`; đường dẫn đúng có tiền tố `docs/guides/`.
 
 ## Lệnh đã verify
 

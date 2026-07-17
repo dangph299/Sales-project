@@ -9,8 +9,8 @@ Trạng thái: đã đáp ứng.
 Code chính:
 
 - Domain aggregate: `src/Services/Sales/Sales.Domain/Aggregates/Product.cs`
-- Command tạo/sửa/xóa: `src/Services/Sales/Sales.Application/Commands/Products/`
-- Query search/get: `src/Services/Sales/Sales.Application/Queries/Products/`
+- Command tạo/sửa/xóa: `src/Services/Sales/Sales.Application/Features/Products/Commands/`
+- Query search/get: `src/Services/Sales/Sales.Application/Features/Products/Queries/`
 - Read service search: `src/Services/Sales/Sales.Infrastructure/Persistence/ProductReadService.cs`
 - Cache decorator: `src/Services/Sales/Sales.Infrastructure/Persistence/CachedProductReadService.cs`
 - API controller: `src/Services/Sales/Sales.Api/Controllers/ProductsController.cs`
@@ -53,8 +53,8 @@ flowchart TD
 Quy tắc:
 
 - Business rule của sản phẩm đặt trong `Product`.
-- Command mới đặt trong `Sales.Application/Commands/Products/`.
-- Query mới đặt trong `Sales.Application/Queries/Products/`.
+- Command mới đặt trong `Sales.Application/Features/Products/Commands/`.
+- Query mới đặt trong `Sales.Application/Features/Products/Queries/`.
 - Không query EF Core trực tiếp trong controller.
 - Nếu sửa dữ liệu product, cần remove hoặc update cache liên quan.
 
@@ -65,9 +65,9 @@ Trạng thái: đã đáp ứng.
 Code chính:
 
 - Domain aggregate: `src/Services/Sales/Sales.Domain/Aggregates/Customer.cs`
-- Command tạo/sửa/xóa: `src/Services/Sales/Sales.Application/Commands/Customers/`
-- Query search/get: `src/Services/Sales/Sales.Application/Queries/Customers/`
-- Enum phone match: `src/Services/Sales/Sales.Application/Common/Enums/PhoneMatch.cs`
+- Command tạo/sửa/xóa: `src/Services/Sales/Sales.Application/Features/Customers/Commands/`
+- Query search/get: `src/Services/Sales/Sales.Application/Features/Customers/Queries/`
+- Enum phone match: `src/Services/Sales/Sales.Application/Features/Customers/Enums/PhoneMatch.cs`
 - Read service: `src/Services/Sales/Sales.Infrastructure/Persistence/CustomerReadService.cs`
 - API controller: `src/Services/Sales/Sales.Api/Controllers/CustomersController.cs`
 - EF mapping: `src/Services/Sales/Sales.Infrastructure/Persistence/Configurations/CustomerConfiguration.cs`
@@ -112,8 +112,8 @@ Code chính:
 - Aggregate root: `src/Services/Sales/Sales.Domain/Aggregates/Order.cs`
 - Entity line: `src/Services/Sales/Sales.Domain/Entities/OrderLine.cs`
 - Value objects: `src/Services/Sales/Sales.Domain/ValueObjects/`
-- DTO order: `src/Services/Sales/Sales.Application/DTOs/Orders/`
-- Mapping DTO: `src/Services/Sales/Sales.Application/DTOs/DtoMapping.cs`
+- DTO order: `src/Services/Sales/Sales.Application/Features/Orders/DTOs/`
+- Mapping DTO: `src/Services/Sales/Sales.Application/Features/Orders/Mapping/OrderMappingRegister.cs`
 - API controller: `src/Services/Sales/Sales.Api/Controllers/OrdersController.cs`
 - EF mapping order/line: `src/Services/Sales/Sales.Infrastructure/Persistence/Configurations/`
 
@@ -162,8 +162,8 @@ Trạng thái: đã đáp ứng.
 
 Code chính:
 
-- Query record: `src/Services/Sales/Sales.Application/Queries/Orders/SearchOrders.cs`
-- Query handler: `src/Services/Sales/Sales.Application/Queries/Orders/SearchOrdersHandler.cs`
+- Query record: `src/Services/Sales/Sales.Application/Features/Orders/Queries/SearchOrders.cs`
+- Query handler: `src/Services/Sales/Sales.Application/Features/Orders/Queries/SearchOrdersHandler.cs`
 - Read service: `src/Services/Sales/Sales.Infrastructure/Persistence/OrderReadService.cs`
 - Specification base: `src/Services/Sales/Sales.Domain/Services/Specifications/`
 - Specification EF-specific: `src/Services/Sales/Sales.Infrastructure/Persistence/Specifications/`
@@ -203,7 +203,7 @@ Code chính:
 - EF concurrency token: `src/Services/Sales/Sales.Infrastructure/Persistence/Configurations/OrderConfiguration.cs`
 - ETag helper: `src/Services/Sales/Sales.Api/Extensions/ControllerEtagExtensions.cs`
 - Controller dùng `If-Match`: `src/Services/Sales/Sales.Api/Controllers/OrdersController.cs`
-- Conflict exception: `src/Services/Sales/Sales.Application/Services/ConflictException.cs`
+- Conflict exception: `src/Services/Sales/Sales.Application/Common/Exceptions/ConflictException.cs`
 - Exception mapping 409: `src/Shared/BuildingBlocks.Web/ExceptionHandling/ApiExceptionHandler.cs` + Sales `AddApiExceptionHandling(...)` configuration in `src/Services/Sales/Sales.Api/Extensions/ServiceCollectionExtensions.cs`
 - Test: `tests/Sales.Infrastructure.Tests/ConfirmOrderConcurrencyTests.cs`
 
@@ -307,7 +307,8 @@ Code chính:
 - Event adapter: `src/Services/Inventory/Inventory.Infrastructure/Kafka/InventoryIntegrationEventProcessor.cs`
 - Reserve command: `src/Services/Inventory/Inventory.Application/Commands/ReserveStock/`
 - Release command: `src/Services/Inventory/Inventory.Application/Commands/ReleaseStock/`
-- Inbox row: `src/Services/Inventory/Inventory.Infrastructure/Persistence/Inbox/InboxRow.cs`
+- Inbox entity (dùng chung): `src/Shared/BuildingBlocks.Infrastructure/Inbox/InboxMessage.cs`
+- Inbox adapter Inventory: `src/Services/Inventory/Inventory.Infrastructure/Persistence/InventoryInbox.cs`
 - Outbox publisher: `src/Services/Inventory/Inventory.Infrastructure/Kafka/InventoryOutboxPublisher.cs`
 
 Cách hoạt động:
@@ -355,8 +356,8 @@ Code chính:
 
 - CQRS marker: `src/Shared/BuildingBlocks.Application/Abstractions/Messaging/`
 - MediatR behaviors: `src/Shared/BuildingBlocks.Application/Behaviors/`
-- Sales commands: `src/Services/Sales/Sales.Application/Commands/`
-- Sales queries: `src/Services/Sales/Sales.Application/Queries/`
+- Sales commands: `src/Services/Sales/Sales.Application/Features/<Aggregate>/Commands/`
+- Sales queries: `src/Services/Sales/Sales.Application/Features/<Aggregate>/Queries/`
 - MediatR registration: `src/Services/Sales/Sales.Api/Extensions/ServiceCollectionExtensions.cs`
 - Inventory commands: `src/Services/Inventory/Inventory.Application/Commands/`
 - Inventory queries: `src/Services/Inventory/Inventory.Application/Queries/`
@@ -419,11 +420,11 @@ Trạng thái: đã đáp ứng.
 Code chính:
 
 - Redis registration: `src/Services/Sales/Sales.Infrastructure/DependencyInjection.cs`
-- Cache abstraction: `src/Services/Sales/Sales.Application/Interfaces/ICacheService.cs`
+- Cache abstraction: `src/Services/Sales/Sales.Application/Common/Interfaces/ICacheService.cs`
 - Cache base: `src/Services/Sales/Sales.Infrastructure/ExternalServices/CacheService.cs`
 - Product cache: `src/Services/Sales/Sales.Infrastructure/ExternalServices/ProductCache.cs`
 - Cache usage: `src/Services/Sales/Sales.Infrastructure/Persistence/CachedProductReadService.cs`
-- Distributed lock: `src/Services/Sales/Sales.Infrastructure/Hangfire/MaintenanceJobs.cs`
+- Distributed lock: `src/Services/Sales/Sales.Infrastructure/Hangfire/Jobs/MaintenanceCleanupJob.cs`
 - Docker Redis: `docker/docker-compose.yml`
 
 Quy tắc:
@@ -460,10 +461,12 @@ Trạng thái: đã đáp ứng trong Sales.Application.
 Code chính:
 
 - Package Mapster: `src/Services/Sales/Sales.Application/Sales.Application.csproj`
-- Mapping extension: `src/Services/Sales/Sales.Application/DTOs/DtoMapping.cs`
+- Mapping register theo feature: `src/Services/Sales/Sales.Application/Features/Products/Mapping/ProductMappingRegister.cs`, `Features/Customers/Mapping/CustomerMappingRegister.cs`, `Features/Orders/Mapping/OrderMappingRegister.cs`
+- Đăng ký mapping dùng chung: `src/Shared/BuildingBlocks.Application/Mapping/MappingRegistrationExtensions.cs`
 
 Cách hoạt động:
 
+- Mỗi feature khai báo mapping riêng trong `*MappingRegister` của feature đó.
 - Product/Customer map bằng Mapster.
 - Order map tay vì có nested lines, value object Money và calculated fields.
 
@@ -481,8 +484,13 @@ Code chính:
 
 - Hangfire registration: `src/Services/Sales/Sales.Api/Extensions/ServiceCollectionExtensions.cs`
 - Dashboard: `src/Services/Sales/Sales.Api/Extensions/ApplicationBuilderExtensions.cs`
-- Job: `src/Services/Sales/Sales.Infrastructure/Hangfire/MaintenanceJobs.cs`
+- Job: `src/Services/Sales/Sales.Infrastructure/Hangfire/Jobs/MaintenanceCleanupJob.cs`
+- Definition: `src/Services/Sales/Sales.Infrastructure/Hangfire/Definitions/MaintenanceCleanupJobDefinition.cs`
+- Options: `src/Services/Sales/Sales.Infrastructure/Hangfire/Options/SalesRecurringJobsOptions.cs`
+- Job ID: `src/Services/Sales/Sales.Infrastructure/Hangfire/SalesRecurringJobIds.cs`
+- DI: `src/Services/Sales/Sales.Infrastructure/Hangfire/SalesRecurringJobsExtensions.cs`
 - Startup recurring job: `src/Services/Sales/Sales.Api/Extensions/StartupTaskExtensions.cs`
+- Operator recovery (không phải recurring job): `src/Services/Sales/Sales.Infrastructure/Maintenance/SalesMaintenanceService.cs`
 - Inventory cleanup worker: `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceWorker.cs`
 - Inventory cleanup service: `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceService.cs`
 
@@ -502,9 +510,47 @@ flowchart TD
 - Redis lock ngăn nhiều Sales instance cleanup cùng lúc.
 - Inventory cleanup không dùng Hangfire; hosted worker dùng Postgres advisory transaction lock.
 
+### Cấu hình recurring jobs
+
+Toàn bộ Sales recurring jobs bind từ một section gốc `SalesRecurringJobs`
+(`SalesRecurringJobsOptions.SectionName`), validate lúc startup bởi
+`SalesRecurringJobsOptionsValidator`:
+
+```json
+{
+  "SalesRecurringJobs": {
+    "MaintenanceCleanup": {
+      "Enabled": true,
+      "Queue": "maintenance",
+      "Cron": "0 0 * * *"
+    },
+    "CancelExpiredPendingOrders": {
+      "Schedule": {
+        "Enabled": true,
+        "Queue": "critical",
+        "Cron": "*/5 * * * *"
+      },
+      "ExpirationMinutes": 30,
+      "BatchSize": 100
+    }
+  }
+}
+```
+
+- `MaintenanceCleanup` không có tham số nghiệp vụ nên chỉ dùng `RecurringJobSettings`
+  (`Enabled`/`Queue`/`Cron`). `CancelExpiredPendingOrders` **compose** `RecurringJobSettings`
+  qua property `Schedule` rồi thêm tham số nghiệp vụ riêng — shared settings không bị mở
+  rộng bởi thuộc tính nghiệp vụ.
+- **Job ID không nằm trong configuration.** ID cố định trong `SalesRecurringJobIds`
+  (`sales-cleanup`, `orders:cancel-expired`) để config không thể tạo thêm một recurring job
+  thứ hai trong Hangfire storage.
+- `Queue` **không có giá trị mặc định**: job `Enabled` mà thiếu `Queue` sẽ fail startup thay
+  vì âm thầm chạy sang queue khác.
+- Job `Enabled=false` sẽ được `RemoveIfExists` khỏi storage, không chỉ bỏ qua đăng ký.
+
 ### Business job: `CancelExpiredPendingOrders`
 
-- **Business purpose**: tự động hủy các đơn hàng đang mở (`Draft`, `PendingInventory`) không đổi trạng thái quá `ExpirationMinutes` phút, để đơn không treo vô thời hạn. Cấu hình: `SalesRecurringJobs:CancelExpiredPendingOrders` (mặc định cron `*/5 * * * *`, `ExpirationMinutes=30`, `BatchSize=100`).
+- **Business purpose**: tự động hủy các đơn hàng đang mở (`Draft`, `PendingInventory`) không đổi trạng thái quá `ExpirationMinutes` phút, để đơn không treo vô thời hạn. Cấu hình: `SalesRecurringJobs:CancelExpiredPendingOrders` (cron ở `Schedule:Cron` mặc định `*/5 * * * *`, `ExpirationMinutes=30`, `BatchSize=100`).
 - **Queue/Schedule**: recurring trên queue `critical` (job nghiệp vụ ảnh hưởng reservation/stock, tách khỏi housekeeping ở `maintenance`), mỗi 5 phút.
 - **Layering**: adapter mỏng `CancelExpiredPendingOrdersJob` (Infrastructure) chỉ dispatch MediatR command `CancelExpiredPendingOrders`; business workflow nằm ở `CancelExpiredPendingOrdersHandler` (Application) + domain method `Order.CancelDueToExpiration(...)`.
 - **Batch**: handler query danh sách ID đủ điều kiện (giới hạn `BatchSize`), load từng aggregate trong scope riêng, một order lỗi không làm hỏng cả batch (đếm scanned/cancelled/skipped/failed).

@@ -47,6 +47,7 @@ public static class DependencyInjection
         services.AddSalesAuditing();
         services.AddSalesCaching(configuration);
         services.AddSalesMessaging(configuration);
+        services.AddScoped<SalesMaintenanceService>();
         services.AddSalesHangfireJobs(configuration);
         return services;
     }
