@@ -227,7 +227,9 @@ Lý do: mọi execution path dispatch MediatR đều đã tự log lỗi tại b
 | HTTP | `ApiExceptionHandler` | `ErrorCode`, `StatusCode`, `RequestMethod`, `RequestPath` |
 | Kafka consumer | `IntegrationEventHandler` | topic, partition, offset, attempts, dead-lettered |
 | Outbox / Inbox | `OutboxPublisherService` / `InboxRedriveService` | event id, retry count |
-| Hangfire job | Hangfire log provider (`Hangfire.AspNetCore`) | job id, retry attempt |
+| Hangfire job | Hangfire log provider (`Hangfire.AspNetCore` tự bắc cầu sang MEL→Serilog trong `AddHangfire`) | job id, số lần retry |
+
+Riêng Hangfire: **Warning** khi job fail nhưng còn retry (`"Retry attempt 1 of 10 will be performed in 00:00:34"`), **Error** khi hết retry — khớp sẵn taxonomy retryable-vs-permanent, không cần code của mình log thêm. Hành vi này được pin bởi `HangfireLoggingBridgeTests` vì nó là dependency ngầm của thiết kế.
 
 Classifier bị xoá vì nó chỉ tồn tại để chọn Warning-vs-Error. Quyết định đó giờ thuộc về `ApiExceptionMapping.LogLevel` — nơi duy nhất biết cả `ErrorCode` lẫn `StatusCode`, nên phân loại được **3 mức** thay vì 2 như interface `bool IsExpected` cũ. Việc này cũng bỏ được hack so khớp `DbUpdateConcurrencyException` bằng tên type (`BuildingBlocks.Application` không reference được EF Core); `ApiExceptionHandler` dùng `IPersistenceExceptionClassifier` ở tầng Infrastructure, nơi reference EF Core trực tiếp được.
 
