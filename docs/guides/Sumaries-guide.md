@@ -64,7 +64,7 @@ Cross-service communication chỉ đi qua `BuildingBlocks.Contracts` + Kafka; Sa
 | Đơn hàng: info khách hàng, tổng SL, tổng tiền, chi tiết (chiết khấu, SL, giá) | ✅ Đủ | Aggregate `Order`/`OrderLine`, VO `Money` (`AwayFromZero` rounding), `discountPercent` bắt buộc để tránh silent default `0` |
 | Search order theo ngày tạo / tên / SĐT khách hàng | ✅ Đủ | `OrderReadService`, index ngày/tên/SĐT trong `SalesDbContext` |
 | Giải quyết 2 người cùng sửa đơn hàng | ✅ Đủ | Optimistic concurrency: `Order.Version` + `ETag`/`If-Match` + 409 Conflict — xem `project-presentation.md` §7, §18 |
-| AuditLog lưu MongoDB, nhận qua Kafka | ✅ Đủ | `AuditLog.Worker` consume Kafka, ghi Mongo unique `EventId`, **giờ log vào Seq** (đã fix, xem mục 5) |
+| AuditLog lưu MongoDB, nhận qua Kafka | ✅ Đủ | `AuditLog.Worker` consume audit topics, ghi Mongo unique `AuditId`, **giờ log vào Seq** (đã fix, xem mục 5) |
 | Inventory service riêng, bảng riêng, không miss event | ✅ Đủ | `src/Services/Inventory` độc lập, Postgres riêng, Outbox/Inbox transactional, inbox redrive cho inbound failure, `Reservation.LastOrderVersion` + release tombstone chống event cũ/đảo thứ tự |
 | CQRS (command/query) qua MediatR | ✅ Đủ (Sales + Inventory) | `Sales.Application/Commands`, `Queries`; `Inventory.Application/Commands`, `Queries`, `InventoryTransactionBehavior`; HTTP/Kafka adapters dispatch qua `ISender` |
 | Factory Method | ✅ Đủ | `Product.Create`, `Customer.Create`, `Order.Create`, `ProductSnapshot.Create`, `CustomerSnapshot.Create`, `Money.Vnd` — 6 static factory, đều có private constructor giữ invariant |

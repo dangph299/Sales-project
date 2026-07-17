@@ -39,7 +39,7 @@ Một flow demo ngắn:
 4. Sales outbox publisher gửi Kafka event `sales.order-confirmation-requested.v1`.
 5. Inventory consume event, ghi Inbox, reserve/reject stock và ghi Inventory outbox reply.
 6. Sales consume reply để update order status.
-7. Audit worker consume audit events và upsert MongoDB theo `EventId`.
+7. Audit worker consume audit events và upsert MongoDB theo `AuditId`.
 
 ## Tìm bằng chứng trong Seq
 
