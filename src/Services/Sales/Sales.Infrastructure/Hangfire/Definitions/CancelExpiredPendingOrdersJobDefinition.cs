@@ -4,16 +4,16 @@ using Microsoft.Extensions.Options;
 
 namespace Sales.Infrastructure;
 
-public sealed class CancelExpiredPendingOrdersRecurringJobRegistration
-    : RecurringJobRegistrationBase<CancelExpiredPendingOrdersJobOptions>
+public sealed class CancelExpiredPendingOrdersJobDefinition : RecurringJobDefinitionBase
 {
-    public const string SectionPath = "SalesRecurringJobs:CancelExpiredPendingOrders";
+    private readonly CancelExpiredPendingOrdersJobOptions jobOptions;
 
-    public CancelExpiredPendingOrdersRecurringJobRegistration(
+    public CancelExpiredPendingOrdersJobDefinition(
         IRecurringJobManager recurringJobManager,
-        IOptions<CancelExpiredPendingOrdersJobOptions> options)
-        : base(recurringJobManager, options.Value)
+        IOptions<SalesRecurringJobsOptions> salesRecurringJobsOptions)
+        : base(recurringJobManager, salesRecurringJobsOptions.Value.CancelExpiredPendingOrders.Schedule)
     {
+        jobOptions = salesRecurringJobsOptions.Value.CancelExpiredPendingOrders;
     }
 
     protected override string JobId
@@ -28,11 +28,11 @@ public sealed class CancelExpiredPendingOrdersRecurringJobRegistration
     {
         RecurringJobManager.AddOrUpdateRecurringJob<CancelExpiredPendingOrdersJob>(
             SalesRecurringJobIds.CancelExpiredPendingOrders,
-            HangfireQueueNames.Critical,
-            Options.Cron,
+            Settings.Queue,
+            Settings.Cron,
             cancelExpiredPendingOrdersJob => cancelExpiredPendingOrdersJob.ExecuteAsync(
-                Options.ExpirationMinutes,
-                Options.BatchSize,
+                jobOptions.ExpirationMinutes,
+                jobOptions.BatchSize,
                 CancellationToken.None));
     }
 }

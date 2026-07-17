@@ -2,7 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace BuildingBlocks.Infrastructure;
 
-public static class RecurringJobRegistrationExtensions
+public static class RecurringJobRegistrarExtensions
 {
     public static void RegisterRecurringJobs(this IServiceProvider serviceProvider)
     {
@@ -10,12 +10,12 @@ public static class RecurringJobRegistrationExtensions
 
         using var serviceScope = serviceProvider.CreateScope();
 
-        var recurringJobRegistrations = serviceScope.ServiceProvider
-            .GetServices<IRecurringJobRegistration>();
+        var recurringJobDefinitions = serviceScope.ServiceProvider
+            .GetServices<IRecurringJobDefinition>();
 
-        foreach (var recurringJobRegistration in recurringJobRegistrations)
+        foreach (var recurringJobDefinition in recurringJobDefinitions)
         {
-            recurringJobRegistration.Register();
+            recurringJobDefinition.Register();
         }
     }
 }

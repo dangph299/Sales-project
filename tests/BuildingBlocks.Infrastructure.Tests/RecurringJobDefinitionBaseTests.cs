@@ -3,70 +3,62 @@ using Hangfire.Common;
 
 namespace BuildingBlocks.Infrastructure.Tests;
 
-public sealed class RecurringJobRegistrationBaseTests
+public sealed class RecurringJobDefinitionBaseTests
 {
     [Fact]
-    public void Register_calls_add_or_update_when_options_are_enabled()
+    public void Register_calls_add_or_update_when_settings_are_enabled()
     {
         var recurringJobManager = new RecordingRecurringJobManager();
-        var registration = new TestRecurringJobRegistration(
+        var definition = new TestRecurringJobDefinition(
             recurringJobManager,
-            new RecurringJobScheduleOptions
+            new RecurringJobSettings
             {
                 Enabled = true,
                 Cron = "0 0 * * *"
             });
 
-        registration.Register();
+        definition.Register();
 
-        Assert.True(registration.AddOrUpdateWasCalled);
+        Assert.True(definition.AddOrUpdateWasCalled);
         Assert.Null(recurringJobManager.RemovedRecurringJobId);
     }
 
     [Fact]
-    public void Register_does_not_call_add_or_update_when_options_are_disabled()
+    public void Register_does_not_call_add_or_update_when_settings_are_disabled()
     {
         var recurringJobManager = new RecordingRecurringJobManager();
-        var registration = new TestRecurringJobRegistration(
+        var definition = new TestRecurringJobDefinition(
             recurringJobManager,
-            new RecurringJobScheduleOptions
+            new RecurringJobSettings
             {
                 Enabled = false
             });
 
-        registration.Register();
+        definition.Register();
 
-        Assert.False(registration.AddOrUpdateWasCalled);
+        Assert.False(definition.AddOrUpdateWasCalled);
     }
 
     [Fact]
-    public void Register_removes_existing_job_when_options_are_disabled()
+    public void Register_removes_existing_job_when_settings_are_disabled()
     {
         var recurringJobManager = new RecordingRecurringJobManager();
-        var registration = new TestRecurringJobRegistration(
+        var definition = new TestRecurringJobDefinition(
             recurringJobManager,
-            new RecurringJobScheduleOptions
+            new RecurringJobSettings
             {
                 Enabled = false
             });
 
-        registration.Register();
+        definition.Register();
 
-        Assert.Equal(TestRecurringJobRegistration.TestJobId, recurringJobManager.RemovedRecurringJobId);
+        Assert.Equal(TestRecurringJobDefinition.TestJobId, recurringJobManager.RemovedRecurringJobId);
     }
 
-    [Fact]
-    public void Create_utc_recurring_job_options_uses_utc_timezone()
-    {
-        var recurringJobOptions = TestRecurringJobRegistration.CreateOptions();
-
-        Assert.Equal(TimeZoneInfo.Utc, recurringJobOptions.TimeZone);
-    }
-
-    private sealed class TestRecurringJobRegistration(
+    private sealed class TestRecurringJobDefinition(
         IRecurringJobManager recurringJobManager,
-        RecurringJobScheduleOptions options)
-        : RecurringJobRegistrationBase<RecurringJobScheduleOptions>(recurringJobManager, options)
+        RecurringJobSettings settings)
+        : RecurringJobDefinitionBase(recurringJobManager, settings)
     {
         public const string TestJobId = "test-job";
 
@@ -78,11 +70,6 @@ public sealed class RecurringJobRegistrationBaseTests
             {
                 return TestJobId;
             }
-        }
-
-        public static RecurringJobOptions CreateOptions()
-        {
-            return CreateUtcRecurringJobOptions();
         }
 
         protected override void AddOrUpdate()

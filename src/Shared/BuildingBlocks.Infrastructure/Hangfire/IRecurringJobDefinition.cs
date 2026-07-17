@@ -1,6 +1,6 @@
 namespace BuildingBlocks.Infrastructure;
 
-public interface IRecurringJobRegistration
+public interface IRecurringJobDefinition
 {
     void Register();
 }

@@ -139,7 +139,7 @@ Dùng để nối Application với database, Redis, Kafka, Hangfire.
 | `Persistence` | EF Core DbContext, migration, read service | `SalesDbContext`, `SalesReadServices` |
 | `Repositories` | Repository implementation | `OrderRepository` |
 | `Kafka` | Outbox publisher, Inbox consumer, map domain event sang integration event | `SalesOutboxPublisher`, `DomainEventMapper` |
-| `Hangfire` | Job cleanup/replay | `MaintenanceJobs` |
+| `Hangfire` | Recurring cleanup + expired order cancellation | `MaintenanceCleanupJob`, `CancelExpiredPendingOrdersJob` |
 | `ExternalServices` | Redis cache, execution context | `ProductCache`, `HttpExecutionContext` |
 | `Observability` | Custom metrics | `SalesMetrics` |
 
@@ -189,14 +189,14 @@ public OrdersController(ISender sender)
 | 2 người cùng sửa order | Optimistic concurrency bằng `Version`, `ETag`, `If-Match` | `OrdersController`, `ControllerEtagExtensions`, `OrderCommandSupport.LoadAndCheck` |
 | AuditLog MongoDB qua Kafka | Kafka consumer lưu `AuditLogEvent` vào Mongo, unique `AuditId` | `MongoAuditWriter.cs` |
 | Inventory service riêng | Inventory Domain/Application/Infrastructure/API riêng, Postgres riêng | `src/Services/Inventory` |
-| Không miss event | Transactional Outbox/Inbox, retry, backoff, DLQ, inbound redrive, replay | `SalesOutboxPublisher`, `InventoryOutboxPublisher`, `InboxRedriveService`, `MaintenanceJobs` |
+| Không miss event | Transactional Outbox/Inbox, retry, backoff, DLQ, inbound redrive, replay | `SalesOutboxPublisher`, `InventoryOutboxPublisher`, `InboxRedriveService`, `SalesMaintenanceService` |
 | CQRS | Command/query tách riêng, MediatR | `Sales.Application/Commands`, `Sales.Application/Queries` |
 | Factory Method | Static factory tạo aggregate/value object | `Product.Create`, `Customer.Create`, `Order.Create`, `Money.Vnd` |
 | Repository | Interface ở Domain, implement ở Infrastructure | `Repositories.cs` |
 | Unit of Work | Shared `IUnitOfWork`; Sales wrapper delegates to `SalesDbContext.SaveChangesAsync` | `UnitOfWork.cs`, `SalesDbContext.cs` |
 | Mapster | Mapping domain sang DTO | `DTOs/Models.cs` |
-| Redis cache | Cache-aside cho product detail, Redis lock cho cleanup job | `ProductCache.cs`, `MaintenanceJobs.cs` |
-| Hangfire | Scheduled cleanup/replay job | `Program.cs`, `MaintenanceJobs.cs` |
+| Redis cache | Cache-aside cho product detail, Redis lock cho cleanup job | `ProductCache.cs`, `MaintenanceCleanupJob.cs` |
+| Hangfire | Scheduled cleanup/replay job | `MaintenanceCleanupJob.cs`, `SalesMaintenanceService.cs` |
 | KafkaFlow | Producer/consumer Kafka | `DependencyInjection.cs`, Kafka folder |
 | Postgres/Mongo | Postgres cho Sales/Inventory/Hangfire, Mongo cho Audit | `docker-compose.yml` |
 | Monitoring | Seq + OTel + Elastic APM/Kibana + custom metrics | `Program.cs`, `SalesMetrics`, `InventoryMetrics`, `docs/observability.md` |

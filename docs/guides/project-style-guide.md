@@ -579,7 +579,7 @@ Rules:
 Sales.Api dùng Hangfire cho dashboard/job host; Sales.Infrastructure có:
 
 ```text
-Sales.Infrastructure/Hangfire/MaintenanceJobs.cs
+Sales.Infrastructure/Hangfire/Jobs/MaintenanceCleanupJob.cs
 Sales.Infrastructure/ExternalServices/CacheService.cs
 Sales.Infrastructure/ExternalServices/ProductCache.cs
 ```

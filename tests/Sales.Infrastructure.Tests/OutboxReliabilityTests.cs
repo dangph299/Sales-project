@@ -44,8 +44,8 @@ public sealed class OutboxReliabilityTests
         db.OutboxMessages.Add(row);
         await db.SaveChangesAsync();
 
-        var jobs = new MaintenanceJobs(db, null!, new SystemClock());
-        Assert.True(await jobs.ReplayOutboxMessageAsync(row.Id));
+        var maintenanceService = new SalesMaintenanceService(db, new SystemClock());
+        Assert.True(await maintenanceService.ReplayOutboxMessageAsync(row.Id));
 
         var reloaded = await db.OutboxMessages.SingleAsync(x => x.Id == row.Id);
         Assert.Null(reloaded.DeadLetteredAt);

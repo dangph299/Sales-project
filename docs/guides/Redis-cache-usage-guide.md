@@ -32,7 +32,7 @@ Hai package phục vụ 2 mục đích khác nhau:
 | Package | Interface | Dùng cho |
 |---|---|---|
 | `Microsoft.Extensions.Caching.StackExchangeRedis` | `IDistributedCache` | Cache-aside (`CacheService<T>`) |
-| `StackExchange.Redis` | `IConnectionMultiplexer` / `IDatabase` | Distributed lock (`MaintenanceJobs`) |
+| `StackExchange.Redis` | `IConnectionMultiplexer` / `IDatabase` | Distributed lock (`MaintenanceCleanupJob`) |
 
 ## 3. Redis khởi tạo trong DI như thế nào?
 
@@ -197,10 +197,10 @@ Soft delete Product có handler riêng (`DeleteProductHandler`) và handler này
 
 ## 6. Distributed lock cho Hangfire cleanup job
 
-`src/Services/Sales/Sales.Infrastructure/Hangfire/MaintenanceJobs.cs`:
+`src/Services/Sales/Sales.Infrastructure/Hangfire/Jobs/MaintenanceCleanupJob.cs`:
 
 ```csharp
-public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer redis)
+public sealed class MaintenanceCleanupJob(SalesDbContext db, IConnectionMultiplexer redis, IClock clock)
 {
     public async Task CleanupAsync()
     {
@@ -240,7 +240,7 @@ public sealed class MaintenanceJobs(SalesDbContext db, IConnectionMultiplexer re
 Job được đăng ký trong `src/Services/Sales/Sales.Api/Program.cs`:
 
 ```csharp
-RecurringJob.AddOrUpdate<MaintenanceJobs>("sales-cleanup", "maintenance", x => x.CleanupAsync(), Cron.Daily);
+RecurringJobManager.AddOrUpdateRecurringJob<MaintenanceCleanupJob>("sales-cleanup", "maintenance", Options.Cron, job => job.CleanupAsync());
 ```
 
 **Vì sao cần Redis lock nếu Hangfire tự quản lý recurring job?** Hangfire không đảm bảo chỉ 1 instance chạy 1 recurring job nếu bạn scale `sales-api` ra nhiều container cùng trỏ vào 1 Hangfire storage — nhiều instance có thể fire job gần như đồng thời khi tick trùng giờ. Redis lock đảm bảo chỉ 1 instance thực sự dọn dữ liệu.

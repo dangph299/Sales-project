@@ -43,7 +43,7 @@ Create a Kibana dashboard named `Sales Management Reliability` with these Lens p
 
 ## Replay operations
 
-Sales has Hangfire jobs on `MaintenanceJobs`:
+Sales exposes on-demand replay operations on `SalesMaintenanceService`:
 
 - `ReplayOutboxMessageAsync(Guid eventId)` resets a specific outbox message.
 - `ReplayDeadLettersAsync(int take)` resets up to 100 dead-lettered outbox messages.
