@@ -244,7 +244,7 @@ Code nằm ở:
 - Redis registration: `src/Services/Sales/Sales.Infrastructure/DependencyInjection.cs`
 - Cache base: `src/Services/Sales/Sales.Infrastructure/ExternalServices/CacheService.cs`
 - Product cache: `src/Services/Sales/Sales.Infrastructure/ExternalServices/ProductCache.cs`
-- Cache decorator: `src/Services/Sales/Sales.Infrastructure/Persistence/CachedProductReadService.cs`
+- Cache decorator: `src/Services/Sales/Sales.Infrastructure/Persistence/ReadServices/CachedProductReadService.cs`
 
 Quy tắc:
 
