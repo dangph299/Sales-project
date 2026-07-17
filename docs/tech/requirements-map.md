@@ -11,8 +11,8 @@ Code chính:
 - Domain aggregate: `src/Services/Sales/Sales.Domain/Aggregates/Product.cs`
 - Command tạo/sửa/xóa: `src/Services/Sales/Sales.Application/Features/Products/Commands/`
 - Query search/get: `src/Services/Sales/Sales.Application/Features/Products/Queries/`
-- Read service search: `src/Services/Sales/Sales.Infrastructure/Persistence/ProductReadService.cs`
-- Cache decorator: `src/Services/Sales/Sales.Infrastructure/Persistence/CachedProductReadService.cs`
+- Read service search: `src/Services/Sales/Sales.Infrastructure/Persistence/ReadServices/ProductReadService.cs`
+- Cache decorator: `src/Services/Sales/Sales.Infrastructure/Persistence/ReadServices/CachedProductReadService.cs`
 - API controller: `src/Services/Sales/Sales.Api/Controllers/ProductsController.cs`
 - EF mapping: `src/Services/Sales/Sales.Infrastructure/Persistence/Configurations/ProductConfiguration.cs`
 
@@ -68,7 +68,7 @@ Code chính:
 - Command tạo/sửa/xóa: `src/Services/Sales/Sales.Application/Features/Customers/Commands/`
 - Query search/get: `src/Services/Sales/Sales.Application/Features/Customers/Queries/`
 - Enum phone match: `src/Services/Sales/Sales.Application/Features/Customers/Enums/PhoneMatch.cs`
-- Read service: `src/Services/Sales/Sales.Infrastructure/Persistence/CustomerReadService.cs`
+- Read service: `src/Services/Sales/Sales.Infrastructure/Persistence/ReadServices/CustomerReadService.cs`
 - API controller: `src/Services/Sales/Sales.Api/Controllers/CustomersController.cs`
 - EF mapping: `src/Services/Sales/Sales.Infrastructure/Persistence/Configurations/CustomerConfiguration.cs`
 
@@ -164,7 +164,7 @@ Code chính:
 
 - Query record: `src/Services/Sales/Sales.Application/Features/Orders/Queries/SearchOrders.cs`
 - Query handler: `src/Services/Sales/Sales.Application/Features/Orders/Queries/SearchOrdersHandler.cs`
-- Read service: `src/Services/Sales/Sales.Infrastructure/Persistence/OrderReadService.cs`
+- Read service: `src/Services/Sales/Sales.Infrastructure/Persistence/ReadServices/OrderReadService.cs`
 - Specification base: `src/Services/Sales/Sales.Domain/Services/Specifications/`
 - Specification EF-specific: `src/Services/Sales/Sales.Infrastructure/Persistence/Specifications/`
 - API endpoint: `GET /api/orders` trong `OrdersController`
@@ -423,7 +423,7 @@ Code chính:
 - Cache abstraction: `src/Services/Sales/Sales.Application/Common/Interfaces/ICacheService.cs`
 - Cache base: `src/Services/Sales/Sales.Infrastructure/ExternalServices/CacheService.cs`
 - Product cache: `src/Services/Sales/Sales.Infrastructure/ExternalServices/ProductCache.cs`
-- Cache usage: `src/Services/Sales/Sales.Infrastructure/Persistence/CachedProductReadService.cs`
+- Cache usage: `src/Services/Sales/Sales.Infrastructure/Persistence/ReadServices/CachedProductReadService.cs`
 - Distributed lock: `src/Services/Sales/Sales.Infrastructure/Hangfire/Jobs/MaintenanceCleanupJob.cs`
 - Docker Redis: `docker/docker-compose.yml`
 

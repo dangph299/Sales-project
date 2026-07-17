@@ -176,7 +176,7 @@ Target public surface:
 
 - Domain: `IEntity<TId>`, `Entity<TId>`, `IAggregateRoot`, `AggregateRoot<TId>`, `IDomainEvent`, `DomainEvent`, `DomainException`.
 - Application: `IUnitOfWork`, `IClock`, `PagedResult<T>`, `ICommand`, `ICommand<TResponse>`, `IQuery<TResponse>`.
-- Contracts: `IIntegrationEvent`, `IntegrationEvent`, `EventEnvelope<TMessage>` or an evolved non-generic envelope, `EventMetadata`, `MessageHeaders`, audit payload records.
+- Contracts: `EventEnvelope` (non-generic, `JsonElement` payload), `IntegrationEventBase`, `MessageHeaders`, audit payload records.
 - Infrastructure: `IMessageLogContext`; future Outbox/Inbox abstractions should be added only in the same phase as service stores/processors are migrated.
 
 ### Internal implementations

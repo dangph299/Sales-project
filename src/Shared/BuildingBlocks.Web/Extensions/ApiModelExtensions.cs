@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using BuildingBlocks.Web.Models;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
@@ -89,21 +88,6 @@ public static class ApiModelExtensions
         }
 
         return errors;
-    }
-
-    /// <summary>
-    /// Creates a reusable request context from the current HTTP context.
-    /// </summary>
-    /// <param name="context">Current HTTP context.</param>
-    /// <returns>Generic request metadata for API responses and logging.</returns>
-    public static RequestContext ToRequestContext(this HttpContext context)
-    {
-        var requestContext = new RequestContext(
-            context.GetCorrelationId(),
-            context.TraceIdentifier,
-            context.User.FindFirstValue(ClaimTypes.NameIdentifier));
-
-        return requestContext;
     }
 
     /// <summary>
