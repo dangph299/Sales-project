@@ -1,4 +1,4 @@
-using Sales.Application;
+using Sales.Application.Features.Customers.Enums;
 using Sales.Domain;
 
 namespace Sales.Infrastructure.Tests;
@@ -12,7 +12,7 @@ public sealed class ReadServiceSpecificationTests
         var active = Product.Create("sku-active", "Active", 100);
         await fixture.SeedAsync(active);
 
-        var service = new ProductReadService(fixture.CreateContext());
+        var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
 
         var result = await service.GetAsync(active.Id);
 
@@ -28,7 +28,7 @@ public sealed class ReadServiceSpecificationTests
         inactive.Update(inactive.Name, inactive.Price.Amount, false);
         await fixture.SeedAsync(inactive);
 
-        var service = new ProductReadService(fixture.CreateContext());
+        var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
 
         var result = await service.GetAsync(inactive.Id);
 
@@ -43,7 +43,7 @@ public sealed class ReadServiceSpecificationTests
         deleted.Delete("admin");
         await fixture.SeedAsync(deleted);
 
-        var service = new ProductReadService(fixture.CreateContext());
+        var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
 
         var result = await service.GetAsync(deleted.Id);
 
@@ -59,7 +59,7 @@ public sealed class ReadServiceSpecificationTests
         inactive.Update(inactive.Name, inactive.Price.Amount, false);
         await fixture.SeedAsync(active, inactive);
 
-        var service = new ProductReadService(fixture.CreateContext());
+        var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
 
         var result = await service.SearchAsync(null, 1, 20);
 
@@ -76,7 +76,7 @@ public sealed class ReadServiceSpecificationTests
         deleted.Delete("admin");
         await fixture.SeedAsync(active, deleted);
 
-        var service = new ProductReadService(fixture.CreateContext());
+        var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
 
         var result = await service.SearchAsync(null, 1, 20);
 
@@ -90,7 +90,7 @@ public sealed class ReadServiceSpecificationTests
         var active = Customer.Create("Nguyen Van Active", "0901234567");
         await fixture.SeedAsync(active);
 
-        var service = new CustomerReadService(fixture.CreateContext());
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
 
         var result = await service.GetAsync(active.Id);
 
@@ -106,7 +106,7 @@ public sealed class ReadServiceSpecificationTests
         deleted.Delete("admin");
         await fixture.SeedAsync(deleted);
 
-        var service = new CustomerReadService(fixture.CreateContext());
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
 
         var result = await service.GetAsync(deleted.Id);
 
@@ -122,7 +122,7 @@ public sealed class ReadServiceSpecificationTests
         deleted.Delete("admin");
         await fixture.SeedAsync(active, deleted);
 
-        var service = new CustomerReadService(fixture.CreateContext());
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
 
         var result = await service.SearchAsync(null, null, PhoneMatch.Prefix, 1, 20);
 

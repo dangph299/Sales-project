@@ -1,4 +1,6 @@
-using Sales.Application;
+using Sales.Application.Features.Customers.DTOs;
+using Sales.Application.Features.Orders.DTOs;
+using Sales.Application.Features.Products.DTOs;
 
 namespace Sales.Api.Extensions;
 

@@ -88,6 +88,7 @@ Quy tắc:
 - Integration event nằm trong `BuildingBlocks.Contracts`.
 - Mapper nằm trong Infrastructure vì liên quan transport/event envelope.
 - Topic nằm trong `KafkaTopics`, không hardcode.
+- CRUD audit thông thường không cần domain event riêng; hệ thống audit đọc EF Core `ChangeTracker` và ghi `AuditLogEvent` vào Outbox.
 
 ## 5. CQRS
 
@@ -168,6 +169,30 @@ Quy tắc:
 - Handler gọi domain behavior trước, sau đó `uow.SaveChangesAsync`.
 - Không gọi `SaveChangesAsync` nhiều lần trong một use case nếu không có lý do rõ.
 - Outbox message nên được tạo trong cùng transaction với state change.
+- Audit outbox rows được tạo bởi `AuditSaveChangesInterceptor` trong cùng transaction; không publish Kafka trực tiếp trong handler/interceptor.
+
+## 8.1 Audit logging hybrid
+
+Audit logging trong repo dùng hai cơ chế:
+
+- **Tự động**: `EfCoreAuditEntryFactory` đọc `ChangeTracker` để tạo `AuditLogEvent` cho Added/Modified/Deleted.
+- **Bổ sung nghiệp vụ**: `IAuditEnricher` thêm `Description`, `EventType` hoặc metadata khi field diff chưa đủ nghĩa.
+- **Explicit event**: dùng khi hành động không thể suy ra từ EF diff, ví dụ manual inventory adjustment.
+
+Code nằm ở:
+
+- Contract: `src/Shared/BuildingBlocks.Contracts/Auditing/`
+- Shared implementation: `src/Shared/BuildingBlocks.Infrastructure/Auditing/`
+- Sales resolver/enricher: `src/Services/Sales/Sales.Infrastructure/Auditing/`
+- Inventory resolver/enricher: `src/Services/Inventory/Inventory.Infrastructure/Auditing/`
+- Worker/Mongo: `src/Services/AuditLog/`
+
+Quy tắc:
+
+- Không tạo mapper CRUD riêng nếu chỉ lấy entity name/id hoặc so sánh old/new.
+- Dữ liệu nhạy cảm phải ignore/mask bằng `AuditOptions`.
+- Entity con nên được gom về aggregate root bằng `IAuditAggregateResolver`.
+- Audit worker không reference Domain của Sales/Inventory.
 
 ## 9. Factory Method
 

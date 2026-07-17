@@ -5,7 +5,7 @@ See [docs/architecture.md](docs/architecture.md) for dependency rules and folder
 See [docs/CODING_RULES.md](docs/CODING_RULES.md) for coding and placement rules.
 See [docs/ARCHITECTURE_CHECKLIST.md](docs/ARCHITECTURE_CHECKLIST.md) for the current architecture checklist.
 
-Greenfield .NET 10 sample with a Sales modular monolith, an Inventory service and an Audit worker. Commands use MediatR and aggregate repositories; reads use EF Core projections. Order/inventory integration is delivered at least once through transactional Outbox/Inbox records and KafkaFlow.
+Greenfield .NET 10 sample with a Sales modular monolith, an Inventory service and an Audit worker. Commands use MediatR and aggregate repositories; reads use EF Core projections. Order/inventory integration is delivered at least once through transactional Outbox/Inbox records and KafkaFlow. Audit logging uses a hybrid model: EF Core ChangeTracker creates ordinary data-change audit events, service enrichers add business meaning where needed, and Audit.Worker stores `AuditLogEvent` documents in MongoDB.
 
 ## Run locally
 
@@ -29,7 +29,7 @@ The development admin is `admin` / `Admin123!`. Change this and the JWT key outs
 2. Create products and customers, then create a draft order.
 3. Use the response `ETag` in `If-Match` when editing or confirming an order.
 4. Confirmation writes an Outbox event. Inventory reserves stock idempotently and emits a success or rejection event.
-5. Sales updates the order state; Audit.Worker stores every integration event in MongoDB with a unique `eventId`.
+5. Sales updates the order state; data changes are audited through Outbox/Kafka and Audit.Worker stores MongoDB documents with a unique `AuditId`.
 
 Phone values are normalized to digits. Search supports name, phone prefix/suffix and UTC order ranges (`from` inclusive, `to` exclusive). Prices are VND rounded to zero decimal places with `AwayFromZero`.
 
@@ -38,6 +38,13 @@ Phone values are normalized to digits. Search supports name, phone prefix/suffix
 ```bash
 dotnet test Sales.sln
 docker compose -f docker/docker-compose.yml config
+```
+
+End-to-end audit check:
+
+```bash
+cd tests/Playwright
+npm run test:audit
 ```
 
 Reliability/integration tests that touch real Postgres and Mongo are opt-in:

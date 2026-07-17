@@ -619,8 +619,8 @@ AuditLog.Worker/
 
 Rules:
 
-- AuditLog nhận integration event từ Kafka và lưu MongoDB.
-- Audit document phải idempotent theo unique event id.
+- AuditLog nhận `AuditLogEvent` từ audit topics và lưu MongoDB.
+- Audit document phải idempotent theo unique `AuditId`.
 - Audit data nên append-only; không update/delete audit tùy tiện.
 - Không lưu password/token/raw sensitive payload.
 - Worker là host lifecycle, không chứa mapping/persistence logic lớn.

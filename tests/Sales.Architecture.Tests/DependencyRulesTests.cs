@@ -24,7 +24,7 @@ public sealed class DependencyRulesTests
     [Fact]
     public void Sales_application_does_not_depend_on_infrastructure_or_other_services()
     {
-        var result = Types.InAssembly(typeof(Sales.Application.CreateProduct).Assembly).ShouldNot()
+        var result = Types.InAssembly(typeof(Sales.Application.DependencyInjection).Assembly).ShouldNot()
             .HaveDependencyOnAny(
                 "Sales.Infrastructure",
                 "Inventory",

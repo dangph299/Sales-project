@@ -12,7 +12,7 @@ Project mô phỏng hệ thống quản lý bán hàng gồm:
 - Đơn hàng: lưu snapshot khách hàng/sản phẩm, tổng số lượng, tổng tiền, chiết khấu từng dòng.
 - Xử lý 2 người cùng sửa đơn hàng bằng optimistic concurrency với `ETag` / `If-Match`.
 - Inventory service riêng để quản lý tồn kho và reservation.
-- AuditLog lưu MongoDB, nhận event qua Kafka.
+- AuditLog lưu MongoDB, nhận `AuditLogEvent` qua Kafka.
 - Messaging theo at-least-once delivery, có Outbox/Inbox để không miss event.
 - Observability: log Seq, trace/metric OpenTelemetry, Elastic APM/Kibana.
 - Docker Compose chạy đầy đủ hạ tầng local.
@@ -25,7 +25,7 @@ Project chia thành 3 process chính:
 |---|---|---|
 | Sales API | Modular monolith cho Product, Customer, Order, Identity | `src/Services/Sales/Sales.Api` |
 | Inventory API | Service riêng quản lý stock/reservation | `src/Services/Inventory/Inventory.Api` |
-| AuditLog Worker | Worker nhận Kafka event và lưu MongoDB | `src/Services/AuditLog/AuditLog.Worker` |
+| AuditLog Worker | Worker nhận audit event và lưu MongoDB | `src/Services/AuditLog/AuditLog.Worker` |
 
 Shared contracts nằm ở:
 
@@ -187,7 +187,7 @@ public OrdersController(ISender sender)
 | Audit columns | `UpdatedAt` cho Product/Customer/Order; soft-delete metadata cho Product/Customer | `BuildingBlocks.Domain.AggregateRoot`, `Product`, `Customer`, migration `SoftDeleteAndUpdatedAt` |
 | Search order theo ngày/tên/SĐT | Query projection `AsNoTracking`, index ngày/tên/SĐT | `OrderReadService`, `SalesDbContext` |
 | 2 người cùng sửa order | Optimistic concurrency bằng `Version`, `ETag`, `If-Match` | `OrdersController`, `ControllerEtagExtensions`, `OrderCommandSupport.LoadAndCheck` |
-| AuditLog MongoDB qua Kafka | Kafka consumer lưu Mongo, unique `eventId` | `AuditEventHandler.cs` |
+| AuditLog MongoDB qua Kafka | Kafka consumer lưu `AuditLogEvent` vào Mongo, unique `AuditId` | `MongoAuditWriter.cs` |
 | Inventory service riêng | Inventory Domain/Application/Infrastructure/API riêng, Postgres riêng | `src/Services/Inventory` |
 | Không miss event | Transactional Outbox/Inbox, retry, backoff, DLQ, inbound redrive, replay | `SalesOutboxPublisher`, `InventoryOutboxPublisher`, `InboxRedriveService`, `MaintenanceJobs` |
 | CQRS | Command/query tách riêng, MediatR | `Sales.Application/Commands`, `Sales.Application/Queries` |
@@ -658,33 +658,35 @@ src/Services/AuditLog
 Đang dùng:
 
 - `AuditLog.Worker`: Generic Host, không HTTP.
-- `AuditLog.Infrastructure/Mongo/AuditEventHandler.cs`: Kafka handler lưu Mongo.
-- Mongo unique index trên `EventId`.
+- `AuditLog.Infrastructure/Mongo/MongoAuditWriter.cs`: writer lưu `AuditLogEvent` vào Mongo.
+- Mongo unique index trên `AuditId`.
 
-Audit worker subscribe nhiều topic:
+Audit worker subscribe audit topics:
 
 ```text
 sales.audit.v1
 inventory.audit.v1
-sales.order-confirmation-requested.v1
-sales.order-undo-confirmation-requested.v1
-inventory.stock-reserved.v1
-inventory.stock-rejected.v1
-inventory.stock-released.v1
 ```
 
 Mỗi document audit có:
 
-- `EventId`
+- `AuditId`
+- `ServiceName`
 - `EventType`
-- `AggregateId`
-- `Version`
+- `EntityType`
+- `EntityId`
+- `Action`
+- `Description`
+- `ActorId`
+- `ActorName`
 - `CorrelationId`
 - `CausationId`
+- `TraceId`
 - `OccurredAt`
-- `Actor`
-- `Payload`
-- Kafka `Topic`, `Partition`, `Offset`
+- `SchemaVersion`
+- `Changes`
+- `Metadata`
+- `ReceivedAt`
 
 ## 10. Kafka đang dùng gì và dùng như thế nào?
 
@@ -712,11 +714,11 @@ Compose dùng Kafka KRaft mode, không cần ZooKeeper.
 |---|---|---|---|
 | `sales.audit.v1` | Sales | AuditLog | Audit các thay đổi Sales |
 | `inventory.audit.v1` | Inventory | AuditLog | Audit thay đổi tồn kho |
-| `sales.order-confirmation-requested.v1` | Sales | Inventory, AuditLog | Sales yêu cầu reserve tồn |
-| `sales.order-undo-confirmation-requested.v1` | Sales | Inventory, AuditLog | Sales yêu cầu release tồn khi undo confirm |
-| `inventory.stock-reserved.v1` | Inventory | Sales, AuditLog | Inventory báo reserve thành công |
-| `inventory.stock-rejected.v1` | Inventory | Sales, AuditLog | Inventory báo thiếu hàng |
-| `inventory.stock-released.v1` | Inventory | Sales, AuditLog | Inventory báo release xong |
+| `sales.order-confirmation-requested.v1` | Sales | Inventory | Sales yêu cầu reserve tồn |
+| `sales.order-undo-confirmation-requested.v1` | Sales | Inventory | Sales yêu cầu release tồn khi undo confirm |
+| `inventory.stock-reserved.v1` | Inventory | Sales | Inventory báo reserve thành công |
+| `inventory.stock-rejected.v1` | Inventory | Sales | Inventory báo thiếu hàng |
+| `inventory.stock-released.v1` | Inventory | Sales | Inventory báo release xong |
 
 Version `.v1` ở cuối topic để sau này có thể thêm `.v2` mà không phá consumer cũ.
 
@@ -726,12 +728,12 @@ Version `.v1` ở cuối topic để sau này có thể thêm `.v2` mà không p
 |---|---|---|
 | `inventory-orders-v1` | Inventory | Sales order confirmation/undo-confirmation |
 | `sales-inventory-results-v1` | Sales | Inventory stock result |
-| `audit-mongodb-v3` | AuditLog | Tất cả audit/integration topics |
+| `audit-mongodb-v3` | AuditLog | Audit topics |
 
 Ý nghĩa consumer group:
 
 - Mỗi group nhận một bản copy riêng của message.
-- Inventory và AuditLog có group khác nhau nên cùng nhận được event từ Sales.
+- AuditLog chỉ nhận audit topics; integration event nghiệp vụ đi tới service nghiệp vụ tương ứng.
 - Nếu scale nhiều instance cùng group, Kafka chia partition giữa các instance.
 
 ### 10.3 Partition key đang dùng
@@ -788,7 +790,8 @@ User confirm order
        correlationId = correlationId của A
        causationId = A
     -> Sales xử lý B, update order Confirmed
-    -> AuditLog lưu cả A và B
+    -> Sales/Inventory ghi AuditLogEvent riêng vào audit topic
+    -> AuditLog lưu audit documents theo AuditId
 ```
 
 ### 10.5 Vì sao dùng Outbox?
@@ -1009,7 +1012,15 @@ events
 Unique index:
 
 ```text
-EventId
+AuditId
+```
+
+Query indexes chính:
+
+```text
+EntityType + EntityId + OccurredAt
+ServiceName + OccurredAt
+CorrelationId
 ```
 
 ## 14. Observability
@@ -1214,7 +1225,8 @@ MONGO_TEST_DATABASE="audit_reliability_tests"
 9. InventoryOutboxPublisher publish Kafka
 10. Sales consumer nhận StockReserved
 11. Sales update order -> Confirmed
-12. AuditLog lưu toàn bộ event vào MongoDB
+12. Sales/Inventory audit events được publish qua audit topics
+13. AuditLog lưu audit documents vào MongoDB
 ```
 
 Nếu Inventory thiếu hàng:
@@ -1277,7 +1289,7 @@ Vì hệ thống gồm database và Kafka. Kafka exactly-once không tự làm t
 
 ### Vì sao AuditLog dùng MongoDB?
 
-Audit event là dữ liệu append/read nhiều, schema payload có thể khác nhau theo event type. MongoDB phù hợp để lưu document audit dạng flexible JSON, đồng thời unique index `EventId` giúp dedup.
+Audit event là dữ liệu append/read nhiều, schema metadata có thể khác nhau theo event type. MongoDB phù hợp để lưu document audit dạng flexible JSON, đồng thời unique index `AuditId` giúp dedup.
 
 ### Vì sao Order lưu snapshot?
 

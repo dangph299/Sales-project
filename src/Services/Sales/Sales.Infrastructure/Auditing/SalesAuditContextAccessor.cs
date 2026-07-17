@@ -1,5 +1,5 @@
 using BuildingBlocks.Infrastructure;
-using Sales.Application;
+using Sales.Application.Common.Interfaces;
 
 namespace Sales.Infrastructure;
 

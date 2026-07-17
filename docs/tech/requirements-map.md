@@ -19,7 +19,7 @@ Code chính:
 Cách hoạt động:
 
 ```mermaid
-flowchart LR
+flowchart TD
     Client[Client] --> API[ProductsController]
     API --> MediatR[MediatR]
     MediatR --> Handler[SearchProductsHandler]
@@ -172,7 +172,7 @@ Code chính:
 Cách hoạt động:
 
 ```mermaid
-flowchart LR
+flowchart TD
     Client[Client] --> API[GET /api/orders]
     API --> Query[SearchOrders]
     Query --> Handler[SearchOrdersHandler]
@@ -245,10 +245,14 @@ Quy tắc:
 
 ## 6. AuditLog dùng MongoDB và Kafka
 
-Trạng thái: đã đáp ứng.
+Trạng thái: đã đáp ứng theo kiến trúc hybrid.
 
 Code chính:
 
+- Audit contracts: `src/Shared/BuildingBlocks.Contracts/Auditing/`
+- Audit infrastructure: `src/Shared/BuildingBlocks.Infrastructure/Auditing/`
+- Sales audit config/resolver/enricher: `src/Services/Sales/Sales.Infrastructure/Auditing/`
+- Inventory audit config/resolver/enricher: `src/Services/Inventory/Inventory.Infrastructure/Auditing/`
 - Worker entry: `src/Services/AuditLog/AuditLog.Worker/Program.cs`
 - Worker DI: `src/Services/AuditLog/AuditLog.Worker/DependencyInjection.cs`
 - Kafka handler: `src/Services/AuditLog/AuditLog.Infrastructure/Mongo/AuditEventHandler.cs`
@@ -260,25 +264,34 @@ Code chính:
 Cách hoạt động:
 
 ```mermaid
-flowchart LR
-    Kafka[Kafka topics] --> Worker[AuditLog.Worker]
+flowchart TD
+    ChangeTracker[EF Core ChangeTracker] --> Factory[EfCoreAuditEntryFactory]
+    Factory --> Interceptor[AuditSaveChangesInterceptor]
+    Interceptor --> Outbox[Service Outbox]
+    Outbox --> Kafka[sales.audit.v1 / inventory.audit.v1]
+    Kafka --> Worker[AuditLog.Worker]
     Worker --> Handler[AuditEventHandler]
     Handler --> Writer[MongoAuditWriter]
     Writer --> Mongo[(MongoDB events)]
-    Writer --> Index[Unique EventId index]
+    Writer --> Index[Unique AuditId index]
 ```
 
-- AuditLog.Worker consume nhiều topic Kafka.
-- Mỗi message là `EventEnvelope`.
-- `MongoAuditWriter` upsert theo `EventId`.
-- Mongo có unique index trên `EventId` để tránh duplicate.
+- CRUD audit thông thường được tạo tự động từ `ChangeTracker`.
+- Audit nghiệp vụ đặc biệt dùng `IAuditEnricher` hoặc explicit `AuditLogEvent`.
+- Audit event được ghi vào Outbox cùng transaction với dữ liệu nghiệp vụ.
+- AuditLog.Worker chỉ consume audit topics (`sales.audit.v1`, `inventory.audit.v1`).
+- Mỗi Kafka message vẫn là `EventEnvelope`, payload là `AuditLogEvent`.
+- `MongoAuditWriter` validate `SchemaVersion`, normalize values và upsert theo `AuditId`.
+- Mongo có unique index trên `AuditId` để tránh duplicate.
 
 Quy tắc:
 
-- Payload audit nên dùng contract `AuditChanged`.
+- Payload audit dùng contract `AuditLogEvent`.
 - Topic phải khai báo trong `KafkaTopics`.
-- Worker muốn consume topic mới thì thêm vào `AddAuditLogWorker`.
+- Service mới muốn audit thì đăng ký `AddAuditing(...)`, cấu hình service name/topic và DbContext interceptor.
+- Worker chỉ cần consume audit topic mới nếu service đó dùng topic riêng.
 - AuditLog không được reference trực tiếp Sales.Domain hoặc Inventory.Domain.
+- Không tạo mapper CRUD riêng cho Product/Customer/Order; chỉ tạo resolver/enricher khi có business meaning hoặc cần gom entity con vào aggregate.
 
 ## 7. Inventory service riêng, bảng riêng, mục tiêu không miss event
 
@@ -331,7 +344,7 @@ Cần lưu ý:
 - Hệ thống có Outbox/Inbox và retry, tốt cho mục tiêu không miss event.
 - Pre-check Inbox không thay đổi correctness: atomicity giữa Inbox insert, domain mutation và Outbox vẫn nằm trong một serializable transaction, và `TryRecordAsync` + unique constraint vẫn là barrier trùng lặp có thẩm quyền. Test: `tests/Inventory.Tests/InventoryTransactionBehaviorTests.cs` (fast-path duplicate + race backstop).
 - Case confirmation event mới đến trước release event cũ đã có xử lý delta và test trong `tests/Inventory.Tests/ReserveStockHandlerTests.cs`.
-- Reliability tests: các guarantee (Outbox retry, dead-letter sau `MaxAttempts`, Inbox idempotency, stale event, audit idempotency, optimistic concurrency) được kiểm chứng và mô tả trong `docs/tech/reliability-tests.md`. Test cần database thật gắn `[Trait("Category", "Reliability")]`, gate bằng `RUN_RELIABILITY_TESTS=true`; hai kịch bản cần live Kafka (consumer offset failure, process restart) hiện là thủ tục manual.
+- Reliability tests: các guarantee (Outbox retry, dead-letter sau `MaxAttempts`, Inbox idempotency, stale event, audit idempotency theo `AuditId`, optimistic concurrency) được kiểm chứng và mô tả trong `docs/tech/reliability-tests.md`. Test cần database thật gắn `[Trait("Category", "Reliability")]`, gate bằng `RUN_RELIABILITY_TESTS=true`; hai kịch bản cần live Kafka (consumer offset failure, process restart) hiện là thủ tục manual.
 - CI: workflow `.github/workflows/ci.yml` tách `fast-checks` (mọi push/PR) và `reliability-tests` (push `main` hoặc `workflow_dispatch`, có Postgres + Mongo service container, upload trx/log khi fail).
 
 ## 8. CQRS và MediatR
@@ -438,7 +451,7 @@ Quy tắc:
 - Repository chỉ dùng cho command-side aggregate.
 - Read/search nên dùng read service riêng.
 - Handler gọi domain behavior rồi `uow.SaveChangesAsync`.
-- `SaveChangesAsync` là nơi commit state và enqueue domain event vào outbox.
+- `SaveChangesAsync` commit state; domain integration events và audit outbox rows đều được ghi trước commit. CRUD audit thường đi qua `AuditSaveChangesInterceptor`, không đi qua `DomainEventMapper`.
 
 ## 12. Mapster
 
@@ -552,6 +565,7 @@ Quy tắc:
 - EF migrations nằm trong `Persistence/Migrations/`.
 - Không sửa migration generated bằng tay nếu không cần.
 - Mongo index tạo trong startup service, không tạo lại mỗi message.
+- Audit document unique theo `AuditId`; query index chính gồm entity/time, service/time và correlation id.
 
 ## 16. Docker, docker-compose
 
@@ -567,22 +581,44 @@ Code chính:
 Services trong compose:
 
 ```mermaid
-flowchart LR
-    Client[Client] --> Sales[Sales API]
-    Client --> Inventory[Inventory API]
-    Sales --> Postgres[(Postgres)]
+flowchart TD
+    Client[Client]
+
+    subgraph Apps[Application services]
+        Sales[Sales API]
+        Inventory[Inventory API]
+        Audit[Audit Worker]
+    end
+
+    subgraph Data[Stateful services]
+        Postgres[(Postgres)]
+        Redis[(Redis)]
+        Kafka[(Kafka)]
+        Mongo[(MongoDB)]
+    end
+
+    subgraph Observability[Observability]
+        OTel[OTel Collector]
+        Elastic[(Elasticsearch/APM)]
+        Kibana[Kibana]
+        Seq[Seq]
+    end
+
+    Client --> Sales
+    Client --> Inventory
+    Sales --> Postgres
     Inventory --> Postgres
-    Sales --> Redis[(Redis)]
-    Sales --> Kafka[(Kafka)]
+    Sales --> Redis
+    Sales --> Kafka
     Inventory --> Kafka
-    Kafka --> Audit[Audit Worker]
-    Audit --> Mongo[(MongoDB)]
-    Sales --> OTel[OTel Collector]
+    Kafka --> Audit
+    Audit --> Mongo
+    Sales --> OTel
     Inventory --> OTel
     Audit --> OTel
-    OTel --> Elastic[(Elasticsearch/APM)]
-    Elastic --> Kibana[Kibana]
-    Sales --> Seq[Seq]
+    OTel --> Elastic
+    Elastic --> Kibana
+    Sales --> Seq
     Inventory --> Seq
     Audit --> Seq
 ```
@@ -621,7 +657,7 @@ Code chính:
 Mô hình:
 
 ```mermaid
-flowchart LR
+flowchart TD
     App[Sales/Inventory/Audit services] --> Logs[Serilog logs]
     App --> Traces[OpenTelemetry traces]
     App --> Metrics[OpenTelemetry metrics]

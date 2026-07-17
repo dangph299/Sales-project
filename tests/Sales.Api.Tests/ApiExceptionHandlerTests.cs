@@ -13,7 +13,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Npgsql;
 using Sales.Api.Middleware;
-using Sales.Application;
+using Sales.Application.Common.Exceptions;
 
 namespace Sales.Api.Tests;
 

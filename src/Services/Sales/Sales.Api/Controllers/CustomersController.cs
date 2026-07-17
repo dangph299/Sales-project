@@ -1,10 +1,12 @@
-using MediatR;
 using BuildingBlocks.Web.Extensions;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sales.Api.Extensions;
 using Sales.Api.Models.Requests;
-using Sales.Application;
+using Sales.Application.Features.Customers.Commands;
+using Sales.Application.Features.Customers.Enums;
+using Sales.Application.Features.Customers.Queries;
 
 namespace Sales.Api.Controllers;
 

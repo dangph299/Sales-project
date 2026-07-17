@@ -1,5 +1,7 @@
-using Microsoft.Extensions.Logging;
 using BuildingBlocks.Domain;
+using Microsoft.Extensions.Logging;
+using Sales.Application.Common.Exceptions;
+using Sales.Application.Features.Orders.Commands;
 using Sales.Domain;
 
 namespace Sales.Application.Tests;
@@ -16,7 +18,8 @@ public sealed class ConfirmOrderHandlerTests
             new FakeOrderRepository(order),
             new FakeProductRepository(product),
             new FakeUnitOfWork(),
-            logger);
+            logger,
+            SalesMapperFactory.Create());
 
         var dto = await handler.Handle(new ConfirmOrder(order.Id, order.Version), CancellationToken.None);
 
@@ -36,7 +39,8 @@ public sealed class ConfirmOrderHandlerTests
             new FakeOrderRepository(null),
             new FakeProductRepository(),
             new FakeUnitOfWork(),
-            logger);
+            logger,
+            SalesMapperFactory.Create());
 
         await Assert.ThrowsAsync<NotFoundException>(
             () => handler.Handle(new ConfirmOrder(Guid.NewGuid(), 1), CancellationToken.None));
@@ -53,7 +57,8 @@ public sealed class ConfirmOrderHandlerTests
             new FakeOrderRepository(order),
             new FakeProductRepository(),
             new FakeUnitOfWork(),
-            logger);
+            logger,
+            SalesMapperFactory.Create());
 
         await Assert.ThrowsAsync<NotFoundException>(
             () => handler.Handle(new ConfirmOrder(order.Id, order.Version), CancellationToken.None));
@@ -72,7 +77,8 @@ public sealed class ConfirmOrderHandlerTests
             new FakeOrderRepository(order),
             new FakeProductRepository(product),
             new FakeUnitOfWork(),
-            logger);
+            logger,
+            SalesMapperFactory.Create());
 
         await Assert.ThrowsAsync<DomainException>(
             () => handler.Handle(new ConfirmOrder(order.Id, order.Version), CancellationToken.None));

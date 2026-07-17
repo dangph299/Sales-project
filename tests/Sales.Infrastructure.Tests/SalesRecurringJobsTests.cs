@@ -4,6 +4,7 @@ using Hangfire.Common;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Sales.Application.Features.Orders.Commands;
 
 namespace Sales.Infrastructure.Tests;
 

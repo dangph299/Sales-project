@@ -1,4 +1,5 @@
-using Sales.Application;
+using Sales.Application.Features.Products.DTOs;
+using Sales.Application.Features.Products.Interfaces;
 
 namespace Sales.Infrastructure;
 

@@ -1,7 +1,7 @@
-using BuildingBlocks.Infrastructure;
 using BuildingBlocks.Application;
+using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
-using Sales.Application;
+using Sales.Application.Common.Interfaces;
 
 namespace Sales.Infrastructure.Tests;
 

@@ -1,6 +1,7 @@
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
 using Inventory.Application;
+using Inventory.Application.Common.Interfaces;
 
 namespace Inventory.Infrastructure;
 

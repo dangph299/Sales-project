@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Sales.Application.Features.Orders.Commands;
 using Sales.Domain;
 
 namespace Sales.Application.Tests;

@@ -1,7 +1,7 @@
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Domain;
 using BuildingBlocks.Infrastructure;
-using Sales.Application;
+using Sales.Application.Common.Interfaces;
 using Sales.Domain;
 
 namespace Sales.Infrastructure;

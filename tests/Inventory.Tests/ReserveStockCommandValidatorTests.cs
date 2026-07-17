@@ -1,5 +1,7 @@
 using BuildingBlocks.Contracts;
 using Inventory.Application;
+using Inventory.Application.Features.Reservations.Commands;
+using Inventory.Application.Features.Reservations.Validators;
 
 namespace Inventory.Tests;
 

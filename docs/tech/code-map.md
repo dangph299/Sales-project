@@ -137,8 +137,8 @@ HTTP POST /api/products
   -> Product.Create(...)
   -> ProductRepository/Add
   -> UnitOfWork.SaveChangesAsync
-  -> SalesDbContext.SaveChangesAsync
-  -> enqueue Sales audit event vào outbox
+  -> EF ChangeTracker sees Product Added
+  -> AuditSaveChangesInterceptor enqueue AuditLogEvent vào Sales outbox
   -> SalesOutboxPublisher publish Kafka
   -> AuditLog.Worker consume
   -> MongoAuditWriter upsert vào MongoDB
@@ -151,6 +151,8 @@ File liên quan:
 - `Sales.Application/Commands/Products/CreateProductHandler.cs`
 - `Sales.Domain/Aggregates/Product.cs`
 - `Sales.Infrastructure/Persistence/DbContexts/SalesDbContext.cs`
+- `BuildingBlocks.Infrastructure/Auditing/AuditSaveChangesInterceptor.cs`
+- `BuildingBlocks.Infrastructure/Auditing/EfCoreAuditEntryFactory.cs`
 - `Sales.Infrastructure/Kafka/SalesOutboxPublisher.cs`
 - `AuditLog.Infrastructure/Mongo/MongoAuditWriter.cs`
 
@@ -183,7 +185,7 @@ HTTP POST /api/orders
   -> Order.Create(customerSnapshot, lines)
   -> repository add order
   -> UnitOfWork.SaveChangesAsync
-  -> SalesDbContext enqueue audit event
+  -> AuditSaveChangesInterceptor enqueue Order Created audit event
   -> response có ETag = order version
 ```
 
@@ -240,7 +242,8 @@ Client POST /api/orders/{id}/confirm
   -> InventoryOutboxPublisher publish StockReserved/StockRejected
   -> Sales consumer nhận reply
   -> Sales update order status Confirmed hoặc InventoryRejected
-  -> AuditLog.Worker consume events và ghi MongoDB
+  -> AuditSaveChangesInterceptor audit đổi trạng thái order
+  -> AuditLog.Worker consume audit topic và ghi MongoDB
 ```
 
 File liên quan:
@@ -259,8 +262,10 @@ File liên quan:
 ## 8. Flow: AuditLog
 
 ```text
-Any service publishes EventEnvelope
-  -> Kafka topic
+Sales/Inventory SaveChanges
+  -> AuditSaveChangesInterceptor
+  -> AuditLogEvent trong Outbox
+  -> Kafka audit topic
   -> AuditLog.Worker consumer
   -> AuditEventHandler
   -> MongoAuditWriter.UpsertAsync
@@ -269,10 +274,21 @@ Any service publishes EventEnvelope
 
 File liên quan:
 
+- `Shared/BuildingBlocks.Contracts/Auditing/AuditLogEvent.cs`
+- `Shared/BuildingBlocks.Infrastructure/Auditing/EfCoreAuditEntryFactory.cs`
+- `Shared/BuildingBlocks.Infrastructure/Auditing/AuditSaveChangesInterceptor.cs`
+- `Sales.Infrastructure/Auditing/SalesAuditAggregateResolver.cs`
+- `Inventory.Infrastructure/Auditing/InventoryAuditAggregateResolver.cs`
 - `AuditLog.Worker/DependencyInjection.cs`
 - `AuditLog.Infrastructure/Mongo/AuditEventHandler.cs`
 - `AuditLog.Infrastructure/Mongo/MongoAuditWriter.cs`
 - `AuditLog.Infrastructure/Mongo/AuditDocument.cs`
+
+Lưu ý:
+
+- AuditLog.Worker chỉ consume audit topics.
+- Mongo document dedup theo `AuditId`, không phải `EventId`.
+- CRUD audit thông thường không đi qua `DomainEventMapper`.
 
 ## 9. Flow: Outbox publish
 
@@ -344,4 +360,4 @@ Nếu thêm event liên service:
 4. Map domain event sang integration event trong Infrastructure.
 5. Publish qua Outbox.
 6. Consumer xử lý idempotent qua Inbox.
-7. Thêm AuditLog topic subscription nếu cần audit.
+7. Nếu là audit data change thông thường, đăng ký `AddAuditing(...)` và resolver/enricher nếu cần; không tạo mapper CRUD riêng.

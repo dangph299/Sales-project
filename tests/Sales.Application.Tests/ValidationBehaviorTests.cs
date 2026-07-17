@@ -1,6 +1,9 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
+using Sales.Application.Features.Customers.Commands;
+using Sales.Application.Features.Orders.Commands;
+using Sales.Application.Features.Orders.DTOs;
 using Sales.Domain;
 
 namespace Sales.Application.Tests;

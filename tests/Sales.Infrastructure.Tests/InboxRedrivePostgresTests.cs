@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Sales.Application;
+using Sales.Application.Common.Interfaces;
 using Sales.Domain;
 using Xunit;
 

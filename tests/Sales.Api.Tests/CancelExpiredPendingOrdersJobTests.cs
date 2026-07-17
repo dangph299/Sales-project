@@ -2,7 +2,7 @@ using System.Diagnostics.Metrics;
 using BuildingBlocks.Application;
 using MediatR;
 using Microsoft.Extensions.Logging.Abstractions;
-using Sales.Application;
+using Sales.Application.Features.Orders.Commands;
 using Sales.Infrastructure;
 
 namespace Sales.Api.Tests;
