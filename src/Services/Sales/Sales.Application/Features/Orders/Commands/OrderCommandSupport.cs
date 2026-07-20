@@ -13,7 +13,6 @@ internal static class OrderCommandSupport
     /// <param name="orderRepository">Order repository.</param>
     /// <param name="orderId">Order identifier.</param>
     /// <param name="expectedVersion">Version the caller expects the order to currently be at.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Order, with its lines populated.</returns>
     /// <exception cref="NotFoundException">Thrown when no order exists with the given identifier.</exception>
     /// <exception cref="ConflictException">Thrown when the order's actual version does not match <paramref name="expectedVersion"/>.</exception>
@@ -35,7 +34,6 @@ internal static class OrderCommandSupport
     /// </summary>
     /// <param name="productRepository">Product repository.</param>
     /// <param name="orderLineInputs">Requested product/quantity/discount lines.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Resolved order line items, one per input, in the same order.</returns>
     /// <exception cref="NotFoundException">Thrown when one of the requested products does not exist.</exception>
     /// <exception cref="Sales.Domain.DomainException">Thrown when a requested product is inactive or has invalid snapshot data.</exception>
@@ -68,7 +66,6 @@ internal static class OrderCommandSupport
     /// </summary>
     /// <param name="productRepository">Product repository.</param>
     /// <param name="orderLines">Existing order lines.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <exception cref="NotFoundException">Thrown when an order line product no longer exists or was deleted.</exception>
     /// <exception cref="Sales.Domain.DomainException">Thrown when an order line product is inactive.</exception>
     public static async Task EnsureOrderLinesCanStillBeOrdered(

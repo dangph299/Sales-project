@@ -19,16 +19,32 @@ public sealed class EfCoreAuditEntryFactory(
     public IReadOnlyCollection<AuditLogEvent> CreateAuditEvents(DbContext dbContext, string serviceName)
     {
         var auditOptions = options.Value;
+        var auditedAggregates = CollectAuditedAggregates(dbContext, auditOptions);
+
+        var auditEvents = new List<AuditLogEvent>();
+        foreach (var (aggregate, auditedAggregate) in auditedAggregates)
+        {
+            auditEvents.Add(CreateAuditEvent(aggregate, auditedAggregate, serviceName, auditOptions));
+        }
+
+        return auditEvents;
+    }
+
+    /// <summary>
+    /// Groups the pending changes of every audited entity under the aggregate that owns it, so one
+    /// aggregate touched through several entities still produces a single audit event.
+    /// </summary>
+    private Dictionary<AuditAggregateIdentity, AuditedAggregate> CollectAuditedAggregates(
+        DbContext dbContext,
+        AuditOptions auditOptions)
+    {
         var candidateEntries = dbContext.ChangeTracker.Entries()
             .Where(entityEntry => entityEntry.State is EntityState.Added or EntityState.Modified or EntityState.Deleted)
             .Where(entityEntry => !auditOptions.IsEntityIgnored(entityEntry.Metadata.ClrType))
             .Where(entityEntry => !IsInfrastructureEntity(entityEntry))
             .ToArray();
 
-        var groupedChanges = new Dictionary<AuditAggregateIdentity, List<AuditChange>>();
-        var groupedEntries = new Dictionary<AuditAggregateIdentity, List<EntityEntry>>();
-        var groupedActions = new Dictionary<AuditAggregateIdentity, HashSet<string>>();
-
+        var auditedAggregates = new Dictionary<AuditAggregateIdentity, AuditedAggregate>();
         foreach (var entityEntry in candidateEntries)
         {
             var aggregate = aggregateResolver.Resolve(entityEntry);
@@ -39,61 +55,76 @@ public sealed class EfCoreAuditEntryFactory(
                 continue;
             }
 
-            if (!groupedChanges.TryGetValue(groupAggregate, out var aggregateChanges))
+            if (!auditedAggregates.TryGetValue(groupAggregate, out var auditedAggregate))
             {
-                aggregateChanges = [];
-                groupedChanges[groupAggregate] = aggregateChanges;
-                groupedEntries[groupAggregate] = [];
-                groupedActions[groupAggregate] = [];
+                auditedAggregate = new AuditedAggregate();
+                auditedAggregates[groupAggregate] = auditedAggregate;
             }
 
-            aggregateChanges.AddRange(changes);
-            groupedEntries[groupAggregate].Add(entityEntry);
-            groupedActions[groupAggregate].Add(GetAction(entityEntry));
+            auditedAggregate.Changes.AddRange(changes);
+            auditedAggregate.Entries.Add(entityEntry);
+            auditedAggregate.Actions.Add(GetAction(entityEntry));
         }
 
-        var auditEvents = new List<AuditLogEvent>();
-        foreach (var (aggregate, changes) in groupedChanges)
+        return auditedAggregates;
+    }
+
+    private AuditLogEvent CreateAuditEvent(
+        AuditAggregateIdentity aggregate,
+        AuditedAggregate auditedAggregate,
+        string serviceName,
+        AuditOptions auditOptions)
+    {
+        var changes = auditedAggregate.Changes;
+        var limitedChanges = changes.Take(auditOptions.MaximumChangesPerEvent).ToArray();
+        var action = ResolveAction(auditedAggregate.Actions);
+        var auditEvent = new AuditLogEvent
         {
-            var limitedChanges = changes.Take(auditOptions.MaximumChangesPerEvent).ToArray();
-            var action = ResolveAction(groupedActions[aggregate]);
-            var auditEvent = new AuditLogEvent
-            {
-                AuditId = Guid.NewGuid(),
-                ServiceName = serviceName,
-                EventType = $"{aggregate.EntityType}{action}",
-                EntityType = aggregate.EntityType,
-                EntityId = aggregate.EntityId,
-                Action = action,
-                ActorId = contextAccessor.ActorId,
-                ActorName = contextAccessor.ActorName,
-                CorrelationId = contextAccessor.CorrelationId,
-                CausationId = contextAccessor.CausationId,
-                TraceId = contextAccessor.TraceId,
-                OccurredAt = DateTimeOffset.UtcNow,
-                Changes = limitedChanges,
-                Metadata = changes.Count > limitedChanges.Length
-                    ? new Dictionary<string, object?> { ["truncatedChanges"] = changes.Count - limitedChanges.Length }
-                    : new Dictionary<string, object?>()
-            };
+            AuditId = Guid.NewGuid(),
+            ServiceName = serviceName,
+            EventType = $"{aggregate.EntityType}{action}",
+            EntityType = aggregate.EntityType,
+            EntityId = aggregate.EntityId,
+            Action = action,
+            ActorId = contextAccessor.ActorId,
+            ActorName = contextAccessor.ActorName,
+            CorrelationId = contextAccessor.CorrelationId,
+            CausationId = contextAccessor.CausationId,
+            TraceId = contextAccessor.TraceId,
+            OccurredAt = DateTimeOffset.UtcNow,
+            Changes = limitedChanges,
+            Metadata = changes.Count > limitedChanges.Length
+                ? new Dictionary<string, object?> { ["truncatedChanges"] = changes.Count - limitedChanges.Length }
+                : new Dictionary<string, object?>()
+        };
 
-            var context = new AuditEnrichmentContext(
-                new AuditEventData(auditEvent.Metadata, limitedChanges),
-                groupedEntries[aggregate],
-                aggregate,
-                serviceName);
-            foreach (var enricher in enrichers)
+        var context = new AuditEnrichmentContext(
+            new AuditEventData(auditEvent.Metadata, limitedChanges),
+            auditedAggregate.Entries,
+            aggregate,
+            serviceName);
+        foreach (var enricher in enrichers)
+        {
+            if (enricher.CanEnrich(context))
             {
-                if (enricher.CanEnrich(context))
-                {
-                    auditEvent = enricher.Enrich(auditEvent, context);
-                }
+                auditEvent = enricher.Enrich(auditEvent, context);
             }
-
-            auditEvents.Add(auditEvent);
         }
 
-        return auditEvents;
+        return auditEvent;
+    }
+
+    /// <summary>
+    /// Accumulates everything one aggregate contributes to a single audit event while the change
+    /// tracker is walked. Held together in one entry so the three collections cannot desynchronize.
+    /// </summary>
+    private sealed class AuditedAggregate
+    {
+        public List<AuditChange> Changes { get; } = [];
+
+        public List<EntityEntry> Entries { get; } = [];
+
+        public HashSet<string> Actions { get; } = [];
     }
 
     private static bool IsInfrastructureEntity(EntityEntry entityEntry)
@@ -133,7 +164,7 @@ public sealed class EfCoreAuditEntryFactory(
 
             if (entityEntry.State == EntityState.Modified)
             {
-                if (!propertyEntry.IsModified || ValuesEqual(oldValue, newValue))
+                if (!propertyEntry.IsModified || Equals(oldValue, newValue))
                 {
                     continue;
                 }
@@ -185,11 +216,6 @@ public sealed class EfCoreAuditEntryFactory(
         }
 
         return value;
-    }
-
-    private static bool ValuesEqual(object? oldValue, object? newValue)
-    {
-        return Equals(oldValue, newValue);
     }
 
     private static string GetAction(EntityEntry entityEntry)

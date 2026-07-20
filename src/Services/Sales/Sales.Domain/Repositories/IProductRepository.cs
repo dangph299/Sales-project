@@ -10,7 +10,6 @@ public interface IProductRepository : IRepository<Product>
     /// Loads a single product by its SKU.
     /// </summary>
     /// <param name="sku">SKU.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Product with the given SKU, or <see langword="null"/> if none exists.</returns>
     Task<Product?> GetBySkuAsync(string sku, CancellationToken cancellationToken = default);
 }

@@ -17,7 +17,6 @@ public sealed class CreateCustomerHandler(
     /// Creates a new customer and commits the unit of work.
     /// </summary>
     /// <param name="request">Command describing the customer to create.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Created customer, mapped to a <see cref="CustomerDto"/>.</returns>
     /// <exception cref="Sales.Domain.DomainException">Thrown when the provided name or phone number is invalid.</exception>
     public async Task<CustomerDto> Handle(CreateCustomer request, CancellationToken cancellationToken)

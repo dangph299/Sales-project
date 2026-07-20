@@ -16,11 +16,9 @@ public static class ApiDocumentationExtensions
     /// <summary>
     /// Registers Swagger generation with common API metadata, XML documentation, and JWT support.
     /// </summary>
-    /// <param name="services">Service collection.</param>
     /// <param name="title">API title displayed in Swagger.</param>
     /// <param name="description">API description displayed in Swagger.</param>
     /// <param name="version">API version document name and display value.</param>
-    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddApiDocumentation(
         this IServiceCollection services,
         string title,

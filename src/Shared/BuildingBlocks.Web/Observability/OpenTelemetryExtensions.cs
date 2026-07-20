@@ -15,11 +15,9 @@ public static class OpenTelemetryExtensions
     /// <summary>
     /// Registers telemetry shared by API hosts: base OTLP export plus web instrumentation.
     /// </summary>
-    /// <param name="services">Service collection.</param>
     /// <param name="serviceName">Service name reported as the OpenTelemetry resource.</param>
     /// <param name="activitySourceName">Service-specific activity source name to include in tracing.</param>
     /// <param name="meterName">Service-specific meter name to include in metrics.</param>
-    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddBuildingBlocksWebObservability(
         this IServiceCollection services,
         string serviceName,

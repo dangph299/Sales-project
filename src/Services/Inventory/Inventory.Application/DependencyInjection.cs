@@ -17,8 +17,6 @@ public static class DependencyInjection
     /// Registered after the shared behaviors so <c>ValidationBehavior</c> still runs before
     /// <see cref="InventoryTransactionBehavior{TRequest,TResponse}"/> opens a transaction.
     /// </summary>
-    /// <param name="services">Service collection.</param>
-    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddInventoryApplication(this IServiceCollection services)
     {
         var inventoryApplicationAssembly = typeof(DependencyInjection).Assembly;

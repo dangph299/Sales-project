@@ -53,40 +53,63 @@ public sealed class SalesInventoryEventProcessor(
         var order = await db.Orders.Include(x => x.Lines).SingleOrDefaultAsync(x => x.Id == envelope.AggregateId);
         if (order is null)
         {
-            // Commit the Inbox row so repeated delivery of this orphan event is still skipped.
+            // Persist the Inbox row so repeated delivery of this orphan event is still skipped.
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
             return ErrorCodes.OrderNotFound;
         }
 
-        var result = ApplyOrderTransition(envelope, order);
-        if (result == "Ignored")
-        {
-            // Unknown event type was recorded in Inbox but does not change Sales state.
-            await transaction.CommitAsync();
-            return result;
-        }
+        var transition = ApplyOrderTransition(envelope, order);
 
-        // Save the order status transition and Inbox row in one transaction.
+        // Save unconditionally: the Order transition and the Inbox row's own processing state are two
+        // separate changes, and only the first of them depends on the transition. An event Sales has
+        // no handler for is still processed successfully, so its Inbox row must be persisted as
+        // Processed here - a re-driven row left in Failed state is selected by InboxRedriveService on
+        // every cycle forever, because the re-drive success path persists nothing itself.
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
-        SalesMetrics.InboxProcessed.Add(1);
-        return result;
+
+        // Metric unchanged: it counts events that moved a Sales Order, not inbox rows retired.
+        if (transition != OrderTransition.Ignored)
+        {
+            SalesMetrics.InboxProcessed.Add(1);
+        }
+
+        return transition.GetDescription();
     }
 
-    private static string ApplyOrderTransition(EventEnvelope envelope, Sales.Domain.Order order)
+    private static OrderTransition ApplyOrderTransition(EventEnvelope envelope, Sales.Domain.Order order)
     {
         switch (envelope.EventType)
         {
             case nameof(StockReserved):
                 order.MarkReserved();
-                return "Reserved";
+                return OrderTransition.Reserved;
             case nameof(StockRejected):
                 order.RejectInventory(envelope.Data.Deserialize<StockRejected>()!.Reason);
-                return "Rejected";
+                return OrderTransition.Rejected;
             case nameof(StockReleased):
-                return "Released";
+                return OrderTransition.Released;
             default:
-                return "Ignored";
+                return OrderTransition.Ignored;
         }
+    }
+
+    /// <summary>
+    /// How a consumed Inventory event affected the Sales order. Only
+    /// <see cref="OrderTransition.Ignored"/> leaves the order untouched.
+    /// </summary>
+    /// <remarks>
+    /// Member names are already the outcome text reported to consume logs, so no
+    /// <see cref="System.ComponentModel.DescriptionAttribute"/> is declared - <c>GetDescription()</c>
+    /// falls back to the member name. Renaming a member therefore changes that log value;
+    /// <c>SalesInventoryEventProcessorTests</c> asserts the exact strings and fails if one is renamed.
+    /// </remarks>
+    private enum OrderTransition
+    {
+        Ignored,
+        Reserved,
+        Rejected,
+        Released
     }
 }

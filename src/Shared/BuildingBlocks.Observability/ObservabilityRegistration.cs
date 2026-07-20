@@ -38,11 +38,9 @@ public static class ObservabilityRegistration
     /// activity sources and meters (for example, workers). The caller does not reference any
     /// OpenTelemetry type.
     /// </summary>
-    /// <param name="services">Service collection.</param>
     /// <param name="serviceName">Service name identifying the host; the resource value is resolved from OTEL_SERVICE_NAME.</param>
     /// <param name="tracingSourceNames">Activity source names to include in tracing.</param>
     /// <param name="meterNames">Meter names to include in metrics.</param>
-    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddBuildingBlocksObservability(
         this IServiceCollection services,
         string serviceName,
@@ -72,11 +70,9 @@ public static class ObservabilityRegistration
     /// metrics plus runtime instrumentation. Callers add their own instrumentation and
     /// activity/meter sources through the configuration callbacks.
     /// </summary>
-    /// <param name="services">Service collection.</param>
     /// <param name="serviceName">Service name identifying the host; the resource value is resolved from OTEL_SERVICE_NAME.</param>
     /// <param name="configureTracing">Hook to add service-specific tracing instrumentation and sources.</param>
     /// <param name="configureMetrics">Hook to add service-specific metrics instrumentation and meters.</param>
-    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddBuildingBlocksObservability(
         this IServiceCollection services,
         string serviceName,

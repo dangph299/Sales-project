@@ -38,13 +38,13 @@ public sealed class KafkaOutboxPublisher(
         var traceState = activity?.TraceStateString ?? Activity.Current?.TraceStateString;
         if (!string.IsNullOrEmpty(traceState)) headers.SetString(ContractHeaders.TraceState, traceState);
 
-        var sw = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         var producer = producers.GetProducer(producerName);
         var report = await producer.ProduceAsync(message.Topic, envelope.AggregateId.ToString(), envelope, headers);
 
         logger.LogInformation(
             "Published {EventType} {Topic} {Partition} {Offset} {MessageId} {CorrelationId} {AggregateId} {ElapsedMs}",
             envelope.EventType, message.Topic, report.Partition.Value, report.Offset.Value,
-            envelope.EventId, envelope.CorrelationId, envelope.AggregateId, sw.ElapsedMilliseconds);
+            envelope.EventId, envelope.CorrelationId, envelope.AggregateId, stopwatch.ElapsedMilliseconds);
     }
 }

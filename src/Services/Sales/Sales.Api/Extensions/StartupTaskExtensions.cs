@@ -1,4 +1,5 @@
 using BuildingBlocks.Infrastructure;
+using Sales.Infrastructure;
 
 namespace Sales.Api.Extensions;
 
@@ -17,6 +18,6 @@ public static class StartupTaskExtensions
         app.Lifetime.ApplicationStopping.Register(() => KafkaBusLifecycle.StopAsync(kafkaBus).GetAwaiter().GetResult());
 
         await app.Services.SeedIdentityAsync();
-        app.Services.RegisterRecurringJobs();
+        app.Services.RegisterSalesRecurringJobs();
     }
 }

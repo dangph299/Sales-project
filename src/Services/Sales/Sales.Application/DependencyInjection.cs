@@ -14,8 +14,6 @@ public static class DependencyInjection
     /// and the shared MediatR pipeline behaviors (logging, performance, then validation, in that
     /// wrapping order) used by every Sales command/query.
     /// </summary>
-    /// <param name="services">Service collection.</param>
-    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddSalesApplication(this IServiceCollection services)
     {
         var salesApplicationAssembly = typeof(DependencyInjection).Assembly;

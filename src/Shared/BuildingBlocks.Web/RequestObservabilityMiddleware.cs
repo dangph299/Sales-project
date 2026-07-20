@@ -13,7 +13,7 @@ using Serilog.Context;
 namespace BuildingBlocks.Web;
 
 /// <summary>
-/// one shared HTTP middleware every service uses instead of a per-service copy.
+/// One shared HTTP middleware every service uses instead of a per-service copy.
 /// Owns everything the single Serilog request-logging completion event needs:
 /// RequestId/CorrelationId/TraceId/UserId/ClientIp on <see cref="IDiagnosticContext"/> (so it
 /// reaches that one event regardless of middleware nesting) and on <see cref="LogContext"/>

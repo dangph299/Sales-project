@@ -11,7 +11,6 @@ public static class ApiExceptionHandlingExtensions
     /// Adds the shared API exception handler.
     /// </summary>
     /// <param name="services">Service collection for an API host.</param>
-    /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddApiExceptionHandling(this IServiceCollection services)
     {
         services.AddExceptionHandler<ApiExceptionHandler>();
@@ -24,7 +23,6 @@ public static class ApiExceptionHandlingExtensions
     /// </summary>
     /// <param name="services">Service collection for an API host.</param>
     /// <param name="configure">Service-specific exception mapping configuration.</param>
-    /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddApiExceptionHandling(
         this IServiceCollection services,
         Action<ApiExceptionHandlingOptions> configure)

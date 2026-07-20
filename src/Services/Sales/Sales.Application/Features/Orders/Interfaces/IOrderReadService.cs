@@ -12,7 +12,6 @@ public interface IOrderReadService
     /// Gets a single order by its identifier.
     /// </summary>
     /// <param name="id">Order identifier.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Order, or <see langword="null"/> if none exists.</returns>
     Task<OrderDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
@@ -24,7 +23,6 @@ public interface IOrderReadService
     /// <param name="customer">An optional substring to match against the order's customer name or phone.</param>
     /// <param name="page">1-based page number.</param>
     /// <param name="pageSize">Maximum page size.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A page of matching orders.</returns>
     Task<PagedResult<OrderDto>> SearchAsync(DateTimeOffset? from, DateTimeOffset? to, string? customer, int page, int pageSize, CancellationToken cancellationToken = default);
 }

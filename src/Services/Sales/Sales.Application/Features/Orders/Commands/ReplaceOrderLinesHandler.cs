@@ -23,7 +23,6 @@ public sealed class ReplaceOrderLinesHandler(
     /// Loads the order, resolves the new requested lines, replaces them, and commits the unit of work.
     /// </summary>
     /// <param name="request">Command identifying the order, its expected version, and the new lines.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Order with its new lines, mapped to an <see cref="OrderDto"/>.</returns>
     /// <exception cref="NotFoundException">Thrown when the order or one of the requested products does not exist.</exception>
     /// <exception cref="ConflictException">Thrown when the order's actual version does not match <see cref="ReplaceOrderLines.ExpectedVersion"/>.</exception>

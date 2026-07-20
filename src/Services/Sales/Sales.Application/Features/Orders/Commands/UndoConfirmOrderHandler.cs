@@ -19,7 +19,6 @@ public sealed class UndoConfirmOrderHandler(
     /// Loads the order, undoes its confirmation, and commits the unit of work.
     /// </summary>
     /// <param name="request">Command identifying the order to undo confirmation for and its expected version.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Order with confirmation undone, mapped to an <see cref="OrderDto"/>.</returns>
     public async Task<OrderDto> Handle(UndoConfirmOrder request, CancellationToken cancellationToken)
     {

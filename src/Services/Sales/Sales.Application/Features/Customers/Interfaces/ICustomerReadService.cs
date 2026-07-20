@@ -13,7 +13,6 @@ public interface ICustomerReadService
     /// Gets a single customer by its identifier.
     /// </summary>
     /// <param name="id">Customer identifier.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Customer, or <see langword="null"/> if none exists.</returns>
     Task<CustomerDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
@@ -25,7 +24,6 @@ public interface ICustomerReadService
     /// <param name="phoneMatch">How <paramref name="phone"/> should be matched (prefix or suffix).</param>
     /// <param name="page">1-based page number.</param>
     /// <param name="pageSize">Maximum page size.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A page of matching customers.</returns>
     Task<PagedResult<CustomerDto>> SearchAsync(string? name, string? phone, PhoneMatch phoneMatch, int page, int pageSize, CancellationToken cancellationToken = default);
 }

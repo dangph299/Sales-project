@@ -13,7 +13,6 @@ public sealed class SearchProductsHandler(IProductReadService readService) : IRe
     /// Searches products matching the given criteria.
     /// </summary>
     /// <param name="request">Query describing the search criteria and paging.</param>
-    /// <param name="ct">Cancellation token.</param>
     /// <returns>A page of matching products.</returns>
     public async Task<PagedResult<ProductDto>> Handle(SearchProducts request, CancellationToken ct)
     {

@@ -13,7 +13,6 @@ public sealed class SearchCustomersHandler(ICustomerReadService readService) : I
     /// Searches customers matching the given criteria.
     /// </summary>
     /// <param name="request">Query describing the search criteria and paging.</param>
-    /// <param name="ct">Cancellation token.</param>
     /// <returns>A page of matching customers.</returns>
     public async Task<PagedResult<CustomerDto>> Handle(SearchCustomers request, CancellationToken ct)
     {

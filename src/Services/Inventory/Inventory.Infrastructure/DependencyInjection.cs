@@ -23,9 +23,7 @@ public static class DependencyInjection
     /// <summary>
     /// Registers Inventory persistence, application services, and messaging.
     /// </summary>
-    /// <param name="services">Service collection.</param>
     /// <param name="configuration">Application configuration, used for connection strings and Kafka broker settings.</param>
-    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddInventoryInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddBuildingBlocksInfrastructure(configuration);

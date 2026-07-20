@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,16 @@ public abstract class OutboxPublisherService<TDbContext>(
     where TDbContext : DbContext
 {
     private static readonly TimeSpan LockDuration = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Reads the shared outbox polling interval, clamped so a misconfigured value can neither spin the
+    /// publisher nor stall the outbox for longer than a minute.
+    /// </summary>
+    protected static TimeSpan ReadPollInterval(IConfiguration configuration)
+    {
+        var milliseconds = configuration.GetValue("Outbox:PollIntervalMilliseconds", 2_000);
+        return TimeSpan.FromMilliseconds(Math.Clamp(milliseconds, 100, 60_000));
+    }
 
     /// <summary>Returns the service-owned outbox table.</summary>
     protected abstract DbSet<OutboxMessage> Outbox(TDbContext db);

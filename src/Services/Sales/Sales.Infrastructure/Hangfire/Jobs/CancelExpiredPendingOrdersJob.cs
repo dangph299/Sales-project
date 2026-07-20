@@ -16,7 +16,6 @@ public sealed class CancelExpiredPendingOrdersJob(
     /// <summary>
     /// Executes one expired order cancellation batch.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task ExecuteAsync(
         int expirationMinutes,
         int batchSize,

@@ -61,7 +61,6 @@ public abstract class InboxRedriveService<TDbContext>(
     /// Runs exactly one re-drive cycle. Exposed to reliability tests so the retry and dead-letter
     /// state machine can be exercised deterministically without starting the background loop.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
     internal Task RunRedriveCycleAsync(CancellationToken cancellationToken = default) => RedriveDueMessages(cancellationToken);
 
     private async Task RedriveDueMessages(CancellationToken cancellationToken)

@@ -23,7 +23,7 @@ public abstract class IntegrationEventHandler<THandler>(
 
         using (messageLogContext.Push(EventEnvelopeLogContext.From(envelope, activity)))
         {
-            var sw = Stopwatch.StartNew();
+            var stopwatch = Stopwatch.StartNew();
             try
             {
                 var result = await Process(envelope);
@@ -31,7 +31,7 @@ public abstract class IntegrationEventHandler<THandler>(
                     "Consumed {EventType} {Topic} {GroupId} {Partition} {Offset} {MessageId} {AggregateId} {OrderId} {Result} {ElapsedMs}",
                     envelope.EventType, context.ConsumerContext.Topic, context.ConsumerContext.GroupId,
                     context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId,
-                    envelope.AggregateId, envelope.AggregateId, result, sw.ElapsedMilliseconds);
+                    envelope.AggregateId, envelope.AggregateId, result, stopwatch.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
@@ -40,7 +40,7 @@ public abstract class IntegrationEventHandler<THandler>(
                     "Consume failed {EventType} {Topic} {GroupId} {Partition} {Offset} {MessageId} {Attempts} {DeadLettered} {ElapsedMs}",
                     envelope.EventType, context.ConsumerContext.Topic, context.ConsumerContext.GroupId,
                     context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId,
-                    failure?.Attempts, failure?.DeadLettered, sw.ElapsedMilliseconds);
+                    failure?.Attempts, failure?.DeadLettered, stopwatch.ElapsedMilliseconds);
 
                 // No failure recorder means we have nowhere to persist the event for retry, so rethrow
                 // to surface the loss loudly rather than swallow it silently.
