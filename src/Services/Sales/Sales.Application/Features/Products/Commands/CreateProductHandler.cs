@@ -21,7 +21,6 @@ public sealed class CreateProductHandler(
     /// and warms the product cache.
     /// </summary>
     /// <param name="request">Command describing the product to create.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Created product, mapped to a <see cref="ProductDto"/>.</returns>
     /// <exception cref="Sales.Domain.DomainException">Thrown when the SKU is already in use, or the provided SKU/name/price is invalid.</exception>
     public async Task<ProductDto> Handle(CreateProduct request, CancellationToken cancellationToken)

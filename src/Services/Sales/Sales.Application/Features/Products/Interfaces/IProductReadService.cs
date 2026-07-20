@@ -12,7 +12,6 @@ public interface IProductReadService
     /// Gets a single product by its identifier.
     /// </summary>
     /// <param name="id">Product identifier.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Product, or <see langword="null"/> if none exists.</returns>
     Task<ProductDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
@@ -22,7 +21,6 @@ public interface IProductReadService
     /// <param name="name">An optional substring to match against the product's name.</param>
     /// <param name="page">1-based page number.</param>
     /// <param name="pageSize">Maximum page size.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>A page of matching products.</returns>
     Task<PagedResult<ProductDto>> SearchAsync(string? name, int page, int pageSize, CancellationToken cancellationToken = default);
 }

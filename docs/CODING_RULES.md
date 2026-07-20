@@ -207,6 +207,7 @@ Solution hiện có **hai convention**, chọn theo project. Không trộn lẫn
 - Chỉ dùng `<exception>` khi exception là một phần có chủ ý của public API contract. Không liệt kê framework/infrastructure exception bị rò từ dependency.
 - Không đưa implementation detail vào XML documentation: EF Core, LINQ, Kafka, SQL, repository usage, internal algorithm, hoặc framework-specific behavior chỉ nên xuất hiện trong code/comment nội bộ khi thật sự cần.
 - Việc thêm/sửa XML documentation không được đổi logic, method signature, public API, namespace, dependency, hoặc behavior hiện tại.
+- **Ngoại lệ `Sales.Api` / `Inventory.Api`**: hai project này bật `GenerateDocumentationFile` để Swagger đọc `<summary>` (mục 16). Ở đó, xoá một `<param>` trong khi các `<param>` khác của cùng method vẫn còn sẽ sinh warning `CS1573`. Với controller action: hoặc document đủ mọi parameter, hoặc không document parameter nào — không xoá lẻ từng cái. Các project còn lại không bật doc file nên không bị ràng buộc này.
 - Áp dụng cho toàn bộ solution (Sales, Inventory, AuditLog, `BuildingBlocks.*`), trừ `<Service>.Infrastructure/Persistence/Migrations/` (sinh tự động bởi `dotnet ef migrations add`, không sửa tay — xem mục 6) và `tests/` (test method không phải public API surface, không cần XML doc theo convention chuẩn).
 
 ## 14. Program.cs

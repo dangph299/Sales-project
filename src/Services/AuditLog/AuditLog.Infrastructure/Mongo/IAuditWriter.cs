@@ -15,12 +15,10 @@ public interface IAuditWriter
     /// <param name="topic">Kafka topic the event was consumed from.</param>
     /// <param name="partition">Kafka partition the event was consumed from.</param>
     /// <param name="offset">Kafka offset the event was consumed from.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     Task UpsertAsync(EventEnvelope envelope, string topic, int partition, long offset, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Ensures the audit store's indexes exist, safe to call repeatedly.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
     Task EnsureIndexesAsync(CancellationToken cancellationToken = default);
 }

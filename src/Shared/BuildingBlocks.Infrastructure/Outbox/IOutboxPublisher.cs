@@ -9,6 +9,5 @@ public interface IOutboxPublisher
     /// Publishes a single outbox message.
     /// </summary>
     /// <param name="message">Outbox message.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     Task PublishAsync(OutboxMessage message, CancellationToken cancellationToken = default);
 }

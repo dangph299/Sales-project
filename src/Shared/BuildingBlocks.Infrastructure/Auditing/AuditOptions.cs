@@ -1,5 +1,4 @@
 using System.Linq.Expressions;
-using BuildingBlocks.Infrastructure;
 
 namespace BuildingBlocks.Infrastructure;
 
@@ -18,9 +17,11 @@ public sealed class AuditOptions
     public string ServiceName { get; set; } = "Unknown";
 
     /// <summary>
-    /// Gets or sets the audit topic used by this service.
+    /// Gets or sets the audit topic this service publishes to. Deliberately has no default: a shared
+    /// default would silently publish one service's audit trail into another service's topic, so a
+    /// service that does not name its topic fails at startup instead.
     /// </summary>
-    public string TopicName { get; set; } = BuildingBlocks.Contracts.KafkaTopics.SalesAudit;
+    public string TopicName { get; set; } = string.Empty;
 
     /// <summary>
     /// Gets or sets the maximum string length stored in a change value.
@@ -31,11 +32,6 @@ public sealed class AuditOptions
     /// Gets or sets the maximum number of changes stored in a single audit event.
     /// </summary>
     public int MaximumChangesPerEvent { get; set; } = 100;
-
-    /// <summary>
-    /// Gets the ignored entity types.
-    /// </summary>
-    public IReadOnlySet<Type> IgnoredEntityTypes => _ignoredEntityTypes;
 
     /// <summary>
     /// Ignores an entity type during audit generation.

@@ -23,10 +23,8 @@ public static class WebHostRegistration
     /// Registers the shared API host services. Each service supplies its identity and any
     /// specialisation hooks through <paramref name="configure"/>.
     /// </summary>
-    /// <param name="services">Service collection.</param>
     /// <param name="configuration">Application configuration (used for JWT settings).</param>
     /// <param name="configure">Configures the shared web options for this service.</param>
-    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddBuildingBlocksWeb(
         this IServiceCollection services,
         IConfiguration configuration,

@@ -15,9 +15,7 @@ public static class MappingRegistrationExtensions
     /// Builds one <see cref="TypeAdapterConfig"/> from the <see cref="IRegister"/> implementations
     /// found in the given assemblies and registers it alongside an <see cref="IMapper"/> that uses it.
     /// </summary>
-    /// <param name="services">Service collection.</param>
     /// <param name="assemblies">Application assemblies to scan for mapping registers.</param>
-    /// <returns>Service collection for chaining.</returns>
     /// <exception cref="ArgumentException">Thrown when no assembly is provided.</exception>
     public static IServiceCollection AddApplicationMapping(
         this IServiceCollection services,

@@ -37,7 +37,6 @@ public sealed class SalesDbContext(
     /// <summary>
     /// Persists pending state changes and domain events together.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Number of state entries written to the database.</returns>
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

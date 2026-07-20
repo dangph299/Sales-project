@@ -8,8 +8,6 @@ internal static class OrderValidationRules
     /// <summary>
     /// Requires that no product identifier occurs more than once across the rule's order lines.
     /// </summary>
-    /// <param name="rule">Rule builder to extend.</param>
-    /// <returns>Rule builder, to allow chaining further rules.</returns>
     public static IRuleBuilderOptions<T, IReadOnlyCollection<OrderLineInput>> HaveUniqueProducts<T>(
         this IRuleBuilder<T, IReadOnlyCollection<OrderLineInput>> rule) =>
         rule.Must(lines => lines.Count == 0 || lines.Select(x => x.ProductId).Distinct().Count() == lines.Count)

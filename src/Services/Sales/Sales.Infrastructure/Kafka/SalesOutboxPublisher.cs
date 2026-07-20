@@ -29,10 +29,4 @@ public sealed class SalesOutboxPublisher(
 
     /// <inheritdoc />
     protected override void SetSnapshot(long backlog, long deadLetters) => SalesMetrics.SetOutboxSnapshot(backlog, deadLetters);
-
-    private static TimeSpan ReadPollInterval(IConfiguration configuration)
-    {
-        var milliseconds = configuration.GetValue("Outbox:PollIntervalMilliseconds", 2_000);
-        return TimeSpan.FromMilliseconds(Math.Clamp(milliseconds, 100, 60_000));
-    }
 }

@@ -23,9 +23,7 @@ public static class DependencyInjection
     /// <summary>
     /// Registers Sales persistence, read services, execution context, caching, and messaging.
     /// </summary>
-    /// <param name="services">Service collection.</param>
     /// <param name="configuration">Application configuration, used for connection strings and Kafka broker settings.</param>
-    /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddSalesInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddBuildingBlocksInfrastructure(configuration);

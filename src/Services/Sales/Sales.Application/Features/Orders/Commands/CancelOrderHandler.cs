@@ -20,7 +20,6 @@ public sealed class CancelOrderHandler(
     /// Loads the order, cancels it, and commits the unit of work.
     /// </summary>
     /// <param name="request">Command identifying the order to cancel and its expected version.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Cancelled order, mapped to an <see cref="OrderDto"/>.</returns>
     /// <exception cref="NotFoundException">Thrown when no order exists with the given identifier.</exception>
     /// <exception cref="ConflictException">Thrown when the order's actual version does not match <see cref="CancelOrder.ExpectedVersion"/>.</exception>

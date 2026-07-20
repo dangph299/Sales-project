@@ -36,7 +36,6 @@ public sealed class InventoryDbContext(
     /// <summary>
     /// Persists pending state changes and buffered integration events together.
     /// </summary>
-    /// <param name="ct">Cancellation token.</param>
     /// <returns>Number of state entries written to the database.</returns>
     public override async Task<int> SaveChangesAsync(CancellationToken ct = default)
     {

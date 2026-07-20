@@ -18,7 +18,6 @@ public sealed class UpdateCustomerHandler(
     /// Loads the customer, applies the update, and commits the unit of work.
     /// </summary>
     /// <param name="request">Command describing the customer to update and its new values.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Updated customer, mapped to a <see cref="CustomerDto"/>.</returns>
     /// <exception cref="NotFoundException">Thrown when no customer exists with the given identifier.</exception>
     /// <exception cref="Sales.Domain.DomainException">Thrown when the provided name or phone number is invalid.</exception>

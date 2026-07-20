@@ -9,7 +9,6 @@ public interface IRepository<T> where T : AggregateRoot<Guid>
     /// Loads a single aggregate by its identifier.
     /// </summary>
     /// <param name="id">Aggregate identifier.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Aggregate, or <see langword="null"/> when none exists.</returns>
     Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
@@ -17,7 +16,6 @@ public interface IRepository<T> where T : AggregateRoot<Guid>
     /// Loads multiple aggregates by their identifiers in a single round trip.
     /// </summary>
     /// <param name="ids">Aggregate identifiers.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Aggregates found for the requested identifiers.</returns>
     Task<IReadOnlyList<T>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default);
 
@@ -25,7 +23,6 @@ public interface IRepository<T> where T : AggregateRoot<Guid>
     /// Registers a new aggregate to be inserted when the unit of work is committed.
     /// </summary>
     /// <param name="aggregate">Aggregate to add.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     Task AddAsync(T aggregate, CancellationToken cancellationToken = default);
 
     /// <summary>

@@ -19,7 +19,6 @@ public sealed class InventoryMaintenanceService(
     /// <summary>
     /// Deletes processed Inbox rows and processed Outbox rows older than the retention window.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
     public async Task CleanupAsync(CancellationToken cancellationToken = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
@@ -53,7 +52,6 @@ public sealed class InventoryMaintenanceService(
     /// Resets a single inbound dead-lettered message so a Kafka/DLQ replay can process it again.
     /// </summary>
     /// <param name="eventId">Inbound event id to reset.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns><see langword="true"/> if a matching dead-lettered inbox row was reset; otherwise <see langword="false"/>.</returns>
     public async Task<bool> ResetInboxDeadLetterAsync(Guid eventId, CancellationToken cancellationToken = default)
     {
@@ -72,7 +70,6 @@ public sealed class InventoryMaintenanceService(
     /// Resets up to <paramref name="take"/> inbound dead-lettered messages so Kafka/DLQ replay can process them again.
     /// </summary>
     /// <param name="take">Maximum number of dead-lettered messages to reset. Clamped between 1 and 100.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Number of inbox rows that were reset.</returns>
     public async Task<int> ResetInboxDeadLettersAsync(int take = 100, CancellationToken cancellationToken = default)
     {

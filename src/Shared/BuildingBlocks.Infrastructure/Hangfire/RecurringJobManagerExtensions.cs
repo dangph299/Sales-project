@@ -4,37 +4,45 @@ using Hangfire;
 namespace BuildingBlocks.Infrastructure;
 
 /// <summary>
-/// Shared helpers for registering Hangfire recurring jobs consistently.
+/// Framework-level Hangfire registration shared by every service. Knows nothing about which jobs
+/// exist: each service names its own job identifiers, settings, and job classes.
 /// </summary>
 public static class RecurringJobManagerExtensions
 {
     /// <summary>
-    /// Adds or updates a recurring job with shared defaults.
+    /// Schedules a recurring job from its settings. An enabled job is added or updated on the queue
+    /// and cron it names; a disabled job is removed from Hangfire storage so it stops firing rather
+    /// than being left behind on its previous schedule.
     /// </summary>
-    /// <typeparam name="TJob">Recurring job type resolved by Hangfire.</typeparam>
-    /// <param name="recurringJobManager">Hangfire recurring job manager.</param>
-    /// <param name="jobId">Stable recurring job identifier.</param>
-    /// <param name="queue">Queue where the job should run.</param>
-    /// <param name="cronExpression">Cron expression used by Hangfire.</param>
-    /// <param name="jobExpression">Expression for the job method to execute.</param>
-    public static void AddOrUpdateRecurringJob<TJob>(
+    /// <param name="recurringJobId">Stable recurring job identifier owned by the calling service.</param>
+    /// <param name="settings">Schedule settings for this job.</param>
+    /// <param name="jobExpression">Job method Hangfire invokes on each run.</param>
+    /// <exception cref="ArgumentException">Thrown when an enabled job omits its queue or cron expression.</exception>
+    public static void ScheduleRecurringJob<TJob>(
         this IRecurringJobManager recurringJobManager,
-        string jobId,
-        string queue,
-        string cronExpression,
+        string recurringJobId,
+        RecurringJobSettings settings,
         Expression<Func<TJob, Task>> jobExpression)
     {
         ArgumentNullException.ThrowIfNull(recurringJobManager);
-        ArgumentException.ThrowIfNullOrWhiteSpace(jobId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(queue);
-        ArgumentException.ThrowIfNullOrWhiteSpace(cronExpression);
+        ArgumentException.ThrowIfNullOrWhiteSpace(recurringJobId);
+        ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(jobExpression);
 
+        if (!settings.Enabled)
+        {
+            recurringJobManager.RemoveIfExists(recurringJobId);
+            return;
+        }
+
+        ArgumentException.ThrowIfNullOrWhiteSpace(settings.Queue);
+        ArgumentException.ThrowIfNullOrWhiteSpace(settings.Cron);
+
         recurringJobManager.AddOrUpdate(
-            jobId,
-            queue,
+            recurringJobId,
+            settings.Queue,
             jobExpression,
-            cronExpression,
+            settings.Cron,
             CreateDefaultRecurringJobOptions());
     }
 

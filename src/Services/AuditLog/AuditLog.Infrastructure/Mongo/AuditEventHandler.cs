@@ -33,21 +33,21 @@ public sealed class AuditEventHandler(
 
         using (messageLogContext.Push(EventEnvelopeLogContext.From(envelope, activity)))
         {
-            var sw = Stopwatch.StartNew();
+            var stopwatch = Stopwatch.StartNew();
             try
             {
                 await writer.UpsertAsync(envelope, context.ConsumerContext.Topic, context.ConsumerContext.Partition, context.ConsumerContext.Offset);
                 logger.LogInformation(
                     "Consumed {EventType} {Topic} {GroupId} {Partition} {Offset} {MessageId} {ElapsedMs}",
                     envelope.EventType, context.ConsumerContext.Topic, context.ConsumerContext.GroupId,
-                    context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId, sw.ElapsedMilliseconds);
+                    context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId, stopwatch.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
                 logger.LogError(ex,
                     "Consume failed {EventType} {Topic} {GroupId} {Partition} {Offset} {MessageId} {ElapsedMs}",
                     envelope.EventType, context.ConsumerContext.Topic, context.ConsumerContext.GroupId,
-                    context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId, sw.ElapsedMilliseconds);
+                    context.ConsumerContext.Partition, context.ConsumerContext.Offset, envelope.EventId, stopwatch.ElapsedMilliseconds);
                 throw;
             }
         }

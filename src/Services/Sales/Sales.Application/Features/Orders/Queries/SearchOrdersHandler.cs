@@ -13,7 +13,6 @@ public sealed class SearchOrdersHandler(IOrderReadService readService) : IReques
     /// Searches orders matching the given criteria.
     /// </summary>
     /// <param name="request">Query describing the search criteria and paging.</param>
-    /// <param name="ct">Cancellation token.</param>
     /// <returns>A page of matching orders.</returns>
     public async Task<PagedResult<OrderDto>> Handle(SearchOrders request, CancellationToken ct)
     {

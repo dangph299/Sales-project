@@ -21,7 +21,6 @@ public static class ApiModelExtensions
     /// Use it when registering controllers for an API host.
     /// </summary>
     /// <param name="services">Service collection for the API host.</param>
-    /// <returns>The same service collection for chaining.</returns>
     public static IServiceCollection AddSharedApiModelResponses(this IServiceCollection services)
     {
         services.Configure<ApiBehaviorOptions>(ConfigureApiBehaviorOptions);

@@ -23,7 +23,6 @@ public sealed class ConfirmOrderHandler(
     /// Loads the order, requests confirmation, and commits the unit of work.
     /// </summary>
     /// <param name="request">Command identifying the order to confirm and its expected version.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Order in its PendingInventory status, mapped to an <see cref="OrderDto"/>.</returns>
     /// <exception cref="NotFoundException">Thrown when no order exists with the given identifier.</exception>
     /// <exception cref="ConflictException">Thrown when the order's actual version does not match <see cref="ConfirmOrder.ExpectedVersion"/>.</exception>
@@ -31,7 +30,7 @@ public sealed class ConfirmOrderHandler(
     public async Task<OrderDto> Handle(ConfirmOrder request, CancellationToken cancellationToken)
     {
         using var scope = logger.BeginScope(new Dictionary<string, object> { ["OrderId"] = request.Id });
-        var sw = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
 
         logger.LogInformation("ConfirmOrder started");
 
@@ -46,7 +45,7 @@ public sealed class ConfirmOrderHandler(
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         var dto = mapper.Map<OrderDto>(order);
-        logger.LogInformation("ConfirmOrder completed {ElapsedMs}", sw.ElapsedMilliseconds);
+        logger.LogInformation("ConfirmOrder completed {ElapsedMs}", stopwatch.ElapsedMilliseconds);
         return dto;
     }
 }

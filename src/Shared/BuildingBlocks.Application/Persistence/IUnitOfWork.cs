@@ -8,7 +8,6 @@ public interface IUnitOfWork
     /// <summary>
     /// Persists all pending changes.
     /// </summary>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Number of state entries written to the underlying store.</returns>
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

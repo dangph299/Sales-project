@@ -11,7 +11,6 @@ public interface IOrderRepository : IRepository<Order>
     /// </summary>
     /// <param name="orderUpdatedBefore">Latest allowed order update time.</param>
     /// <param name="batchSize">Maximum number of order identifiers to return.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Order identifiers ordered by oldest update first.</returns>
     Task<IReadOnlyCollection<Guid>> FindExpiredCancellableOrderIdsAsync(
         DateTimeOffset orderUpdatedBefore,
@@ -22,7 +21,6 @@ public interface IOrderRepository : IRepository<Order>
     /// Loads a single order together with its lines.
     /// </summary>
     /// <param name="id">Order identifier.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Order with its lines populated, or <see langword="null"/> if no order with that identifier exists.</returns>
     Task<Order?> GetWithLinesAsync(Guid id, CancellationToken cancellationToken = default);
 }

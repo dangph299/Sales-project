@@ -56,114 +56,66 @@ public sealed class SalesRecurringJobsTests
     }
 
     [Fact]
-    public void Maintenance_cleanup_definition_uses_expected_job_metadata()
+    public void Maintenance_cleanup_is_scheduled_with_expected_job_metadata()
     {
-        var recurringJobManager = new RecordingRecurringJobManager();
-        var definition = new MaintenanceCleanupJobDefinition(
-            recurringJobManager,
-            Options.Create(new SalesRecurringJobsOptions
-            {
-                MaintenanceCleanup = EnabledSchedule("0 0 * * *", HangfireQueueNames.Maintenance)
-            }));
+        var recurringJobManager = RegisterJobs(EnabledConfiguration());
 
-        definition.Register();
+        var maintenanceCleanup = recurringJobManager.Added(SalesRecurringJobIds.MaintenanceCleanup);
 
-        Assert.Equal(SalesRecurringJobIds.MaintenanceCleanup, recurringJobManager.AddedRecurringJobId);
-        Assert.Equal(HangfireQueueNames.Maintenance, recurringJobManager.AddedJob?.Queue);
-        Assert.Equal("0 0 * * *", recurringJobManager.AddedCronExpression);
-        Assert.Equal(typeof(MaintenanceCleanupJob), recurringJobManager.AddedJob?.Type);
-        Assert.Equal(nameof(MaintenanceCleanupJob.CleanupAsync), recurringJobManager.AddedJob?.Method.Name);
-        Assert.Equal(TimeZoneInfo.Utc, recurringJobManager.AddedOptions?.TimeZone);
+        Assert.NotNull(maintenanceCleanup);
+        Assert.Equal(HangfireQueueNames.Maintenance, maintenanceCleanup.Job.Queue);
+        Assert.Equal("0 0 * * *", maintenanceCleanup.CronExpression);
+        Assert.Equal(typeof(MaintenanceCleanupJob), maintenanceCleanup.Job.Type);
+        Assert.Equal(nameof(MaintenanceCleanupJob.CleanupAsync), maintenanceCleanup.Job.Method.Name);
+        Assert.Equal(TimeZoneInfo.Utc, maintenanceCleanup.Options.TimeZone);
     }
 
     [Fact]
-    public void Cancel_expired_pending_orders_definition_uses_expected_job_metadata_and_parameters()
+    public void Cancel_expired_pending_orders_is_scheduled_with_expected_job_metadata_and_parameters()
     {
-        var recurringJobManager = new RecordingRecurringJobManager();
-        var definition = new CancelExpiredPendingOrdersJobDefinition(
-            recurringJobManager,
-            Options.Create(new SalesRecurringJobsOptions
-            {
-                CancelExpiredPendingOrders = new CancelExpiredPendingOrdersJobOptions
-                {
-                    Schedule = EnabledSchedule("*/5 * * * *", HangfireQueueNames.Critical),
-                    ExpirationMinutes = 45,
-                    BatchSize = 75
-                }
-            }));
+        var recurringJobManager = RegisterJobs(EnabledConfiguration());
 
-        definition.Register();
+        var cancelExpiredPendingOrders = recurringJobManager.Added(SalesRecurringJobIds.CancelExpiredPendingOrders);
 
-        Assert.Equal(SalesRecurringJobIds.CancelExpiredPendingOrders, recurringJobManager.AddedRecurringJobId);
-        Assert.Equal(HangfireQueueNames.Critical, recurringJobManager.AddedJob?.Queue);
-        Assert.Equal("*/5 * * * *", recurringJobManager.AddedCronExpression);
-        Assert.Equal(typeof(CancelExpiredPendingOrdersJob), recurringJobManager.AddedJob?.Type);
-        Assert.Equal(nameof(CancelExpiredPendingOrdersJob.ExecuteAsync), recurringJobManager.AddedJob?.Method.Name);
-        Assert.Equal(45, recurringJobManager.AddedJob?.Args[0]);
-        Assert.Equal(75, recurringJobManager.AddedJob?.Args[1]);
-        Assert.Equal(TimeZoneInfo.Utc, recurringJobManager.AddedOptions?.TimeZone);
+        Assert.NotNull(cancelExpiredPendingOrders);
+        Assert.Equal(HangfireQueueNames.Critical, cancelExpiredPendingOrders.Job.Queue);
+        Assert.Equal("*/5 * * * *", cancelExpiredPendingOrders.CronExpression);
+        Assert.Equal(typeof(CancelExpiredPendingOrdersJob), cancelExpiredPendingOrders.Job.Type);
+        Assert.Equal(nameof(CancelExpiredPendingOrdersJob.ExecuteAsync), cancelExpiredPendingOrders.Job.Method.Name);
+        Assert.Equal(45, cancelExpiredPendingOrders.Job.Args[0]);
+        Assert.Equal(75, cancelExpiredPendingOrders.Job.Args[1]);
+        Assert.Equal(TimeZoneInfo.Utc, cancelExpiredPendingOrders.Options.TimeZone);
     }
 
     [Fact]
-    public void Definitions_take_the_queue_from_configuration()
+    public void Jobs_take_the_queue_from_configuration()
     {
-        var recurringJobManager = new RecordingRecurringJobManager();
-        var definition = new CancelExpiredPendingOrdersJobDefinition(
-            recurringJobManager,
-            Options.Create(new SalesRecurringJobsOptions
-            {
-                CancelExpiredPendingOrders = new CancelExpiredPendingOrdersJobOptions
-                {
-                    Schedule = EnabledSchedule("*/5 * * * *", "custom-queue")
-                }
-            }));
+        var configurationValues = EnabledConfiguration();
+        configurationValues["SalesRecurringJobs:CancelExpiredPendingOrders:Schedule:Queue"] = "custom-queue";
 
-        definition.Register();
+        var recurringJobManager = RegisterJobs(configurationValues);
 
-        Assert.Equal("custom-queue", recurringJobManager.AddedJob?.Queue);
+        Assert.Equal(
+            "custom-queue",
+            recurringJobManager.Added(SalesRecurringJobIds.CancelExpiredPendingOrders)?.Job.Queue);
     }
 
     [Fact]
-    public void Disabled_definition_removes_existing_job_without_add_or_update()
+    public void Disabled_job_is_removed_instead_of_scheduled()
     {
-        var recurringJobManager = new RecordingRecurringJobManager();
-        var definition = new CancelExpiredPendingOrdersJobDefinition(
-            recurringJobManager,
-            Options.Create(new SalesRecurringJobsOptions
-            {
-                CancelExpiredPendingOrders = new CancelExpiredPendingOrdersJobOptions
-                {
-                    Schedule = new RecurringJobSettings { Enabled = false }
-                }
-            }));
+        var configurationValues = EnabledConfiguration();
+        configurationValues["SalesRecurringJobs:CancelExpiredPendingOrders:Schedule:Enabled"] = "false";
 
-        definition.Register();
+        var recurringJobManager = RegisterJobs(configurationValues);
 
-        Assert.Null(recurringJobManager.AddedRecurringJobId);
-        Assert.Equal(SalesRecurringJobIds.CancelExpiredPendingOrders, recurringJobManager.RemovedRecurringJobId);
-    }
-
-    [Fact]
-    public void Sales_recurring_jobs_are_registered_as_independent_definitions()
-    {
-        var services = CreateServices(EnabledConfiguration());
-
-        using var serviceProvider = services.BuildServiceProvider();
-        var definitions = serviceProvider.GetServices<IRecurringJobDefinition>().ToArray();
-
-        Assert.Equal(2, definitions.Length);
-        Assert.Single(definitions, definition => definition is MaintenanceCleanupJobDefinition);
-        Assert.Single(definitions, definition => definition is CancelExpiredPendingOrdersJobDefinition);
+        Assert.Null(recurringJobManager.Added(SalesRecurringJobIds.CancelExpiredPendingOrders));
+        Assert.Contains(SalesRecurringJobIds.CancelExpiredPendingOrders, recurringJobManager.RemovedRecurringJobIds);
     }
 
     [Fact]
     public void Sales_registers_each_recurring_job_id_exactly_once()
     {
-        var recurringJobManager = new RecordingRecurringJobManager();
-        var services = CreateServices(EnabledConfiguration(), recurringJobManager);
-
-        using var serviceProvider = services.BuildServiceProvider();
-        serviceProvider.RegisterRecurringJobs();
+        var recurringJobManager = RegisterJobs(EnabledConfiguration());
 
         Assert.Equal(
             [SalesRecurringJobIds.CancelExpiredPendingOrders, SalesRecurringJobIds.MaintenanceCleanup],
@@ -180,13 +132,10 @@ public sealed class SalesRecurringJobsTests
     [Fact]
     public void Job_id_is_not_configurable_so_configuration_cannot_fork_a_second_job()
     {
-        var recurringJobManager = new RecordingRecurringJobManager();
         var configurationValues = EnabledConfiguration();
         configurationValues["SalesRecurringJobs:CancelExpiredPendingOrders:Schedule:JobId"] = "rogue-job-id";
-        var services = CreateServices(configurationValues, recurringJobManager);
 
-        using var serviceProvider = services.BuildServiceProvider();
-        serviceProvider.RegisterRecurringJobs();
+        var recurringJobManager = RegisterJobs(configurationValues);
 
         Assert.DoesNotContain("rogue-job-id", recurringJobManager.AddedRecurringJobIds);
         Assert.Contains(SalesRecurringJobIds.CancelExpiredPendingOrders, recurringJobManager.AddedRecurringJobIds);
@@ -253,6 +202,17 @@ public sealed class SalesRecurringJobsTests
         };
     }
 
+    private static RecordingRecurringJobManager RegisterJobs(IDictionary<string, string?> configurationValues)
+    {
+        var recurringJobManager = new RecordingRecurringJobManager();
+        var services = CreateServices(configurationValues, recurringJobManager);
+
+        using var serviceProvider = services.BuildServiceProvider();
+        serviceProvider.RegisterSalesRecurringJobs();
+
+        return recurringJobManager;
+    }
+
     private static IServiceCollection CreateServices(
         IDictionary<string, string?> configurationValues,
         RecordingRecurringJobManager? recurringJobManager = null)
@@ -266,37 +226,42 @@ public sealed class SalesRecurringJobsTests
         return services;
     }
 
+    private sealed record ScheduledRecurringJob(
+        string RecurringJobId,
+        Job Job,
+        string CronExpression,
+        RecurringJobOptions Options);
+
     private sealed class RecordingRecurringJobManager : IRecurringJobManager
     {
-        private readonly List<string> addedRecurringJobIds = [];
+        private readonly List<ScheduledRecurringJob> addedRecurringJobs = [];
+        private readonly List<string> removedRecurringJobIds = [];
 
         public IReadOnlyList<string> AddedRecurringJobIds
         {
             get
             {
-                return addedRecurringJobIds;
+                return addedRecurringJobs.Select(addedRecurringJob => addedRecurringJob.RecurringJobId).ToArray();
             }
         }
 
-        public string? AddedRecurringJobId { get; private set; }
+        public IReadOnlyList<string> RemovedRecurringJobIds
+        {
+            get
+            {
+                return removedRecurringJobIds;
+            }
+        }
 
-        public string? AddedQueue { get; private set; }
-
-        public Job? AddedJob { get; private set; }
-
-        public string? AddedCronExpression { get; private set; }
-
-        public RecurringJobOptions? AddedOptions { get; private set; }
-
-        public string? RemovedRecurringJobId { get; private set; }
+        public ScheduledRecurringJob? Added(string recurringJobId)
+        {
+            return addedRecurringJobs.SingleOrDefault(
+                addedRecurringJob => addedRecurringJob.RecurringJobId == recurringJobId);
+        }
 
         public void AddOrUpdate(string recurringJobId, Job job, string cronExpression, RecurringJobOptions options)
         {
-            addedRecurringJobIds.Add(recurringJobId);
-            AddedRecurringJobId = recurringJobId;
-            AddedJob = job;
-            AddedCronExpression = cronExpression;
-            AddedOptions = options;
+            addedRecurringJobs.Add(new ScheduledRecurringJob(recurringJobId, job, cronExpression, options));
         }
 
         public void AddOrUpdate(
@@ -306,17 +271,12 @@ public sealed class SalesRecurringJobsTests
             string cronExpression,
             RecurringJobOptions options)
         {
-            addedRecurringJobIds.Add(recurringJobId);
-            AddedRecurringJobId = recurringJobId;
-            AddedQueue = queue;
-            AddedJob = job;
-            AddedCronExpression = cronExpression;
-            AddedOptions = options;
+            addedRecurringJobs.Add(new ScheduledRecurringJob(recurringJobId, job, cronExpression, options));
         }
 
         public void RemoveIfExists(string recurringJobId)
         {
-            RemovedRecurringJobId = recurringJobId;
+            removedRecurringJobIds.Add(recurringJobId);
         }
 
         public void Trigger(string recurringJobId)
