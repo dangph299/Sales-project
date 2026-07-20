@@ -1,5 +1,6 @@
 using Sales.Application.Features.Products.DTOs;
 using Sales.Application.Features.Products.Interfaces;
+using Sales.Domain;
 
 namespace Sales.Infrastructure;
 
@@ -43,8 +44,24 @@ public sealed class CachedProductReadService(IProductReadService inner, IProduct
         return inner.SearchAsync(name, page, pageSize, cancellationToken);
     }
 
+    /// <inheritdoc/>
+    public Task<PagedResult<ProductDto>> SearchAsync(
+        string? productCode,
+        string? name,
+        Guid? categoryId,
+        string? sku,
+        Guid? colorId,
+        Guid? sizeId,
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        return inner.SearchAsync(productCode, name, categoryId, sku, colorId, sizeId, status, page, pageSize, cancellationToken);
+    }
+
     private static bool IsActive(ProductDto product)
     {
-        return product.IsActive && !product.IsDelete;
+        return (product.Status == EProductStatus.Published.ToString() || product.IsActive) && !product.IsDelete;
     }
 }

@@ -11,6 +11,10 @@ public sealed record ProductSnapshot
     /// </summary>
     public Guid Id { get; }
 
+    public Guid ProductVariantId { get; }
+
+    public string ProductCode { get; }
+
     /// <summary>
     /// Gets the product's SKU at the time the snapshot was taken.
     /// </summary>
@@ -21,13 +25,38 @@ public sealed record ProductSnapshot
     /// </summary>
     public string Name { get; }
 
+    public string ColorCode { get; }
+
+    public string ColorName { get; }
+
+    public string SizeCode { get; }
+
     /// <summary>
     /// Gets the product's unit price at the time the snapshot was taken.
     /// </summary>
     public Money UnitPrice { get; }
 
-    private ProductSnapshot(Guid id, string sku, string name, Money unitPrice) =>
-        (Id, Sku, Name, UnitPrice) = (id, sku, name, unitPrice);
+    private ProductSnapshot(
+        Guid id,
+        Guid productVariantId,
+        string productCode,
+        string sku,
+        string name,
+        string colorCode,
+        string colorName,
+        string sizeCode,
+        Money unitPrice)
+    {
+        Id = id;
+        ProductVariantId = productVariantId;
+        ProductCode = productCode;
+        Sku = sku;
+        Name = name;
+        ColorCode = colorCode;
+        ColorName = colorName;
+        SizeCode = sizeCode;
+        UnitPrice = unitPrice;
+    }
 
     /// <summary>
     /// Creates a validated <see cref="ProductSnapshot"/> for an active product.
@@ -41,9 +70,46 @@ public sealed record ProductSnapshot
     /// <exception cref="DomainException">Thrown when <paramref name="isActive"/> is <see langword="false"/>, <paramref name="id"/> is empty, or <paramref name="sku"/>/<paramref name="name"/> is empty/whitespace.</exception>
     public static ProductSnapshot Create(Guid id, string sku, string name, Money unitPrice, bool isActive)
     {
-        if (!isActive) throw new DomainException("Inactive products cannot be ordered.");
+        if (!isActive) throw new DomainException("Only sellable products can be ordered.");
         if (id == Guid.Empty) throw new DomainException("Product id is required.");
         if (string.IsNullOrWhiteSpace(sku) || string.IsNullOrWhiteSpace(name)) throw new DomainException("Product snapshot is incomplete.");
-        return new(id, sku.Trim().ToUpperInvariant(), name.Trim(), unitPrice);
+        return new(id, id, sku.Trim().ToUpperInvariant(), sku.Trim().ToUpperInvariant(), name.Trim(), string.Empty, string.Empty, string.Empty, unitPrice);
+    }
+
+    public static ProductSnapshot Create(
+        Guid productId,
+        Guid productVariantId,
+        string productCode,
+        string productName,
+        string sku,
+        string colorCode,
+        string colorName,
+        string sizeCode,
+        Money unitPrice,
+        bool isActive)
+    {
+        if (!isActive) throw new DomainException("Only sellable product variants can be ordered.");
+        if (productId == Guid.Empty) throw new DomainException("Product id is required.");
+        if (productVariantId == Guid.Empty) throw new DomainException("Product variant id is required.");
+        if (string.IsNullOrWhiteSpace(productCode) ||
+            string.IsNullOrWhiteSpace(productName) ||
+            string.IsNullOrWhiteSpace(sku) ||
+            string.IsNullOrWhiteSpace(colorCode) ||
+            string.IsNullOrWhiteSpace(colorName) ||
+            string.IsNullOrWhiteSpace(sizeCode))
+        {
+            throw new DomainException("Product snapshot is incomplete.");
+        }
+
+        return new(
+            productId,
+            productVariantId,
+            productCode.Trim().ToUpperInvariant(),
+            sku.Trim().ToUpperInvariant(),
+            productName.Trim(),
+            colorCode.Trim().ToUpperInvariant(),
+            colorName.Trim(),
+            sizeCode.Trim().ToUpperInvariant(),
+            unitPrice);
     }
 }

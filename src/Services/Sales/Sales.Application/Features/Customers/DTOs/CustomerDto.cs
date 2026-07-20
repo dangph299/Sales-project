@@ -11,5 +11,17 @@ namespace Sales.Application.Features.Customers.DTOs;
 /// <param name="IsDelete">Whether the customer has been soft-deleted.</param>
 /// <param name="DeleteByUser">User that soft-deleted the customer, or <see langword="null"/> if it is active.</param>
 /// <param name="DeletedAt">UTC instant the customer was soft-deleted, or <see langword="null"/> if it is active.</param>
-public sealed record CustomerDto(Guid Id, string Name, string Phone, long Version,
-    DateTimeOffset UpdatedAt, bool IsDelete, string? DeleteByUser, DateTimeOffset? DeletedAt);
+public sealed record CustomerDto(
+    Guid Id,
+    string Name,
+    string Phone,
+    long Version,
+    DateTimeOffset UpdatedAt,
+    bool IsDelete,
+    string? DeleteByUser,
+    DateTimeOffset? DeletedAt,
+    string? CustomerCode = null,
+    string? NormalizedPhone = null,
+    string? Email = null,
+    string? Address = null,
+    string? Status = null);

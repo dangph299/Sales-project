@@ -15,7 +15,7 @@ public sealed class AuditOutboxTests
     {
         await using var fixture = await AuditSalesFixture.CreateAsync();
         await using var context = fixture.CreateContext();
-        var product = Product.Create("sku-created", "Created", 100);
+        var product = Product.Create("sku-created", "Created", null, CategoryReferenceDataIds.Uncategorized);
         product.ClearDomainEvents();
 
         context.Products.Add(product);
@@ -33,13 +33,13 @@ public sealed class AuditOutboxTests
     public async Task Modified_entity_records_only_changed_properties()
     {
         await using var fixture = await AuditSalesFixture.CreateAsync();
-        var product = Product.Create("sku-modified", "Before", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku-modified", "Before", 100);
         product.ClearDomainEvents();
         await fixture.SeedProductAsync(product);
 
         await using var context = fixture.CreateContext();
         var loaded = await context.Products.SingleAsync(x => x.Id == product.Id);
-        loaded.Update("After", loaded.Price.Amount, loaded.IsActive);
+        loaded.Update("After", loaded.Description, loaded.CategoryId);
         loaded.ClearDomainEvents();
         await context.SaveChangesAsync();
 
@@ -53,7 +53,7 @@ public sealed class AuditOutboxTests
     public async Task Soft_delete_creates_deleted_audit_event()
     {
         await using var fixture = await AuditSalesFixture.CreateAsync();
-        var product = Product.Create("sku-deleted", "Deleted", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku-deleted", "Deleted", 100);
         product.ClearDomainEvents();
         await fixture.SeedProductAsync(product);
 
@@ -101,17 +101,17 @@ public sealed class AuditOutboxTests
     public async Task Order_line_changes_are_grouped_under_order()
     {
         await using var fixture = await AuditSalesFixture.CreateAsync();
-        var product = Product.Create("sku-order", "Order Product", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku-order", "Order Product", 100);
         product.ClearDomainEvents();
         var order = Order.Create(
             CustomerSnapshot.Create(Guid.NewGuid(), "Customer", "0901234567"),
-            [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, true), 1, 0)]);
+            [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, true), 1, 0)]);
         order.ClearDomainEvents();
         await fixture.SeedProductAndOrderAsync(product, order);
 
         await using var context = fixture.CreateContext();
         var loaded = await context.Orders.Include(x => x.Lines).SingleAsync(x => x.Id == order.Id);
-        loaded.ReplaceLines([new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, true), 4, 0)]);
+        loaded.ReplaceLines([new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, true), 4, 0)]);
         loaded.ClearDomainEvents();
         await context.SaveChangesAsync();
 
@@ -129,7 +129,7 @@ public sealed class AuditOutboxTests
         await using var fixture = await AuditSalesFixture.CreateAsync();
         await using var context = fixture.CreateContext();
         await using var transaction = await context.Database.BeginTransactionAsync();
-        var product = Product.Create("sku-rollback", "Rollback", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku-rollback", "Rollback", 100);
         product.ClearDomainEvents();
         context.Products.Add(product);
         await context.SaveChangesAsync();

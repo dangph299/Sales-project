@@ -6,8 +6,8 @@ public sealed class OrderTests
     public void Create_snapshots_data_and_rounds_vnd_away_from_zero()
     {
         var customer = CustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "090-123-4567");
-        var product = Product.Create("sku-1", "Keyboard", 1001);
-        var snapshot = ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, product.IsActive);
+        var product = ProductTestFactory.CreatePublishedProduct("sku-1", "Keyboard", 1001);
+        var snapshot = ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, product.IsActive);
 
         var order = Order.Create(customer, [new(snapshot, 3, 12.5m)]);
 
@@ -120,8 +120,8 @@ public sealed class OrderTests
     public void Replace_lines_increments_version_and_raises_domain_event()
     {
         var order = CreateOrder();
-        var replacementProduct = Product.Create("new", "Replacement", 200);
-        var replacement = ProductSnapshot.Create(replacementProduct.Id, replacementProduct.Sku, replacementProduct.Name, replacementProduct.Price, true);
+        var replacementProduct = ProductTestFactory.CreatePublishedProduct("new", "Replacement", 200);
+        var replacement = ProductSnapshot.Create(replacementProduct.Id, replacementProduct.Sku, replacementProduct.Name, ProductTestFactory.PrimaryVariant(replacementProduct).Price, true);
         order.ClearDomainEvents();
 
         order.ReplaceLines([new(replacement, 2, 10)]);
@@ -152,8 +152,8 @@ public sealed class OrderTests
         var order = CreateOrder();
         order.RequestConfirmation();
         order.MarkReserved();
-        var product = Product.Create("other", "Other", 10);
-        var snapshot = ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, true);
+        var product = ProductTestFactory.CreatePublishedProduct("other", "Other", 10);
+        var snapshot = ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, true);
         Assert.Throws<DomainException>(() => order.ReplaceLines([new(snapshot, 1, 0)]));
     }
 
@@ -163,16 +163,16 @@ public sealed class OrderTests
     public void Quantity_must_be_positive(int quantity)
     {
         var customer = CustomerSnapshot.Create(Guid.NewGuid(), "A", "0901234567");
-        var product = Product.Create("sku", "Product", 100);
-        var snapshot = ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, true);
+        var product = ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
+        var snapshot = ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, true);
         Assert.Throws<DomainException>(() => Order.Create(customer, [new(snapshot, quantity, 0)]));
     }
 
     private static Order CreateOrder()
     {
-        var product = Product.Create("sku", "Product", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
         return Order.Create(
             CustomerSnapshot.Create(Guid.NewGuid(), "A", "0901234567"),
-            [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, true), 1, 0)]);
+            [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, true), 1, 0)]);
     }
 }

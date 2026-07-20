@@ -1,6 +1,7 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { blackColorId, mediumSizeId, uncategorizedCategoryId } from './reference-data';
 
 const execFileAsync = promisify(execFile);
 
@@ -13,20 +14,26 @@ test('product update emits an audit event', async ({ request }) => {
 
   const created = await request.post('/api/products/', {
     headers: authHeaders,
-    data: { sku, name: initialName, price: 100_000 }
+    data: {
+      productCode: sku,
+      name: initialName,
+      description: null,
+      categoryId: uncategorizedCategoryId,
+      variants: [{ colorId: blackColorId, sizeId: mediumSizeId, price: 100_000, status: 'Published' }]
+    }
   });
   expect(created.status(), await created.text()).toBe(201);
   const product = unwrap(await created.json());
 
   const updated = await request.put(`/api/products/${product.id}`, {
     headers: authHeaders,
-    data: { name: updatedName, price: 130_000, isActive: true }
+    data: { name: updatedName, description: null, categoryId: uncategorizedCategoryId, status: 'Published' }
   });
   expect(updated.ok(), await updated.text()).toBeTruthy();
 
   const body = unwrap(await updated.json());
   expect(body.name).toBe(updatedName);
-  expect(body.price).toBe(130_000);
+  expect(body.minPrice).toBe(100_000);
 
   const auditDocument = await waitForProductUpdateAudit(product.id, updatedName);
   expect(auditDocument.serviceName).toBe('Sales');

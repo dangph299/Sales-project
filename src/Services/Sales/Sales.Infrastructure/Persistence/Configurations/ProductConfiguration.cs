@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sales.Domain;
 
 namespace Sales.Infrastructure;
@@ -13,17 +12,32 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
     /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<Product> entity)
     {
-        var money = new ValueConverter<Money, decimal>(x => x.Amount, x => Money.Vnd(x));
-
         entity.ToTable("products");
         entity.HasKey(x => x.Id);
         entity.HasQueryFilter(x => !x.IsDelete);
-        entity.HasIndex(x => x.Sku).IsUnique();
+        entity.HasIndex(x => x.ProductCode).IsUnique();
         entity.HasIndex(x => x.Name).HasMethod("gin").HasOperators("gin_trgm_ops");
+        entity.HasIndex(x => x.CategoryId);
+        entity.HasIndex(x => x.Status);
+        entity.Property(x => x.ProductCode).HasMaxLength(32);
         entity.Property(x => x.Name).HasMaxLength(200);
-        entity.Property(x => x.Sku).HasMaxLength(64);
+        entity.Property(x => x.Description).HasMaxLength(1000);
+        entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+        entity.Property(x => x.CreatedBy).HasMaxLength(128);
+        entity.Property(x => x.UpdatedBy).HasMaxLength(128);
         entity.Property(x => x.DeleteByUser).HasMaxLength(128);
-        entity.Property(x => x.Price).HasConversion(money).HasColumnType("numeric(18,0)");
+        entity.Property(x => x.DeletedBy).HasMaxLength(128);
         entity.Property(x => x.Version).IsConcurrencyToken();
+        entity.Ignore(x => x.Sku);
+        entity.Ignore(x => x.IsActive);
+        entity.HasOne<Category>()
+            .WithMany()
+            .HasForeignKey(x => x.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
+        entity.HasMany(x => x.Variants)
+            .WithOne()
+            .HasForeignKey(x => x.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+        entity.Navigation(x => x.Variants).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

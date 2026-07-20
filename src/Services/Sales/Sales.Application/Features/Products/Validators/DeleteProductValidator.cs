@@ -5,9 +5,9 @@ using Sales.Application.Features.Products.Commands;
 namespace Sales.Application.Features.Products.Validators;
 
 /// <summary>
-/// Validates <see cref="DeleteProduct"/>.
+/// Validates <see cref="DeleteProductCommand"/>.
 /// </summary>
-public sealed class DeleteProductValidator : AbstractValidator<DeleteProduct>
+public sealed class DeleteProductValidator : AbstractValidator<DeleteProductCommand>
 {
     /// <summary>
     /// Configures the validation rules.

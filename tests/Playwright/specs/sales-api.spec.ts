@@ -1,10 +1,12 @@
 import { expect, request as playwrightRequest, test } from '@playwright/test';
+import { blackColorId, mediumSizeId, uncategorizedCategoryId } from './reference-data';
 
 const inventoryUrl = process.env.INVENTORY_API_URL ?? 'http://localhost:5001';
 
 test.describe.serial('Sales API smoke and concurrency', () => {
   let accessToken: string;
   let productId: string;
+  let productVariantId: string;
   let customerId: string;
   let orderId: string;
   const runId = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
@@ -39,11 +41,18 @@ test.describe.serial('Sales API smoke and concurrency', () => {
   test('create and search product', async ({ request }) => {
     const created = await request.post('/api/products/', {
       headers: auth(),
-      data: { sku, name: `Playwright Product ${runId}`, price: 125_000 }
+      data: {
+        productCode: sku,
+        name: `Playwright Product ${runId}`,
+        description: null,
+        categoryId: uncategorizedCategoryId,
+        variants: [{ colorId: blackColorId, sizeId: mediumSizeId, price: 125_000, status: 'Published' }]
+      }
     });
     expect(created.status(), await created.text()).toBe(201);
     const product = await created.json();
     productId = product.id;
+    productVariantId = product.variants[0].id;
 
     const searched = await request.get('/api/products/', {
       headers: auth(),
@@ -77,7 +86,7 @@ test.describe.serial('Sales API smoke and concurrency', () => {
       headers: auth(),
       data: {
         customerId,
-        lines: [{ productId, quantity: 1, discountPercent: 10 }]
+        lines: [{ productVariantId, quantity: 1, discountPercent: 10 }]
       }
     });
     expect(created.status(), await created.text()).toBe(201);
@@ -87,7 +96,7 @@ test.describe.serial('Sales API smoke and concurrency', () => {
 
     const initialUpdate = await request.put(`/api/orders/${orderId}/lines`, {
       headers: { ...auth(), 'If-Match': createdEtag! },
-      data: [{ productId, quantity: 2, discountPercent: 10 }]
+      data: [{ productVariantId, quantity: 2, discountPercent: 10 }]
     });
     expect(initialUpdate.status(), await initialUpdate.text()).toBe(200);
     const etag = initialUpdate.headers().etag;
@@ -95,7 +104,7 @@ test.describe.serial('Sales API smoke and concurrency', () => {
 
     const update = (quantity: number) => request.put(`/api/orders/${orderId}/lines`, {
       headers: { ...auth(), 'If-Match': etag! },
-      data: [{ productId, quantity, discountPercent: 10 }]
+      data: [{ productVariantId, quantity, discountPercent: 10 }]
     });
     const responses = await Promise.all([update(3), update(4)]);
     expect(responses.map(x => x.status()).sort()).toEqual([200, 409]);

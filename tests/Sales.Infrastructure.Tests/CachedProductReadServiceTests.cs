@@ -44,7 +44,7 @@ public sealed class CachedProductReadServiceTests
     public async Task Get_on_cache_miss_calls_inner_service_and_caches_valid_result()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
-        var product = Product.Create("sku-active", "Keyboard", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku-active", "Keyboard", 100);
         await fixture.SeedAsync(product);
         var cache = new RecordingProductCache();
         var service = new CachedProductReadService(new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create()), cache);
@@ -60,7 +60,7 @@ public sealed class CachedProductReadServiceTests
     public async Task Get_removes_inactive_cached_product_and_falls_back_to_inner_service()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
-        var product = Product.Create("sku-active", "Keyboard", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku-active", "Keyboard", 100);
         await fixture.SeedAsync(product);
         var stale = ProductDto(product.Id, isActive: false, isDelete: false);
         var cache = new RecordingProductCache(stale);
@@ -78,7 +78,7 @@ public sealed class CachedProductReadServiceTests
     public async Task Get_removes_deleted_cached_product_and_falls_back_to_inner_service()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
-        var product = Product.Create("sku-active", "Keyboard", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku-active", "Keyboard", 100);
         await fixture.SeedAsync(product);
         var stale = ProductDto(product.Id, isActive: true, isDelete: true);
         var cache = new RecordingProductCache(stale);
@@ -96,7 +96,7 @@ public sealed class CachedProductReadServiceTests
     public async Task Get_returns_active_database_product_when_cache_contains_stale_inactive_version()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
-        var product = Product.Create("sku-active", "Keyboard", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku-active", "Keyboard", 100);
         await fixture.SeedAsync(product);
         var stale = ProductDto(product.Id, isActive: false, isDelete: false);
         var cache = new RecordingProductCache(stale);
@@ -183,7 +183,7 @@ public sealed class CachedProductReadServiceTests
 
     private static ProductDto ProductDto(Guid id, bool isActive, bool isDelete)
     {
-        return new ProductDto(id, "SKU", "Keyboard", 100, isActive, 1, DateTimeOffset.UtcNow, isDelete, null, isDelete ? DateTimeOffset.UtcNow : null);
+        return new ProductDto(id, "SKU", "Keyboard", 100, 100, isActive, 1, DateTimeOffset.UtcNow, isDelete, null, isDelete ? DateTimeOffset.UtcNow : null);
     }
 
     private sealed class RecordingProductCache(ProductDto? value = null) : IProductCache

@@ -5,7 +5,7 @@ public sealed class SoftDeleteTests
     [Fact]
     public void Product_delete_stamps_metadata_and_blocks_updates()
     {
-        var product = Product.Create("sku-1", "Keyboard", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku-1", "Keyboard", 100);
         var originalUpdatedAt = product.UpdatedAt;
 
         product.Delete("admin");
@@ -15,7 +15,7 @@ public sealed class SoftDeleteTests
         Assert.Equal("admin", product.DeleteByUser);
         Assert.NotNull(product.DeletedAt);
         Assert.True(product.UpdatedAt >= originalUpdatedAt);
-        Assert.Throws<DomainException>(() => product.Update("Mouse", 120, true));
+        Assert.Throws<DomainException>(() => product.Update("Mouse", null, Guid.NewGuid()));
     }
 
     [Fact]

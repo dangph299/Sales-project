@@ -4,7 +4,13 @@ import { firstValueFrom } from 'rxjs';
 import { ApiClientError, ApiClientResult, ApiResponseReader } from './api-client-result';
 import {
   ApiResult,
+  CategoryDto,
+  CreateCategoryRequestDto,
+  CreateCustomerRequestDto,
+  CreateProductRequestDto,
+  CreateProductVariantRequestDto,
   CustomerDto,
+  ECustomerStatus,
   InventoryDto,
   OrderDto,
   OrderLineInput,
@@ -13,7 +19,12 @@ import {
   PhoneMatch,
   PhoneMatchApiValue,
   ProductDto,
-  TokenResponse
+  ReservationDto,
+  TokenResponse,
+  UpdateCategoryRequestDto,
+  UpdateCustomerRequestDto,
+  UpdateProductRequestDto,
+  UpdateProductVariantRequestDto
 } from './models';
 
 @Injectable({ providedIn: 'root' })
@@ -59,52 +70,122 @@ export class ApiService {
     localStorage.removeItem('refreshToken');
   }
 
-  createProduct(payload: { sku: string; name: string; price: number }): Promise<ProductDto> {
-    return this.request<ProductDto>(
-      firstValueFrom(this.http.post(`${this.salesBase()}/api/products/`, payload, this.textResponseOptions())),
+  createCustomer(customerRequest: CreateCustomerRequestDto): Promise<CustomerDto> {
+    return this.request<CustomerDto>(
+      firstValueFrom(this.http.post(`${this.salesBase()}/api/customers/`, customerRequest, this.textResponseOptions())),
       true);
   }
 
-  updateProduct(id: string, payload: { name: string; price: number; isActive: boolean }): Promise<ProductDto> {
-    return this.request<ProductDto>(
-      firstValueFrom(this.http.put(`${this.salesBase()}/api/products/${id}`, payload, this.textResponseOptions())),
+  updateCustomer(customerId: string, customerRequest: UpdateCustomerRequestDto): Promise<CustomerDto> {
+    return this.request<CustomerDto>(
+      firstValueFrom(this.http.put(`${this.salesBase()}/api/customers/${customerId}`, customerRequest, this.textResponseOptions())),
       true);
   }
 
-  deleteProduct(id: string): Promise<void> {
+  updateCustomerStatus(customerId: string, status: ECustomerStatus): Promise<CustomerDto> {
+    return this.request<CustomerDto>(
+      firstValueFrom(this.http.put(`${this.salesBase()}/api/customers/${customerId}/status`, { status }, this.textResponseOptions())),
+      true);
+  }
+
+  deleteCustomer(customerId: string): Promise<void> {
     return this.request<void>(
-      firstValueFrom(this.http.delete(`${this.salesBase()}/api/products/${id}`, this.textResponseOptions())),
+      firstValueFrom(this.http.delete(`${this.salesBase()}/api/customers/${customerId}`, this.textResponseOptions())),
       false);
   }
 
-  searchProducts(name: string, page = 1, pageSize = 20): Promise<PagedResult<ProductDto>> {
-    const params = this.params({ name, page, pageSize });
+  getCustomer(customerId: string): Promise<ApiResult<CustomerDto>> {
+    return this.withEtag(firstValueFrom(this.http.get(`${this.salesBase()}/api/customers/${customerId}`, this.textResponseOptions())));
+  }
+
+  searchCustomers(filters: { name?: string; phone?: string; phoneMatch?: PhoneMatch; page?: number; pageSize?: number }): Promise<PagedResult<CustomerDto>> {
+    const params = this.params({
+      name: filters.name,
+      phone: filters.phone,
+      phoneMatch: PhoneMatchApiValue[filters.phoneMatch ?? PhoneMatch.Prefix],
+      page: filters.page ?? 1,
+      pageSize: filters.pageSize ?? 20
+    });
+    return this.requestPage<CustomerDto>(
+      firstValueFrom(this.http.get(`${this.salesBase()}/api/customers/`, this.textResponseOptions(params))));
+  }
+
+  createCategory(categoryRequest: CreateCategoryRequestDto): Promise<CategoryDto> {
+    return this.request<CategoryDto>(
+      firstValueFrom(this.http.post(`${this.salesBase()}/api/categories/`, categoryRequest, this.textResponseOptions())),
+      true);
+  }
+
+  updateCategory(categoryId: string, categoryRequest: UpdateCategoryRequestDto): Promise<CategoryDto> {
+    return this.request<CategoryDto>(
+      firstValueFrom(this.http.put(`${this.salesBase()}/api/categories/${categoryId}`, categoryRequest, this.textResponseOptions())),
+      true);
+  }
+
+  createProduct(productRequest: CreateProductRequestDto): Promise<ProductDto> {
+    return this.request<ProductDto>(
+      firstValueFrom(this.http.post(`${this.salesBase()}/api/products/`, productRequest, this.textResponseOptions())),
+      true);
+  }
+
+  updateProduct(productId: string, productRequest: UpdateProductRequestDto): Promise<ProductDto> {
+    return this.request<ProductDto>(
+      firstValueFrom(this.http.put(`${this.salesBase()}/api/products/${productId}`, productRequest, this.textResponseOptions())),
+      true);
+  }
+
+  deleteProduct(productId: string): Promise<void> {
+    return this.request<void>(
+      firstValueFrom(this.http.delete(`${this.salesBase()}/api/products/${productId}`, this.textResponseOptions())),
+      false);
+  }
+
+  getProduct(productId: string): Promise<ApiResult<ProductDto>> {
+    return this.withEtag(firstValueFrom(this.http.get(`${this.salesBase()}/api/products/${productId}`, this.textResponseOptions())));
+  }
+
+  searchProducts(filters: {
+    productCode?: string;
+    name?: string;
+    sku?: string;
+    categoryId?: string;
+    colorId?: string;
+    sizeId?: string;
+    status?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<PagedResult<ProductDto>> {
+    const params = this.params({
+      productCode: filters.productCode,
+      name: filters.name,
+      sku: filters.sku,
+      categoryId: filters.categoryId,
+      colorId: filters.colorId,
+      sizeId: filters.sizeId,
+      status: filters.status,
+      page: filters.page ?? 1,
+      pageSize: filters.pageSize ?? 20
+    });
     return this.requestPage<ProductDto>(
       firstValueFrom(this.http.get(`${this.salesBase()}/api/products/`, this.textResponseOptions(params))));
   }
 
-  createCustomer(payload: { name: string; phone: string }): Promise<CustomerDto> {
-    return this.request<CustomerDto>(
-      firstValueFrom(this.http.post(`${this.salesBase()}/api/customers/`, payload, this.textResponseOptions())),
+  addProductVariant(productId: string, productVariantRequest: CreateProductVariantRequestDto): Promise<ProductDto> {
+    return this.request<ProductDto>(
+      firstValueFrom(this.http.post(`${this.salesBase()}/api/products/${productId}/variants`, productVariantRequest, this.textResponseOptions())),
       true);
   }
 
-  updateCustomer(id: string, payload: { name: string; phone: string }): Promise<CustomerDto> {
-    return this.request<CustomerDto>(
-      firstValueFrom(this.http.put(`${this.salesBase()}/api/customers/${id}`, payload, this.textResponseOptions())),
+  updateProductVariant(productId: string, productVariantId: string, productVariantRequest: UpdateProductVariantRequestDto): Promise<ProductDto> {
+    return this.request<ProductDto>(
+      firstValueFrom(this.http.put(`${this.salesBase()}/api/products/${productId}/variants/${productVariantId}`, productVariantRequest, this.textResponseOptions())),
       true);
   }
 
-  deleteCustomer(id: string): Promise<void> {
-    return this.request<void>(
-      firstValueFrom(this.http.delete(`${this.salesBase()}/api/customers/${id}`, this.textResponseOptions())),
-      false);
-  }
-
-  searchCustomers(name: string, phone: string, phoneMatch: PhoneMatch, page = 1, pageSize = 20): Promise<PagedResult<CustomerDto>> {
-    const params = this.params({ name, phone, phoneMatch: PhoneMatchApiValue[phoneMatch], page, pageSize });
-    return this.requestPage<CustomerDto>(
-      firstValueFrom(this.http.get(`${this.salesBase()}/api/customers/`, this.textResponseOptions(params))));
+  discontinueProductVariant(productId: string, productVariantId: string): Promise<ProductDto> {
+    return this.request<ProductDto>(
+      firstValueFrom(this.http.post(`${this.salesBase()}/api/products/${productId}/variants/${productVariantId}/deactivate`, {}, this.textResponseOptions())),
+      true);
   }
 
   async createOrder(customerId: string, lines: OrderLineInput[]): Promise<ApiResult<OrderDto>> {
@@ -115,63 +196,93 @@ export class ApiService {
     )));
   }
 
-  async getOrder(id: string): Promise<ApiResult<OrderDto>> {
+  async getOrder(orderId: string): Promise<ApiResult<OrderDto>> {
     return this.withEtag(firstValueFrom(this.http.get(
-      `${this.salesBase()}/api/orders/${id}`,
+      `${this.salesBase()}/api/orders/${orderId}`,
       this.textResponseOptions()
     )));
   }
 
-  searchOrders(filters: { from?: string; to?: string; customer?: string }, page = 1, pageSize = 20): Promise<PagedResult<OrderDto>> {
-    const params = this.params({ ...filters, page, pageSize });
+  searchOrders(filters: { from?: string; to?: string; customer?: string; page?: number; pageSize?: number }): Promise<PagedResult<OrderDto>> {
+    const params = this.params({
+      from: filters.from,
+      to: filters.to,
+      customer: filters.customer,
+      page: filters.page ?? 1,
+      pageSize: filters.pageSize ?? 20
+    });
     return this.requestPage<OrderDto>(
       firstValueFrom(this.http.get(`${this.salesBase()}/api/orders/`, this.textResponseOptions(params))));
   }
 
-  async replaceOrderLines(id: string, lines: OrderLineInput[], etag: string): Promise<ApiResult<OrderDto>> {
+  async replaceOrderLines(orderId: string, lines: OrderLineInput[], etag: string): Promise<ApiResult<OrderDto>> {
     return this.withEtag(firstValueFrom(this.http.put(
-      `${this.salesBase()}/api/orders/${id}/lines`,
+      `${this.salesBase()}/api/orders/${orderId}/lines`,
       lines,
       this.textResponseOptions(undefined, this.authHeaders().set('If-Match', etag))
     )));
   }
 
-  async confirmOrder(id: string, etag: string): Promise<ApiResult<OrderDto>> {
+  async confirmOrder(orderId: string, etag: string): Promise<ApiResult<OrderDto>> {
     return this.withEtag(firstValueFrom(this.http.post(
-      `${this.salesBase()}/api/orders/${id}/confirm`,
+      `${this.salesBase()}/api/orders/${orderId}/confirm`,
       {},
       this.textResponseOptions(undefined, this.authHeaders().set('If-Match', etag))
     )));
   }
 
-  async cancelOrder(id: string, etag: string): Promise<ApiResult<OrderDto>> {
+  async cancelOrder(orderId: string, etag: string): Promise<ApiResult<OrderDto>> {
     return this.withEtag(firstValueFrom(this.http.post(
-      `${this.salesBase()}/api/orders/${id}/cancel`,
+      `${this.salesBase()}/api/orders/${orderId}/cancel`,
       {},
       this.textResponseOptions(undefined, this.authHeaders().set('If-Match', etag))
     )));
   }
 
-  async undoConfirmOrder(id: string, etag: string): Promise<ApiResult<OrderDto>> {
+  async undoConfirmOrder(orderId: string, etag: string): Promise<ApiResult<OrderDto>> {
     return this.withEtag(firstValueFrom(this.http.post(
-      `${this.salesBase()}/api/orders/${id}/undo-confirm`,
+      `${this.salesBase()}/api/orders/${orderId}/undo-confirm`,
       {},
       this.textResponseOptions(undefined, this.authHeaders().set('If-Match', etag))
     )));
   }
 
-  async adjustInventory(productId: string, sku: string, quantityDelta: number): Promise<InventoryDto> {
+  async adjustInventory(productVariantId: string, sku: string, quantityDelta: number): Promise<InventoryDto> {
     return this.request<InventoryDto>(firstValueFrom(this.http.post(
-      `${this.inventoryBase()}/api/inventory/${productId}/adjust`,
+      `${this.inventoryBase()}/api/inventory/${productVariantId}/adjust`,
       { sku, quantityDelta },
       this.textResponseOptions()
     )), true);
   }
 
-  async getInventory(productId: string): Promise<InventoryDto> {
-    return this.request<InventoryDto>(
-      firstValueFrom(this.http.get(`${this.inventoryBase()}/api/inventory/${productId}`, this.textResponseOptions())),
-      true);
+  async getInventory(productVariantId: string): Promise<InventoryDto | null> {
+    try {
+      return await this.request<InventoryDto>(firstValueFrom(this.http.get(
+        `${this.inventoryBase()}/api/inventory/${productVariantId}`,
+        this.textResponseOptions()
+      )), true);
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 404) {
+        return null;
+      }
+
+      throw error;
+    }
+  }
+
+  async getReservation(orderId: string): Promise<ReservationDto | null> {
+    try {
+      return await this.request<ReservationDto>(firstValueFrom(this.http.get(
+        `${this.inventoryBase()}/api/inventory/reservations/${orderId}`,
+        this.textResponseOptions()
+      )), true);
+    } catch (error) {
+      if (error instanceof ApiClientError && error.status === 404) {
+        return null;
+      }
+
+      throw error;
+    }
   }
 
   consumeSuccessMessage(): string | null {
@@ -187,15 +298,15 @@ export class ApiService {
   private async withEtag<T>(responsePromise: Promise<HttpResponse<string>>): Promise<ApiResult<T>> {
     try {
       const response = await responsePromise;
-      const result = ApiResponseReader.readSuccess<T>(response);
-      const data = ApiResponseReader.ensureSuccess<T>(result, true);
-      this.recordSuccessMessage(result);
+      const apiResult = ApiResponseReader.readSuccess<T>(response);
+      const responseBody = ApiResponseReader.ensureSuccess<T>(apiResult, true);
+      this.recordSuccessMessage(apiResult);
       return {
-        body: data,
+        body: responseBody,
         etag: response.headers.get('ETag'),
         status: response.status,
-        message: result.message,
-        correlationId: result.correlationId
+        message: apiResult.message,
+        correlationId: apiResult.correlationId
       };
     } catch (error) {
       this.throwApiError(error);
@@ -207,13 +318,13 @@ export class ApiService {
   private async request<T>(responsePromise: Promise<HttpResponse<string>>, requireData: boolean): Promise<NonNullable<T> | void> {
     try {
       const response = await responsePromise;
-      const result = ApiResponseReader.readSuccess<T>(response);
-      this.recordSuccessMessage(result);
+      const apiResult = ApiResponseReader.readSuccess<T>(response);
+      this.recordSuccessMessage(apiResult);
       if (requireData) {
-        return ApiResponseReader.ensureSuccess<T>(result, true);
+        return ApiResponseReader.ensureSuccess<T>(apiResult, true);
       }
 
-      ApiResponseReader.ensureSuccess<T>(result, false);
+      ApiResponseReader.ensureSuccess<T>(apiResult, false);
       return;
     } catch (error) {
       this.throwApiError(error);
@@ -243,9 +354,9 @@ export class ApiService {
     };
   }
 
-  private recordSuccessMessage<T>(result: ApiClientResult<T>): void {
-    if (result.message && result.message.trim() !== '') {
-      this.lastSuccessMessage.set(result.message);
+  private recordSuccessMessage<T>(apiResult: ApiClientResult<T>): void {
+    if (apiResult.message && apiResult.message.trim() !== '') {
+      this.lastSuccessMessage.set(apiResult.message);
       return;
     }
 
@@ -292,9 +403,9 @@ export class ApiService {
 
   private params(values: Record<string, string | number | undefined | null>): HttpParams {
     let params = new HttpParams();
-    Object.entries(values).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && `${value}` !== '') {
-        params = params.set(key, `${value}`);
+    Object.entries(values).forEach(([key, parameterValue]) => {
+      if (parameterValue !== undefined && parameterValue !== null && `${parameterValue}` !== '') {
+        params = params.set(key, `${parameterValue}`);
       }
     });
     return params;

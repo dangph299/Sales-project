@@ -1,21 +1,29 @@
 using FluentValidation;
+using Sales.Application.Common.Extensions;
 using Sales.Application.Features.Products.Commands;
 
 namespace Sales.Application.Features.Products.Validators;
 
 /// <summary>
-/// Validates <see cref="CreateProduct"/>: SKU and name must be present and within length limits,
-/// and price must be non-negative.
+/// Validates <see cref="CreateProductCommand"/>.
 /// </summary>
-public sealed class CreateProductValidator : AbstractValidator<CreateProduct>
+public sealed class CreateProductValidator : AbstractValidator<CreateProductCommand>
 {
     /// <summary>
-    /// Configures the validation rules for <see cref="CreateProduct"/>.
+    /// Configures the validation rules for <see cref="CreateProductCommand"/>.
     /// </summary>
     public CreateProductValidator()
     {
-        RuleFor(x => x.Sku).NotEmpty().MaximumLength(64);
+        RuleFor(x => x.ProductCode).NotEmpty().MaximumLength(32);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
-        RuleFor(x => x.Price).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Description).MaximumLength(1000);
+        RuleFor(x => x.CategoryId).ValidAggregateId();
+        RuleForEach(x => x.Variants).ChildRules(variant =>
+        {
+            variant.RuleFor(x => x.ColorId).ValidAggregateId();
+            variant.RuleFor(x => x.SizeId).ValidAggregateId();
+            variant.RuleFor(x => x.Price).GreaterThanOrEqualTo(0);
+            variant.RuleFor(x => x.Status).NotEmpty().MaximumLength(32);
+        });
     }
 }

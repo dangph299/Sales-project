@@ -43,17 +43,37 @@ internal static class OrderCommandSupport
         CancellationToken cancellationToken)
     {
         var orderLineInputList = orderLineInputs.ToList();
-        var productsById = (await productRepository.GetByIdsAsync(
-            orderLineInputList.Select(x => x.ProductId),
+        var variantsById = (await productRepository.GetVariantsByIdsAsync(
+            orderLineInputList.Select(x => x.ProductVariantId),
+            cancellationToken)).ToDictionary(x => x.Id);
+        var productsById = (await productRepository.GetWithVariantsByIdsAsync(
+            variantsById.Values.Select(x => x.ProductId),
             cancellationToken)).ToDictionary(x => x.Id);
         var orderLineItems = new List<OrderLineItem>();
         foreach (var orderLineInput in orderLineInputList)
         {
-            if (!productsById.TryGetValue(orderLineInput.ProductId, out var product))
-                throw new NotFoundException(nameof(Product), orderLineInput.ProductId);
+            if (!variantsById.TryGetValue(orderLineInput.ProductVariantId, out var productVariant))
+                throw new NotFoundException(nameof(ProductVariant), orderLineInput.ProductVariantId);
+            if (!productsById.TryGetValue(productVariant.ProductId, out var product))
+                throw new NotFoundException(nameof(Product), productVariant.ProductId);
+
+            var color = await productRepository.GetColorAsync(productVariant.ColorId, cancellationToken) ??
+                throw new NotFoundException(nameof(Color), productVariant.ColorId);
+            var size = await productRepository.GetSizeAsync(productVariant.SizeId, cancellationToken) ??
+                throw new NotFoundException(nameof(Size), productVariant.SizeId);
 
             orderLineItems.Add(new OrderLineItem(
-                ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, product.IsActive),
+                ProductSnapshot.Create(
+                    product.Id,
+                    productVariant.Id,
+                    product.ProductCode,
+                    product.Name,
+                    productVariant.Sku,
+                    color.ColorCode,
+                    color.Name,
+                    size.Code,
+                    productVariant.Price,
+                    product.Status != EProductStatus.Draft && productVariant.Status == EProductVariantStatus.Published),
                 orderLineInput.Quantity,
                 orderLineInput.DiscountPercent ?? throw new DomainException("Discount is required.")));
         }
@@ -74,17 +94,37 @@ internal static class OrderCommandSupport
         CancellationToken cancellationToken)
     {
         var lines = orderLines.ToList();
-        var productsById = (await productRepository.GetByIdsAsync(
-            lines.Select(x => x.ProductId),
+        var variantsById = (await productRepository.GetVariantsByIdsAsync(
+            lines.Select(x => x.ProductVariantId),
             cancellationToken)).ToDictionary(x => x.Id);
+        if (variantsById.Count == 0)
+        {
+            var productsByLineProductId = (await productRepository.GetByIdsAsync(
+                lines.Select(x => x.ProductId),
+                cancellationToken)).ToDictionary(x => x.Id);
+            foreach (var line in lines)
+            {
+                if (!productsByLineProductId.TryGetValue(line.ProductId, out var product))
+                    throw new NotFoundException(nameof(Product), line.ProductId);
+
+                if (!product.IsActive)
+                {
+                    throw new DomainException("Only sellable products can be ordered.");
+                }
+            }
+
+            return;
+        }
 
         foreach (var line in lines)
         {
-            if (!productsById.TryGetValue(line.ProductId, out var product))
-                throw new NotFoundException(nameof(Product), line.ProductId);
+            if (!variantsById.TryGetValue(line.ProductVariantId, out var productVariant))
+                throw new NotFoundException(nameof(ProductVariant), line.ProductVariantId);
 
-            if (!product.IsActive)
-                throw new DomainException("Inactive products cannot be ordered.");
+            if (productVariant.Status != EProductVariantStatus.Published)
+            {
+                throw new DomainException("Only published product variants can be ordered.");
+            }
         }
     }
 }
