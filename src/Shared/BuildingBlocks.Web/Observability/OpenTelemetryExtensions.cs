@@ -34,9 +34,12 @@ public static class OpenTelemetryExtensions
 
     private static void ConfigureWebTracing(TracerProviderBuilder tracing, string activitySourceName)
     {
+        // RecordException covers exceptions that escape the pipeline entirely. Anything ApiExceptionHandler
+        // maps to a response is stopped before the instrumentation sees it, so that handler records the
+        // exception on the span itself.
         tracing
-            .AddAspNetCoreInstrumentation()
-            .AddHttpClientInstrumentation()
+            .AddAspNetCoreInstrumentation(options => options.RecordException = true)
+            .AddHttpClientInstrumentation(options => options.RecordException = true)
             .AddEntityFrameworkCoreInstrumentation()
             .AddSource(activitySourceName);
     }

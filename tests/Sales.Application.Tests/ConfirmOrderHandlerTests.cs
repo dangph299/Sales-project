@@ -32,8 +32,8 @@ public sealed class ConfirmOrderHandlerTests
     [Fact]
     public async Task Confirm_does_not_swallow_the_exception_when_the_order_is_missing()
     {
-        // ConfirmOrderHandler itself no longer catches/logs - ErrorLoggingBehavior owns the single
-        // Error log for every command, so the handler must let the exception propagate untouched.
+        // ConfirmOrderHandler itself must not catch/log: the boundary that dispatches the command owns
+        // the single failure log (ApiExceptionHandler over HTTP), so the exception must propagate untouched.
         var logger = new RecordingLogger<ConfirmOrderHandler>();
         var handler = new ConfirmOrderHandler(
             new FakeOrderRepository(null),

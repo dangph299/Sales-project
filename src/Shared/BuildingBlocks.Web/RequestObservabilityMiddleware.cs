@@ -1,7 +1,7 @@
-using System.Diagnostics;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using BuildingBlocks.Web.Extensions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Routing;
@@ -34,8 +34,8 @@ public sealed class RequestObservabilityMiddleware(RequestDelegate next, IConfig
     public async Task InvokeAsync(HttpContext context, IDiagnosticContext diagnosticContext)
     {
         var requestId = context.TraceIdentifier;
-        var traceId = Activity.Current?.TraceId.ToHexString();
-        var correlationId = ResolveCorrelationId(context, traceId);
+        var traceId = context.GetTraceId();
+        var correlationId = context.GetCorrelationId();
 
         using (LogContext.PushProperty("RequestId", requestId))
         using (LogContext.PushProperty("CorrelationId", correlationId))
@@ -95,13 +95,6 @@ public sealed class RequestObservabilityMiddleware(RequestDelegate next, IConfig
                 }
             }
         }
-    }
-
-    private static string ResolveCorrelationId(HttpContext context, string? traceId)
-    {
-        if (context.Request.Headers.TryGetValue("X-Correlation-Id", out var header) && !string.IsNullOrWhiteSpace(header))
-            return header.ToString();
-        return !string.IsNullOrEmpty(traceId) ? traceId : context.TraceIdentifier;
     }
 
     private static bool IsTextBody(string? contentType) =>

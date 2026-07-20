@@ -16,9 +16,7 @@ public static class DependencyInjection
     /// <returns>Service collection for chaining.</returns>
     public static IServiceCollection AddApplicationBuildingBlocks(this IServiceCollection services)
     {
-        services.TryAddSingleton<IApplicationExceptionClassifier, DefaultApplicationExceptionClassifier>();
         services.TryAddSingleton<IClock, SystemClock>();
-        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ErrorLoggingBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(PerformanceBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));

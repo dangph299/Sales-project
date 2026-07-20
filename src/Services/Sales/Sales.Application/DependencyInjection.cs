@@ -1,7 +1,6 @@
 using BuildingBlocks.Application.Mapping;
 using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
-using Sales.Application.Common.Exceptions;
 
 namespace Sales.Application;
 
@@ -12,7 +11,7 @@ public static class DependencyInjection
 {
     /// <summary>
     /// Registers the Sales MediatR handlers, FluentValidation validators, Mapster mapping registers,
-    /// and the shared MediatR pipeline behaviors (error logging, logging, then validation, in that
+    /// and the shared MediatR pipeline behaviors (logging, performance, then validation, in that
     /// wrapping order) used by every Sales command/query.
     /// </summary>
     /// <param name="services">Service collection.</param>
@@ -24,7 +23,6 @@ public static class DependencyInjection
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(salesApplicationAssembly));
         services.AddValidatorsFromAssembly(salesApplicationAssembly);
         services.AddApplicationMapping(salesApplicationAssembly);
-        services.AddSingleton<IApplicationExceptionClassifier, SalesApplicationExceptionClassifier>();
         services.AddApplicationBuildingBlocks();
         return services;
     }

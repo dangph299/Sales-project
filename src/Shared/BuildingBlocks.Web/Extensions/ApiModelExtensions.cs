@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using BuildingBlocks.Web.Models;
 using FluentValidation;
 using Microsoft.AspNetCore.Http;
@@ -40,7 +41,7 @@ public static class ApiModelExtensions
             StatusCodes.Status400BadRequest,
             "validation",
             "Request validation failed.",
-            context.HttpContext.TraceIdentifier,
+            context.HttpContext.GetTraceId(),
             context.HttpContext.GetCorrelationId(),
             null,
             validationErrors);
@@ -91,18 +92,34 @@ public static class ApiModelExtensions
     }
 
     /// <summary>
-    /// Gets the request correlation identifier from the standard correlation header.
+    /// Gets the W3C trace identifier for the current request. This is the single definition of
+    /// "TraceId" for the whole solution: the value returned to API clients, the value pushed onto
+    /// the Serilog request summary, and the value Serilog stamps on every log event from
+    /// <see cref="Activity"/> are all this one string, so a client-reported TraceId can be pasted
+    /// straight into Seq, Kibana, or any trace backend.
     /// </summary>
     /// <param name="context">Current HTTP context.</param>
-    /// <returns>The supplied correlation identifier, or <see langword="null"/> when none is present.</returns>
-    public static string? GetCorrelationId(this HttpContext context)
+    /// <returns>The 32-character W3C trace id, or the connection-scoped request id when no <see cref="Activity"/> is running.</returns>
+    public static string GetTraceId(this HttpContext context) =>
+        Activity.Current?.TraceId.ToHexString() ?? context.TraceIdentifier;
+
+    /// <summary>
+    /// Gets the request correlation identifier: the caller-supplied correlation header when present,
+    /// otherwise the request's own trace id so the value is never empty. This is the single
+    /// definition of "CorrelationId" for the whole solution - responses and logs both resolve it
+    /// here, so they can never disagree.
+    /// </summary>
+    /// <param name="context">Current HTTP context.</param>
+    /// <returns>The correlation identifier for this request.</returns>
+    public static string GetCorrelationId(this HttpContext context)
     {
-        if (context.Request.Headers.TryGetValue(CorrelationIdHeader, out var value))
+        if (context.Request.Headers.TryGetValue(CorrelationIdHeader, out var value)
+            && !string.IsNullOrWhiteSpace(value))
         {
             return value.ToString();
         }
 
-        return null;
+        return context.GetTraceId();
     }
 
     /// <summary>
