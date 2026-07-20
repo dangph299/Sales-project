@@ -11,7 +11,7 @@ public sealed class ConfirmOrderHandlerTests
     [Fact]
     public async Task Confirm_moves_order_to_pending_inventory_and_logs_start_and_completion()
     {
-        var product = Product.Create("sku", "Product", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
         var order = CreateOrder(product);
         var logger = new RecordingLogger<ConfirmOrderHandler>();
         var handler = new ConfirmOrderHandler(
@@ -69,9 +69,9 @@ public sealed class ConfirmOrderHandlerTests
     [Fact]
     public async Task Confirm_rejects_when_an_order_line_product_was_deactivated_after_draft_creation()
     {
-        var product = Product.Create("sku", "Product", 100);
+        var product = ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
         var order = CreateOrder(product);
-        product.Update(product.Name, product.Price.Amount, isActive: false);
+        product.Discontinue();
         var logger = new RecordingLogger<ConfirmOrderHandler>();
         var handler = new ConfirmOrderHandler(
             new FakeOrderRepository(order),
@@ -88,10 +88,10 @@ public sealed class ConfirmOrderHandlerTests
 
     private static Order CreateOrder(Product? product = null)
     {
-        product ??= Product.Create("sku", "Product", 100);
+        product ??= ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
         return Order.Create(
             CustomerSnapshot.Create(Guid.NewGuid(), "A", "0901234567"),
-            [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, product.Price, true), 1, 0)]);
+            [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, true), 1, 0)]);
     }
 
     private sealed class FakeOrderRepository(Order? order) : IOrderRepository

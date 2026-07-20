@@ -94,6 +94,21 @@ public sealed class CustomersController : ControllerBase
     }
 
     /// <summary>
+    /// Updates a customer's lifecycle status.
+    /// </summary>
+    /// <param name="id">Customer identifier.</param>
+    /// <param name="body">Status change.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the updated customer.</returns>
+    [HttpPut("{id:guid}/status")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateCustomerStatusRequestDto body, CancellationToken ct)
+    {
+        var customer = await _sender.Send(new UpdateCustomerStatusCommand(id, body.Status), ct);
+        return this.ToOkResponse(customer);
+    }
+
+    /// <summary>
     /// Soft-deletes an existing customer.
     /// </summary>
     /// <param name="id">Customer identifier.</param>

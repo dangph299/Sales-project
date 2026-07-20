@@ -31,6 +31,11 @@ public sealed class CreateOrderHandler(
     {
         var customer = await customerRepository.GetByIdAsync(request.CustomerId, cancellationToken) ??
             throw new NotFoundException(nameof(Customer), request.CustomerId);
+        if (customer.Status != ECustomerStatus.Normal)
+        {
+            throw new DomainException("Only normal customers can create orders.");
+        }
+
         var orderLineItems = await productRepository.Materialize(request.Lines, cancellationToken);
         var customerSnapshot = CustomerSnapshot.Create(customer.Id, customer.Name, customer.Phone);
         var order = Order.Create(customerSnapshot, orderLineItems);

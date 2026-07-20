@@ -1,0 +1,1 @@
+export const uncategorizedCategoryId = '30000000-0000-0000-0000-000000000001';

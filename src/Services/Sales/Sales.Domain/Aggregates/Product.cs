@@ -1,106 +1,200 @@
 namespace Sales.Domain;
 
 /// <summary>
-/// Aggregate root for a catalog product. Owns invariants around SKU/name/price validity and raises
-/// the domain events consumed for auditing.
+/// Aggregate root for shared catalog product information. Variants owned by this aggregate carry
+/// purchasable SKU, color, size, and price data.
 /// </summary>
 public sealed class Product : AggregateRoot<Guid>
 {
+    private readonly List<ProductVariant> _variants = [];
+
     private Product() { }
-    private Product(Guid id, string sku, string name, Money price)
+
+    private Product(Guid id, string productCode, string name, string? description, Guid categoryId)
     {
         Id = id;
-        Sku = NormalizeSku(sku);
-        Rename(name);
-        Price = price;
-        IsActive = true;
+        ProductCode = ProductCodeRules.Normalize(productCode, "Product code");
+        ChangeDetails(name, description, categoryId);
+        Status = EProductStatus.Draft;
+        CreatedAt = DateTimeOffset.UtcNow;
     }
 
-    /// <summary>
-    /// Gets the product's normalized (trimmed, upper-invariant) SKU.
-    /// </summary>
-    public string Sku { get; private set; } = null!;
+    public string ProductCode { get; private set; } = null!;
 
-    /// <summary>
-    /// Gets the product's name.
-    /// </summary>
     public string Name { get; private set; } = null!;
 
-    /// <summary>
-    /// Gets the product's unit price.
-    /// </summary>
-    public Money Price { get; private set; }
+    public string? Description { get; private set; }
 
-    /// <summary>
-    /// Gets whether the product can currently be ordered.
-    /// </summary>
-    public bool IsActive { get; private set; }
+    public Guid CategoryId { get; private set; }
 
-    /// <summary>
-    /// Gets whether the product has been soft-deleted.
-    /// </summary>
+    public EProductStatus Status { get; private set; }
+
+    public DateTimeOffset CreatedAt { get; private set; }
+
+    public string? CreatedBy { get; private set; }
+
+    public string? UpdatedBy { get; private set; }
+
     public bool IsDelete { get; private set; }
 
-    /// <summary>
-    /// Gets the user that soft-deleted this product, or <see langword="null"/> if it is active.
-    /// </summary>
     public string? DeleteByUser { get; private set; }
 
-    /// <summary>
-    /// Gets the UTC instant this product was soft-deleted, or <see langword="null"/> if it is active.
-    /// </summary>
+    public string? DeletedBy { get; private set; }
+
     public DateTimeOffset? DeletedAt { get; private set; }
 
-    /// <summary>
-    /// Creates a new <see cref="Product"/> aggregate, active by default, and raises
-    /// <see cref="ProductCreatedDomainEvent"/>.
-    /// </summary>
-    /// <param name="sku">Product's SKU.</param>
-    /// <param name="name">Product's name.</param>
-    /// <param name="price">Product's unit price in VND.</param>
-    /// <returns>Newly created product.</returns>
-    /// <exception cref="DomainException">Thrown when <paramref name="sku"/>/<paramref name="name"/> is empty/whitespace or <paramref name="price"/> is negative.</exception>
-    public static Product Create(string sku, string name, decimal price)
+    public IReadOnlyCollection<ProductVariant> Variants => _variants.AsReadOnly();
+
+    public string Sku => ActiveVariant?.Sku ?? ProductCode;
+
+    public bool IsActive => Status == EProductStatus.Published && !IsDelete;
+
+    public static Product Create(string productCode, string name, string? description, Guid categoryId)
     {
-        var product = new Product(Guid.NewGuid(), sku, name, Money.Vnd(price));
-        product.Raise(new ProductCreatedDomainEvent(product.Id, product.Sku, product.Name, product.Price.Amount));
+        var product = new Product(Guid.NewGuid(), productCode, name, description, categoryId);
+        product.Raise(new ProductCreatedDomainEvent(product.Id, product.ProductCode, product.Name, product.CategoryId));
         return product;
     }
 
-    /// <summary>
-    /// Updates the product's name, price, and active flag. Raises <see cref="ProductUpdatedDomainEvent"/>
-    /// and increments <see cref="AggregateRoot.Version"/> only if a value actually changed.
-    /// </summary>
-    /// <param name="name">Product's new name.</param>
-    /// <param name="price">Product's new unit price in VND.</param>
-    /// <param name="isActive">Whether the product should be active after the update.</param>
-    /// <exception cref="DomainException">Thrown when <paramref name="name"/> is empty/whitespace or <paramref name="price"/> is negative.</exception>
-    public void Update(string name, decimal price, bool isActive)
+    public void Update(string name, string? description, Guid categoryId)
     {
         EnsureNotDeleted();
+
         var oldName = Name;
-        var oldPrice = Price.Amount;
-        var oldIsActive = IsActive;
-        Rename(name);
-        Price = Money.Vnd(price);
-        IsActive = isActive;
-        if (oldName == Name && oldPrice == Price.Amount && oldIsActive == IsActive) return;
+        var oldDescription = Description;
+        var oldCategoryId = CategoryId;
+        var oldStatus = Status;
+
+        ChangeDetails(name, description, categoryId);
+
+        if (oldName == Name && oldDescription == Description && oldCategoryId == CategoryId && oldStatus == Status)
+        {
+            return;
+        }
+
         Touch();
-        Raise(new ProductUpdatedDomainEvent(Id, oldName, oldPrice, oldIsActive, Name, Price.Amount, IsActive));
+        Raise(new ProductUpdatedDomainEvent(Id, oldName, oldCategoryId, oldStatus, Name, CategoryId, Status));
     }
 
-    /// <summary>
-    /// Soft-deletes the product and records the actor responsible for the deletion.
-    /// </summary>
-    /// <param name="deleteByUser">User identifier responsible for the deletion.</param>
+    public void Publish()
+    {
+        EnsureNotDeleted();
+        if (Status == EProductStatus.Published) return;
+        if (Status != EProductStatus.Draft) throw new DomainException("Only draft products can be published.");
+
+        Status = EProductStatus.Published;
+        Touch();
+    }
+
+    public void Discontinue()
+    {
+        EnsureNotDeleted();
+        if (Status == EProductStatus.Discontinued) return;
+        if (Status != EProductStatus.Published) throw new DomainException("Only published products can be discontinued.");
+
+        Status = EProductStatus.Discontinued;
+        Touch();
+    }
+
+    public ProductVariant AddVariant(Color color, Size size, decimal price, EProductVariantStatus status = EProductVariantStatus.Draft)
+    {
+        EnsureNotDeleted();
+        EnsureCanCreateVariant();
+        ArgumentNullException.ThrowIfNull(color);
+        ArgumentNullException.ThrowIfNull(size);
+        EnsureVariantDoesNotExist(color.Id, size.Id, variantIdToIgnore: null);
+
+        var variant = ProductVariant.Create(Id, ProductCode, color, size, price, status);
+        _variants.Add(variant);
+        Touch();
+        return variant;
+    }
+
+    public void UpdateVariant(Guid variantId, Color color, Size size, decimal price, EProductVariantStatus status)
+    {
+        EnsureNotDeleted();
+        ArgumentNullException.ThrowIfNull(color);
+        ArgumentNullException.ThrowIfNull(size);
+
+        var variant = FindVariant(variantId);
+        if (status == EProductVariantStatus.Published)
+        {
+            EnsureCanPublishVariant();
+        }
+
+        EnsureVariantDoesNotExist(color.Id, size.Id, variantId);
+        variant.Update(color, size, price, status);
+        Touch();
+    }
+
+    public void PublishVariant(Guid variantId)
+    {
+        EnsureNotDeleted();
+        EnsureCanPublishVariant();
+        FindVariant(variantId).Publish();
+        Touch();
+    }
+
+    public void DiscontinueVariant(Guid variantId)
+    {
+        EnsureNotDeleted();
+        FindVariant(variantId).Discontinue();
+        Touch();
+    }
+
+    public void DeactivateVariant(Guid variantId)
+    {
+        DiscontinueVariant(variantId);
+    }
+
+    public ProductVariant GetVariant(Guid variantId)
+    {
+        return FindVariant(variantId);
+    }
+
     public void Delete(string deleteByUser)
     {
         if (IsDelete) return;
+        var actor = string.IsNullOrWhiteSpace(deleteByUser) ? "system" : deleteByUser.Trim();
         IsDelete = true;
-        DeleteByUser = string.IsNullOrWhiteSpace(deleteByUser) ? "system" : deleteByUser.Trim();
+        DeleteByUser = actor;
+        DeletedBy = actor;
         DeletedAt = DateTimeOffset.UtcNow;
-        IsActive = false;
+        if (Status == EProductStatus.Published)
+        {
+            Status = EProductStatus.Discontinued;
+        }
+
         Touch();
+    }
+
+    private ProductVariant? ActiveVariant =>
+        _variants
+            .Where(x => x.Status == EProductVariantStatus.Published && !x.IsDelete)
+            .OrderBy(x => x.Sku)
+            .FirstOrDefault();
+
+    private void ChangeDetails(string name, string? description, Guid categoryId)
+    {
+        if (categoryId == Guid.Empty) throw new DomainException("Product category is required.");
+
+        Name = string.IsNullOrWhiteSpace(name) ? throw new DomainException("Product name is required.") : name.Trim();
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        CategoryId = categoryId;
+    }
+
+    private ProductVariant FindVariant(Guid variantId)
+    {
+        return _variants.SingleOrDefault(x => x.Id == variantId) ??
+            throw new DomainException("Product variant was not found.");
+    }
+
+    private void EnsureVariantDoesNotExist(Guid colorId, Guid sizeId, Guid? variantIdToIgnore)
+    {
+        if (_variants.Any(x => x.ColorId == colorId && x.SizeId == sizeId && x.Id != variantIdToIgnore && !x.IsDelete))
+        {
+            throw new DomainException("A variant with the same product, color, and size already exists.");
+        }
     }
 
     private void EnsureNotDeleted()
@@ -108,11 +202,19 @@ public sealed class Product : AggregateRoot<Guid>
         if (IsDelete) throw new DomainException("Deleted products cannot be changed.");
     }
 
-    private void Rename(string name)
+    private void EnsureCanCreateVariant()
     {
-        Name = string.IsNullOrWhiteSpace(name) ? throw new DomainException("Product name is required.") : name.Trim();
+        if (Status != EProductStatus.Published)
+        {
+            throw new DomainException("Only published products can have variants created.");
+        }
     }
 
-    private static string NormalizeSku(string sku) =>
-        string.IsNullOrWhiteSpace(sku) ? throw new DomainException("SKU is required.") : sku.Trim().ToUpperInvariant();
+    private void EnsureCanPublishVariant()
+    {
+        if (Status != EProductStatus.Published)
+        {
+            throw new DomainException("Only variants of published products can be published.");
+        }
+    }
 }

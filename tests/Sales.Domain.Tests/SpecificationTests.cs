@@ -39,10 +39,10 @@ public sealed class SpecificationTests
     [Fact]
     public void Active_product_matches_only_enabled_products_that_are_not_deleted()
     {
-        var active = Product.Create("sku-1", "Keyboard", 100);
-        var disabled = Product.Create("sku-2", "Mouse", 50);
-        var deleted = Product.Create("sku-3", "Monitor", 200);
-        disabled.Update(disabled.Name, disabled.Price.Amount, false);
+        var active = ProductTestFactory.CreatePublishedProduct("sku-1", "Keyboard", 100);
+        var disabled = ProductTestFactory.CreatePublishedProduct("sku-2", "Mouse", 50);
+        var deleted = ProductTestFactory.CreatePublishedProduct("sku-3", "Monitor", 200);
+        disabled.Discontinue();
         deleted.Delete("admin");
 
         var result = new[] { active, disabled, deleted }.AsQueryable()

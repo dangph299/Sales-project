@@ -116,8 +116,8 @@ public static class DependencyInjection
                 .AddProducer("sales-outbox", producer => producer.AddMiddlewares(x => x.AddSerializer<JsonCoreSerializer>()))
                 .AddConsumer(consumer => consumer
                     .Topics([
-                        KafkaTopics.StockReserved, 
-                        KafkaTopics.StockRejected, 
+                        KafkaTopics.StockReserved,
+                        KafkaTopics.StockRejected,
                         KafkaTopics.StockReleased
                     ])
                     .WithGroupId(KafkaConsumerGroups.SalesInventoryResults)

@@ -9,7 +9,7 @@ public sealed class ReadServiceSpecificationTests
     public async Task Product_get_returns_active_product()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
-        var active = Product.Create("sku-active", "Active", 100);
+        var active = ProductTestFactory.CreatePublishedProduct("sku-active", "Active", 100);
         await fixture.SeedAsync(active);
 
         var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
@@ -24,8 +24,8 @@ public sealed class ReadServiceSpecificationTests
     public async Task Product_get_excludes_inactive_products()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
-        var inactive = Product.Create("sku-inactive", "Inactive", 100);
-        inactive.Update(inactive.Name, inactive.Price.Amount, false);
+        var inactive = ProductTestFactory.CreatePublishedProduct("sku-inactive", "Inactive", 100);
+        inactive.Discontinue();
         await fixture.SeedAsync(inactive);
 
         var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
@@ -39,7 +39,7 @@ public sealed class ReadServiceSpecificationTests
     public async Task Product_get_excludes_deleted_products()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
-        var deleted = Product.Create("sku-deleted", "Deleted", 100);
+        var deleted = ProductTestFactory.CreatePublishedProduct("sku-deleted", "Deleted", 100);
         deleted.Delete("admin");
         await fixture.SeedAsync(deleted);
 
@@ -54,9 +54,9 @@ public sealed class ReadServiceSpecificationTests
     public async Task Product_search_includes_inactive_products()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
-        var active = Product.Create("sku-active", "Keyboard", 100);
-        var inactive = Product.Create("sku-inactive", "Keyboard Disabled", 100);
-        inactive.Update(inactive.Name, inactive.Price.Amount, false);
+        var active = ProductTestFactory.CreatePublishedProduct("sku-active", "Keyboard", 100);
+        var inactive = ProductTestFactory.CreatePublishedProduct("sku-inactive", "Keyboard Disabled", 100);
+        inactive.Discontinue();
         await fixture.SeedAsync(active, inactive);
 
         var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
@@ -71,8 +71,8 @@ public sealed class ReadServiceSpecificationTests
     public async Task Product_search_excludes_deleted_products()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
-        var active = Product.Create("sku-active", "Monitor", 100);
-        var deleted = Product.Create("sku-deleted", "Monitor Deleted", 100);
+        var active = ProductTestFactory.CreatePublishedProduct("sku-active", "Monitor", 100);
+        var deleted = ProductTestFactory.CreatePublishedProduct("sku-deleted", "Monitor Deleted", 100);
         deleted.Delete("admin");
         await fixture.SeedAsync(active, deleted);
 

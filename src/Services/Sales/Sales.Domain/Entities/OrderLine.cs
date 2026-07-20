@@ -12,8 +12,13 @@ public sealed class OrderLine : Entity<Guid>
         Id = Guid.NewGuid();
         OrderId = orderId;
         ProductId = product.Id;
+        ProductVariantId = product.ProductVariantId;
+        ProductCode = product.ProductCode;
         Sku = product.Sku;
         ProductName = product.Name;
+        ColorCode = product.ColorCode;
+        ColorName = product.ColorName;
+        SizeCode = product.SizeCode;
         UnitPrice = product.UnitPrice;
         Quantity = quantity;
         DiscountPercent = discountPercent;
@@ -29,6 +34,10 @@ public sealed class OrderLine : Entity<Guid>
     /// </summary>
     public Guid ProductId { get; private set; }
 
+    public Guid ProductVariantId { get; private set; }
+
+    public string ProductCode { get; private set; } = null!;
+
     /// <summary>
     /// Gets the product's SKU as it was at the time this line was created or last replaced.
     /// </summary>
@@ -38,6 +47,12 @@ public sealed class OrderLine : Entity<Guid>
     /// Gets the product's name as it was at the time this line was created or last replaced.
     /// </summary>
     public string ProductName { get; private set; } = null!;
+
+    public string ColorCode { get; private set; } = null!;
+
+    public string ColorName { get; private set; } = null!;
+
+    public string SizeCode { get; private set; } = null!;
 
     /// <summary>
     /// Gets the product's unit price as it was at the time this line was created or last replaced.
@@ -70,8 +85,13 @@ public sealed class OrderLine : Entity<Guid>
     {
         Validate(quantity, discountPercent);
         ProductId = product.Id;
+        ProductVariantId = product.ProductVariantId;
+        ProductCode = product.ProductCode;
         Sku = product.Sku;
         ProductName = product.Name;
+        ColorCode = product.ColorCode;
+        ColorName = product.ColorName;
+        SizeCode = product.SizeCode;
         UnitPrice = product.UnitPrice;
         Quantity = quantity;
         DiscountPercent = discountPercent;

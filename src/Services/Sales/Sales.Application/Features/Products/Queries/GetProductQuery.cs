@@ -7,4 +7,4 @@ namespace Sales.Application.Features.Products.Queries;
 /// to the database.
 /// </summary>
 /// <param name="Id">Product identifier.</param>
-public sealed record GetProduct(Guid Id) : IQuery<ProductDto>;
+public sealed record GetProductQuery(Guid Id) : IQuery<ProductDto>;

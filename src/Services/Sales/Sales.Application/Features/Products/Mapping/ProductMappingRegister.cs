@@ -13,8 +13,25 @@ public sealed class ProductMappingRegister : IRegister
     public void Register(TypeAdapterConfig config)
     {
         config.NewConfig<Product, ProductDto>()
-            .Map(
-                destination => destination.Price,
-                source => source.Price.Amount);
+            .MapWith(source => new ProductDto(
+                source.Id,
+                source.Sku,
+                source.Name,
+                null,
+                null,
+                source.IsActive,
+                source.Version,
+                source.UpdatedAt,
+                source.IsDelete,
+                source.DeleteByUser,
+                source.DeletedAt)
+            {
+                ProductCode = source.ProductCode,
+                Description = source.Description,
+                CategoryId = source.CategoryId,
+                Status = source.Status.ToString(),
+                Category = new ProductCategoryDto(Guid.Empty, string.Empty, string.Empty),
+                Variants = Array.Empty<ProductVariantDto>()
+            });
     }
 }

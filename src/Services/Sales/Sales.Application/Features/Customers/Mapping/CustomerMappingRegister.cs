@@ -12,6 +12,12 @@ public sealed class CustomerMappingRegister : IRegister
     /// <inheritdoc/>
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<Customer, CustomerDto>();
+        config.NewConfig<Customer, CustomerDto>()
+            .Map(
+                destination => destination.Phone,
+                source => source.NormalizedPhone)
+            .Map(
+                destination => destination.Status,
+                source => source.Status.ToString());
     }
 }

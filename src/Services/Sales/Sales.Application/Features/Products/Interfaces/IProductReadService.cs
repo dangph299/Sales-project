@@ -22,5 +22,27 @@ public interface IProductReadService
     /// <param name="page">1-based page number.</param>
     /// <param name="pageSize">Maximum page size.</param>
     /// <returns>A page of matching products.</returns>
-    Task<PagedResult<ProductDto>> SearchAsync(string? name, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<PagedResult<ProductDto>> SearchAsync(
+        string? productCode,
+        string? name,
+        Guid? categoryId,
+        string? sku,
+        Guid? colorId,
+        Guid? sizeId,
+        string? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        return SearchAsync(name, page, pageSize, cancellationToken);
+    }
+
+    /// <summary>
+    /// Searches products by name.
+    /// </summary>
+    Task<PagedResult<ProductDto>> SearchAsync(
+        string? name,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }

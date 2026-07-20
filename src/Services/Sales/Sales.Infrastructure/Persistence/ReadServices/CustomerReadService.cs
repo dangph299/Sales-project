@@ -34,7 +34,7 @@ public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICu
             var normalized = new string(phone.Where(char.IsDigit).ToArray());
             query = phoneMatch == PhoneMatch.Suffix
                 ? query.Where(x => x.ReversedPhone.StartsWith(new string(normalized.Reverse().ToArray())))
-                : query.Where(x => x.Phone.StartsWith(normalized));
+                : query.Where(x => x.NormalizedPhone.StartsWith(normalized));
         }
         var total = await query.LongCountAsync(ct);
         var customers = await query.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);

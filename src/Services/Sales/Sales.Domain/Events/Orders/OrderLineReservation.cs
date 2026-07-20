@@ -4,7 +4,7 @@ namespace Sales.Domain;
 /// Describes the stock Inventory must reserve for one order line, as carried by
 /// <see cref="OrderConfirmationRequestedDomainEvent"/>.
 /// </summary>
-/// <param name="ProductId">Product to reserve.</param>
+/// <param name="ProductVariantId">Product variant to reserve.</param>
 /// <param name="Sku">Product's SKU at the time the order line was created.</param>
 /// <param name="Quantity">Quantity to reserve.</param>
-public sealed record OrderLineReservation(Guid ProductId, string Sku, int Quantity);
+public sealed record OrderLineReservation(Guid ProductVariantId, string Sku, int Quantity);

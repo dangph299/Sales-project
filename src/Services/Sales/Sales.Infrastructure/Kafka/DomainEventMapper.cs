@@ -34,7 +34,7 @@ internal static class DomainEventMapper
 
     private static (string Topic, object Payload) MapOrderConfirmationRequested(OrderConfirmationRequestedDomainEvent e)
     {
-        var lines = e.Lines.Select(x => new OrderLineIntegration(x.ProductId, x.Sku, x.Quantity)).ToArray();
+        var lines = e.Lines.Select(x => new OrderLineIntegration(x.ProductVariantId, x.Sku, x.Quantity)).ToArray();
         var integrationEvent = new OrderConfirmationRequested(e.OrderId, lines);
         return (KafkaTopics.OrderConfirmationRequested, integrationEvent);
     }

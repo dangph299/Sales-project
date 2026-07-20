@@ -1,4 +1,5 @@
 import { expect, request as playwrightRequest, test, type APIRequestContext } from '@playwright/test';
+import { blackColorId, mediumSizeId, uncategorizedCategoryId } from './reference-data';
 
 const inventoryUrl = process.env.INVENTORY_API_URL ?? 'http://localhost:5001';
 
@@ -15,14 +16,21 @@ test('order can be confirmed again after undo confirm', async ({ request }) => {
 
     const productResponse = await request.post('/api/products/', {
       headers: authHeaders,
-      data: { sku, name: `Reconfirm Product ${runId}`, price: 100_000 }
+      data: {
+        productCode: sku,
+        name: `Reconfirm Product ${runId}`,
+        description: null,
+        categoryId: uncategorizedCategoryId,
+        variants: [{ colorId: blackColorId, sizeId: mediumSizeId, price: 100_000, status: 'Published' }]
+      }
     });
     expect(productResponse.status(), await productResponse.text()).toBe(201);
     const product = await productResponse.json();
+    const productVariant = product.variants[0];
 
-    const stockResponse = await inventory.post(`/api/inventory/${product.id}/adjust`, {
+    const stockResponse = await inventory.post(`/api/inventory/${productVariant.id}/adjust`, {
       headers: authHeaders,
-      data: { sku, quantityDelta: 10 }
+      data: { sku: productVariant.sku, quantityDelta: 10 }
     });
     expect(stockResponse.ok(), await stockResponse.text()).toBeTruthy();
 
@@ -37,7 +45,7 @@ test('order can be confirmed again after undo confirm', async ({ request }) => {
       headers: authHeaders,
       data: {
         customerId: customer.id,
-        lines: [{ productId: product.id, quantity: 2, discountPercent: 0 }]
+        lines: [{ productVariantId: productVariant.id, quantity: 2, discountPercent: 0 }]
       }
     });
     expect(orderResponse.status(), await orderResponse.text()).toBe(201);

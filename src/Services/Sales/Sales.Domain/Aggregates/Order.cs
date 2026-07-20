@@ -72,7 +72,7 @@ public sealed class Order : AggregateRoot<Guid>
     /// <param name="customer">A snapshot of the customer the order is placed for.</param>
     /// <param name="lines">Initial lines to add. Must contain at least one line, with no product repeated.</param>
     /// <returns>Newly created draft order.</returns>
-    /// <exception cref="DomainException">Thrown when <paramref name="lines"/> is empty or contains the same product more than once.</exception>
+    /// <exception cref="DomainException">Thrown when <paramref name="lines"/> is empty or contains the same product variant more than once.</exception>
     public static Order Create(CustomerSnapshot customer, IEnumerable<OrderLineItem> lines)
     {
         var order = new Order(Guid.NewGuid(), customer);
@@ -85,8 +85,8 @@ public sealed class Order : AggregateRoot<Guid>
     /// Replaces this order's lines with a new set. Only allowed while the order is
     /// <see cref="OrderStatus.Draft"/>. Raises <see cref="OrderLinesReplacedDomainEvent"/>.
     /// </summary>
-    /// <param name="lines">New lines to set. Must contain at least one line, with no product repeated.</param>
-    /// <exception cref="DomainException">Thrown when the order is not in the <see cref="OrderStatus.Draft"/> status, or <paramref name="lines"/> is empty or contains the same product more than once.</exception>
+    /// <param name="lines">New lines to set. Must contain at least one line, with no product variant repeated.</param>
+    /// <exception cref="DomainException">Thrown when the order is not in the <see cref="OrderStatus.Draft"/> status, or <paramref name="lines"/> is empty or contains the same product variant more than once.</exception>
     public void ReplaceLines(IEnumerable<OrderLineItem> lines)
     {
         EnsureDraft();
@@ -98,15 +98,15 @@ public sealed class Order : AggregateRoot<Guid>
     {
         var requested = lines.ToList();
         if (requested.Count == 0) throw new DomainException("Order needs at least one line.");
-        if (requested.Select(x => x.Product.Id).Distinct().Count() != requested.Count)
-            throw new DomainException("A product can occur only once in an order.");
+        if (requested.Select(x => x.Product.ProductVariantId).Distinct().Count() != requested.Count)
+            throw new DomainException("A product variant can occur only once in an order.");
 
-        foreach (var line in _lines.Where(existing => requested.All(x => x.Product.Id != existing.ProductId)).ToArray())
+        foreach (var line in _lines.Where(existing => requested.All(x => x.Product.ProductVariantId != existing.ProductVariantId)).ToArray())
             _lines.Remove(line);
 
         foreach (var (product, quantity, discountPercent) in requested)
         {
-            var existing = _lines.SingleOrDefault(x => x.ProductId == product.Id);
+            var existing = _lines.SingleOrDefault(x => x.ProductVariantId == product.ProductVariantId);
             if (existing is null) _lines.Add(OrderLine.Create(Id, product, quantity, discountPercent));
             else existing.ReplaceWith(product, quantity, discountPercent);
         }
@@ -125,7 +125,7 @@ public sealed class Order : AggregateRoot<Guid>
         Status = OrderStatus.PendingInventory;
         Touch();
         Raise(new OrderConfirmationRequestedDomainEvent(Id,
-            _lines.Select(x => new OrderLineReservation(x.ProductId, x.Sku, x.Quantity)).ToArray()));
+            _lines.Select(x => new OrderLineReservation(x.ProductVariantId, x.Sku, x.Quantity)).ToArray()));
     }
 
     /// <summary>

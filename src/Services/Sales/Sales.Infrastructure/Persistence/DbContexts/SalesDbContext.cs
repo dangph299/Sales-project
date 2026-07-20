@@ -19,6 +19,18 @@ public sealed class SalesDbContext(
     /// <summary>Products in the sales catalog.</summary>
     public DbSet<Product> Products => Set<Product>();
 
+    /// <summary>Product categories.</summary>
+    public DbSet<Category> Categories => Set<Category>();
+
+    /// <summary>Product variants.</summary>
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+
+    /// <summary>Reference product colors.</summary>
+    public DbSet<Color> Colors => Set<Color>();
+
+    /// <summary>Reference product sizes.</summary>
+    public DbSet<Size> Sizes => Set<Size>();
+
     /// <summary>Sales customers.</summary>
     public DbSet<Customer> Customers => Set<Customer>();
 
