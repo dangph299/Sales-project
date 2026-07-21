@@ -5,6 +5,7 @@ import { ApiResult } from '../../../../core/api/api-result.model';
 import { PagedResult } from '../../../../core/api/paged-result.model';
 import { CustomerLookupApiService } from '../../../common/api/customer-lookup-api.service';
 import { ProductLookupApiService } from '../../../common/api/product-lookup-api.service';
+import { ProductLookupResponse } from '../../../common/contracts/product-lookup.response';
 import { OrderApiService } from '../../api/order-api.service';
 import { OrderResponse } from '../../api/responses/order.response';
 import { OrderStatusChangedNotification } from '../../models/order-status-changed.model';
@@ -17,10 +18,12 @@ import { OrderListPageComponent } from './order-list-page.component';
 describe('OrderListPageComponent realtime behavior', () => {
   let fixture: ComponentFixture<OrderListPageComponent>;
   let orderApi: FakeOrderApiService;
+  let productLookup: FakeProductLookupApiService;
   let realtime: FakeOrderRealtimeService;
 
   beforeEach(async () => {
     orderApi = new FakeOrderApiService();
+    productLookup = new FakeProductLookupApiService();
     realtime = new FakeOrderRealtimeService();
 
     await TestBed.configureTestingModule({
@@ -30,7 +33,7 @@ describe('OrderListPageComponent realtime behavior', () => {
         { provide: OrderApiService, useValue: orderApi },
         { provide: OrderRealtimeService, useValue: realtime },
         { provide: CustomerLookupApiService, useValue: new FakeLookupApiService() },
-        { provide: ProductLookupApiService, useValue: new FakeLookupApiService() }
+        { provide: ProductLookupApiService, useValue: productLookup }
       ]
     }).compileComponents();
 
@@ -88,6 +91,20 @@ describe('OrderListPageComponent realtime behavior', () => {
 
     expect(orderApi.getByIdCount).toBe(1);
   });
+
+  it('shows discontinued variants in the order picker for sell-through', async () => {
+    fixture.componentInstance.products.set([productWithVariants()]);
+
+    const variants = fixture.componentInstance.sellableVariants().map(option => option.variant.status);
+
+    expect(variants).toEqual(['Published', 'Discontinued']);
+  });
+
+  it('does not restrict order product lookup to published product status', async () => {
+    await fixture.componentInstance.loadProducts();
+
+    expect(productLookup.lastFilters?.status).toBe('');
+  });
 });
 
 class FakeOrderApiService {
@@ -125,6 +142,15 @@ class FakeOrderApiService {
 class FakeLookupApiService {
   search(): Promise<PagedResult<never>> {
     return Promise.resolve(emptyPage<never>());
+  }
+}
+
+class FakeProductLookupApiService {
+  lastFilters: { status?: string } | null = null;
+
+  search(filters: { status?: string } = {}): Promise<PagedResult<ProductLookupResponse>> {
+    this.lastFilters = filters;
+    return Promise.resolve(emptyPage<ProductLookupResponse>());
   }
 }
 
@@ -183,4 +209,34 @@ function emptyPage<T>(): PagedResult<T> {
 
 function delay(milliseconds: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, milliseconds));
+}
+
+function productWithVariants(): ProductLookupResponse {
+  return {
+    id: '44444444-4444-4444-4444-444444444444',
+    sku: 'PRD001-BLK-M',
+    productCode: 'PRD001',
+    name: 'Product',
+    status: 'Draft',
+    variants: [
+      {
+        id: '55555555-5555-5555-5555-555555555555',
+        sku: 'PRD001-BLK-M',
+        price: 100,
+        status: 'Published'
+      },
+      {
+        id: '66666666-6666-6666-6666-666666666666',
+        sku: 'PRD001-WHT-M',
+        price: 100,
+        status: 'Discontinued'
+      },
+      {
+        id: '77777777-7777-7777-7777-777777777777',
+        sku: 'PRD001-RED-M',
+        price: 100,
+        status: 'Draft'
+      }
+    ]
+  };
 }

@@ -200,6 +200,11 @@ public sealed class Order : AggregateRoot<Guid>
     public void UndoConfirmed()
     {
         if (Status != OrderStatus.Confirmed) throw new DomainException("Only confirmed orders can be undone.");
+        if (_lines.Any(x => x.IsSellThroughDiscontinued))
+        {
+            throw new DomainException("Orders confirmed with discontinued product variants cannot be undone.");
+        }
+
         Status = OrderStatus.Draft;
         Touch();
         Raise(new OrderUndoComfirmedDomainEvent(Id));

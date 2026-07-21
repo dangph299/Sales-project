@@ -217,12 +217,18 @@
   button {
     align-items: center;
     display: flex;
+    gap: 8px;
     height: auto;
     justify-content: space-between;
     min-height: 40px;
     padding: 8px 10px;
     text-align: left;
     white-space: normal;
+  }
+
+  small {
+    color: #637083;
+    font-size: .75rem;
   }
 
   .selected {
@@ -293,6 +299,10 @@
   .modal-actions {
     justify-content: flex-end;
     width: 100%;
+
+    button {
+      width: 100%;
+    }
   }
 
   .order-total {

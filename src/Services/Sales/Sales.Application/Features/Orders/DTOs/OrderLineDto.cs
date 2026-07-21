@@ -11,6 +11,7 @@ namespace Sales.Application.Features.Orders.DTOs;
 /// <param name="ColorCode">Color code as it was when the line was created or last replaced.</param>
 /// <param name="ColorName">Color name as it was when the line was created or last replaced.</param>
 /// <param name="SizeCode">Size code as it was when the line was created or last replaced.</param>
+/// <param name="IsSellThroughDiscontinued">Whether this line was created from a discontinued variant to sell through remaining stock.</param>
 /// <param name="Quantity">Quantity requested.</param>
 /// <param name="UnitPrice">Product's unit price as it was when the line was created or last replaced.</param>
 /// <param name="DiscountPercent">Discount percentage (0-100) applied to this line.</param>
@@ -24,6 +25,7 @@ public sealed record OrderLineDto(
     string ColorCode,
     string ColorName,
     string SizeCode,
+    bool IsSellThroughDiscontinued,
     int Quantity,
     decimal UnitPrice,
     decimal DiscountPercent,

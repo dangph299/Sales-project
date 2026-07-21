@@ -197,7 +197,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       });
       this.customers.set(page.items);
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Load Customers Failed', error);
     }
   }
 
@@ -213,13 +213,13 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       const page = await this.productLookup.search({
         name: searchesBySku ? '' : term,
         sku: searchesBySku ? term : '',
-        status: 'Published',
+        status: '',
         page: 1,
         pageSize: 10
       });
       this.products.set(page.items);
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Load Products Failed', error);
     }
   }
 
@@ -238,7 +238,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       this.orders.set(page.items);
       this.total.set(page.total);
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Load Orders Failed', error, true);
     } finally {
       this.loading.set(false);
     }
@@ -252,7 +252,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
 
   sellableVariants(): { product: ProductLookupResponse; variant: ProductVariantLookupResponse }[] {
     return this.products().flatMap(product => (product.variants ?? [])
-      .filter(variant => variant.status === 'Published')
+      .filter(variant => this.canOrderVariant(variant))
       .map(variant => ({ product, variant })));
   }
 
@@ -428,7 +428,14 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    await this.transitionRowOrder(order, 'undo');
+    await this.loadOrderDetail(order.id);
+    const selected = this.currentOrder();
+    if (selected && !this.canUndoConfirmOrder(selected)) {
+      this.notificationService.warning('Cannot Undo Confirm', 'This order used discontinued variants for sell-through and cannot be undone after confirmation.');
+      return;
+    }
+
+    await this.transitionOrder('undo');
   }
 
   async loadRowReservation(order: OrderResponse): Promise<void> {
@@ -460,7 +467,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       this.formDirty.set(false);
       await this.loadOrders();
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Create Order Failed', error);
     } finally {
       this.saving.set(false);
     }
@@ -470,7 +477,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     const order = this.currentOrder();
     const etag = this.currentEtag();
     if (!order || !etag) {
-      this.errorMessage.set('Refresh the order and try again.');
+      this.notificationService.warning('Refresh Required', 'Refresh the order and try again.');
       return;
     }
 
@@ -489,7 +496,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       this.formDirty.set(false);
       await this.loadOrders();
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Update Order Failed', error);
     } finally {
       this.saving.set(false);
     }
@@ -505,7 +512,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       await this.subscribeToOrder(orderId);
       this.updateWaitingState(result.body);
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Load Order Failed', error);
     }
   }
 
@@ -524,7 +531,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
         this.stopPendingPolling();
       }
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Refresh Order Failed', error);
     }
   }
 
@@ -533,6 +540,12 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   undoConfirmOrder(): Promise<void> {
+    const order = this.currentOrder();
+    if (order && !this.canUndoConfirmOrder(order)) {
+      this.notificationService.warning('Cannot Undo Confirm', 'This order used discontinued variants for sell-through and cannot be undone after confirmation.');
+      return Promise.resolve();
+    }
+
     return this.transitionOrder('undo');
   }
 
@@ -552,7 +565,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       const reservation = await this.orderApi.getReservation(orderId);
       this.reservationText.set(reservation ? JSON.stringify(reservation, null, 2) : 'No reservation found.');
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Load Reservation Failed', error);
     }
   }
 
@@ -585,7 +598,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       this.updateWaitingState(result.body);
       await this.loadOrders();
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError(this.orderActionErrorTitle(action), error);
     } finally {
       this.saving.set(false);
     }
@@ -594,6 +607,17 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   private async transitionRowOrder(order: OrderResponse, action: 'confirm' | 'cancel' | 'undo'): Promise<void> {
     await this.loadOrderDetail(order.id);
     await this.transitionOrder(action);
+  }
+
+  private orderActionErrorTitle(action: 'confirm' | 'cancel' | 'undo'): string {
+    switch (action) {
+      case 'confirm':
+        return 'Confirm Order Failed';
+      case 'cancel':
+        return 'Cancel Order Failed';
+      case 'undo':
+        return 'Undo Confirm Failed';
+    }
   }
 
   private validateOrderForm(): boolean {
@@ -636,6 +660,14 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       quantity: line.quantity,
       discountPercent: line.discountPercent
     }));
+  }
+
+  private canOrderVariant(variant: ProductVariantLookupResponse): boolean {
+    return variant.status === 'Published' || variant.status === 'Discontinued';
+  }
+
+  private canUndoConfirmOrder(order: OrderResponse): boolean {
+    return order.status === 'Confirmed' && !order.lines.some(line => line.isSellThroughDiscontinued);
   }
 
   private compareOrders(left: OrderResponse, right: OrderResponse): number {
@@ -787,5 +819,14 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       clearTimeout(this.detailRefreshTimer);
       this.detailRefreshTimer = null;
     }
+  }
+
+  private notifyError(title: string, error: unknown, keepInline = false): void {
+    const message = describeApiError(error);
+    if (keepInline) {
+      this.errorMessage.set(message);
+    }
+
+    this.notificationService.error(title, message);
   }
 }

@@ -31,6 +31,8 @@ public sealed record ProductSnapshot
 
     public string SizeCode { get; }
 
+    public bool IsSellThroughDiscontinued { get; }
+
     /// <summary>
     /// Gets the product's unit price at the time the snapshot was taken.
     /// </summary>
@@ -45,7 +47,8 @@ public sealed record ProductSnapshot
         string colorCode,
         string colorName,
         string sizeCode,
-        Money unitPrice)
+        Money unitPrice,
+        bool isSellThroughDiscontinued)
     {
         Id = id;
         ProductVariantId = productVariantId;
@@ -56,6 +59,7 @@ public sealed record ProductSnapshot
         ColorName = colorName;
         SizeCode = sizeCode;
         UnitPrice = unitPrice;
+        IsSellThroughDiscontinued = isSellThroughDiscontinued;
     }
 
     /// <summary>
@@ -73,7 +77,7 @@ public sealed record ProductSnapshot
         if (!isActive) throw new DomainException("Only sellable products can be ordered.");
         if (id == Guid.Empty) throw new DomainException("Product id is required.");
         if (string.IsNullOrWhiteSpace(sku) || string.IsNullOrWhiteSpace(name)) throw new DomainException("Product snapshot is incomplete.");
-        return new(id, id, sku.Trim().ToUpperInvariant(), sku.Trim().ToUpperInvariant(), name.Trim(), string.Empty, string.Empty, string.Empty, unitPrice);
+        return new(id, id, sku.Trim().ToUpperInvariant(), sku.Trim().ToUpperInvariant(), name.Trim(), string.Empty, string.Empty, string.Empty, unitPrice, false);
     }
 
     public static ProductSnapshot Create(
@@ -86,7 +90,8 @@ public sealed record ProductSnapshot
         string colorName,
         string sizeCode,
         Money unitPrice,
-        bool isActive)
+        bool isActive,
+        bool isSellThroughDiscontinued = false)
     {
         if (!isActive) throw new DomainException("Only sellable product variants can be ordered.");
         if (productId == Guid.Empty) throw new DomainException("Product id is required.");
@@ -110,6 +115,7 @@ public sealed record ProductSnapshot
             colorCode.Trim().ToUpperInvariant(),
             colorName.Trim(),
             sizeCode.Trim().ToUpperInvariant(),
-            unitPrice);
+            unitPrice,
+            isSellThroughDiscontinued);
     }
 }

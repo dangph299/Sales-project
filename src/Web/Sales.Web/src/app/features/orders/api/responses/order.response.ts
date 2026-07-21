@@ -11,6 +11,7 @@ export interface OrderLineResponse {
   colorCode?: string | null;
   colorName?: string | null;
   sizeCode?: string | null;
+  isSellThroughDiscontinued?: boolean;
   unitPrice: number;
   lineTotal: number;
 }

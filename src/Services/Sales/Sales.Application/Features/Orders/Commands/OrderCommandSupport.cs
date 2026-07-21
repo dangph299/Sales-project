@@ -73,7 +73,8 @@ internal static class OrderCommandSupport
                     color.Name,
                     size.Code,
                     productVariant.Price,
-                    productVariant.Status == EProductVariantStatus.Published),
+                    IsOrderableVariant(productVariant),
+                    productVariant.Status == EProductVariantStatus.Discontinued),
                 orderLineInput.Quantity,
                 orderLineInput.DiscountPercent ?? throw new DomainException("Discount is required.")));
         }
@@ -121,10 +122,15 @@ internal static class OrderCommandSupport
             if (!variantsById.TryGetValue(line.ProductVariantId, out var productVariant))
                 throw new NotFoundException(nameof(ProductVariant), line.ProductVariantId);
 
-            if (productVariant.Status != EProductVariantStatus.Published)
+            if (!IsOrderableVariant(productVariant))
             {
-                throw new DomainException("Only published product variants can be ordered.");
+                throw new DomainException("Only published or discontinued product variants can be ordered.");
             }
         }
+    }
+
+    private static bool IsOrderableVariant(ProductVariant productVariant)
+    {
+        return productVariant.Status is EProductVariantStatus.Published or EProductVariantStatus.Discontinued;
     }
 }
