@@ -40,7 +40,7 @@ export class CategoryFormComponent {
   /** Backend-assigned category code, shown read-only while editing. */
   @Input() assignedCode = '';
 
-  @Output() save = new EventEmitter<void>();
+  @Output() save = new EventEmitter<CategoryFormModel>();
   @Output() cancel = new EventEmitter<void>();
 
   fieldError(field: string): string {
@@ -49,5 +49,9 @@ export class CategoryFormComponent {
 
   get errorSummary(): string[] {
     return this.validationErrors.map(error => `${error.field}: ${error.message}`);
+  }
+
+  submit(): void {
+    this.save.emit({ ...this.model });
   }
 }

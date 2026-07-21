@@ -99,6 +99,7 @@
       [row]="row"
       [model]="adjustmentForm"
       [saving]="saving()"
+      [errorMessage]="mutationErrorMessage()"
       (apply)="adjustInventory()"></app-stock-adjustment-form>
   </ng-container>
 </nz-modal>

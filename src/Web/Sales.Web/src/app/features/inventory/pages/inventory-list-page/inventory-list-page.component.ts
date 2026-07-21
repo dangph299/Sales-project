@@ -5,6 +5,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -44,11 +45,13 @@ export class InventoryListPageComponent implements OnInit {
   private readonly inventoryApi = inject(InventoryApiService);
   private readonly productLookup = inject(ProductLookupApiService);
   private readonly modal = inject(NzModalService);
+  private readonly notification = inject(NzNotificationService);
 
   readonly lowStockThreshold = lowStockThreshold;
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly errorMessage = signal('');
+  readonly mutationErrorMessage = signal('');
   readonly stockRows = signal<StockRow[]>([]);
   readonly selectedRow = signal<StockRow | null>(null);
   readonly adjustmentModalOpen = signal(false);
@@ -111,15 +114,24 @@ export class InventoryListPageComponent implements OnInit {
   }
 
   openAdjustment(row: StockRow): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.selectedRow.set(row);
     this.adjustmentForm = emptyStockAdjustmentForm();
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.adjustmentModalOpen.set(true);
   }
 
   closeAdjustment(): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.adjustmentModalOpen.set(false);
     this.adjustmentForm = emptyStockAdjustmentForm();
+    this.mutationErrorMessage.set('');
   }
 
   stockState(row: StockRow): StockState {
@@ -131,6 +143,10 @@ export class InventoryListPageComponent implements OnInit {
   }
 
   async adjustInventory(): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     const row = this.selectedRow();
     if (!row) {
       return;
@@ -144,6 +160,7 @@ export class InventoryListPageComponent implements OnInit {
     }
 
     this.saving.set(true);
+    this.mutationErrorMessage.set('');
     try {
       const inventory = await this.inventoryApi.adjust(row.variant.id, {
         sku: row.variant.sku,
@@ -154,9 +171,13 @@ export class InventoryListPageComponent implements OnInit {
         existing.variant.id === row.variant.id ? { ...existing, inventory } : existing);
       this.stockRows.set(updatedRows);
       this.selectedRow.set(updatedRows.find(existing => existing.variant.id === row.variant.id) ?? null);
-      this.closeAdjustment();
+      this.adjustmentModalOpen.set(false);
+      this.adjustmentForm = emptyStockAdjustmentForm();
+      this.mutationErrorMessage.set('');
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      const message = describeApiError(error);
+      this.mutationErrorMessage.set(message);
+      this.notification.error('Adjust Inventory Failed', message);
     } finally {
       this.saving.set(false);
     }

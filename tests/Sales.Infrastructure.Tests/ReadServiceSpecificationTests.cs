@@ -20,6 +20,46 @@ public sealed class ReadServiceSpecificationTests
     }
 
     [Fact]
+    public async Task Product_write_result_read_returns_persisted_description()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var product = Product.Create(
+            "sku-description",
+            "Description product",
+            "Persisted product description",
+            CategoryReferenceDataIds.Uncategorized);
+        await fixture.SeedAsync(product);
+
+        var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        var result = await service.GetForWriteResultAsync(product.Id);
+
+        Assert.NotNull(result);
+        Assert.Equal("Persisted product description", result.Description);
+    }
+
+    [Fact]
+    public async Task Category_list_returns_persisted_description()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var category = Category.Create("CAT-DESC", "Described category", "Persisted category description", null, 5);
+        category.ClearDomainEvents();
+        await using (var context = fixture.CreateContext())
+        {
+            context.Categories.Add(category);
+            await context.SaveChangesAsync();
+        }
+
+        var service = new CategoryReadService(fixture.CreateContext());
+
+        var result = await service.ListCategoriesAsync();
+
+        Assert.Contains(result, item =>
+            item.Id == category.Id &&
+            item.Description == "Persisted category description");
+    }
+
+    [Fact]
     public async Task Product_get_excludes_inactive_products()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();

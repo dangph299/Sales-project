@@ -105,10 +105,58 @@ describe('OrderListPageComponent realtime behavior', () => {
 
     expect(productLookup.lastFilters?.status).toBe('');
   });
+
+  it('does not create a second order while save is already running', async () => {
+    let resolveCreate!: (value: ApiResult<OrderResponse>) => void;
+    orderApi.createResult = new Promise<ApiResult<OrderResponse>>(resolve => {
+      resolveCreate = resolve;
+    });
+    fixture.componentInstance.selectedCustomer.set({
+      id: '33333333-3333-3333-3333-333333333333',
+      customerCode: 'CUST-1',
+      name: 'Customer',
+      phone: '0901234567',
+      status: 'Normal'
+    });
+    fixture.componentInstance.cartLines.set([{
+      product: {
+        id: '44444444-4444-4444-4444-444444444444',
+        sku: 'PRD001-BLK-M',
+        productCode: 'PRD001',
+        name: 'Product',
+        status: 'Published',
+        variants: []
+      },
+      variant: {
+        id: '55555555-5555-5555-5555-555555555555',
+        sku: 'PRD001-BLK-M',
+        color: null,
+        size: null,
+        price: 100,
+        status: 'Published'
+      },
+      quantity: 1,
+      discountPercent: 0
+    }]);
+
+    const firstSave = fixture.componentInstance.saveOrder();
+    await Promise.resolve();
+    await fixture.componentInstance.saveOrder();
+
+    expect(orderApi.createCount).toBe(1);
+    expect(fixture.componentInstance.saving()).toBeTrue();
+
+    resolveCreate({ body: orderApi.order, etag: 'etag-1', status: 201 });
+    await firstSave;
+
+    expect(fixture.componentInstance.saving()).toBeFalse();
+  });
 });
 
 class FakeOrderApiService {
   getByIdCount = 0;
+  createCount = 0;
+  createResult: Promise<ApiResult<OrderResponse>> | null = null;
 
   readonly order: OrderResponse = {
     id: '22222222-2222-2222-2222-222222222222',
@@ -136,6 +184,11 @@ class FakeOrderApiService {
 
   getReservation(): Promise<null> {
     return Promise.resolve(null);
+  }
+
+  create(): Promise<ApiResult<OrderResponse>> {
+    this.createCount += 1;
+    return this.createResult ?? Promise.resolve({ body: this.order, etag: 'etag-1', status: 201 });
   }
 }
 

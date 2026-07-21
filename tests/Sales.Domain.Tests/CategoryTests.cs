@@ -17,4 +17,26 @@ public sealed class CategoryTests
 
         Assert.Throws<DomainException>(() => category.Update("T-Shirt", null, category.Id, 10));
     }
+
+    [Fact]
+    public void Category_create_and_update_preserve_description()
+    {
+        var category = Category.Create("CAT001", "T-Shirt", "  Initial description  ", null, 10);
+
+        Assert.Equal("Initial description", category.Description);
+
+        category.Update("T-Shirt", "  Updated description  ", null, 10);
+
+        Assert.Equal("Updated description", category.Description);
+    }
+
+    [Fact]
+    public void Category_blank_description_is_normalized_to_null()
+    {
+        var category = Category.Create("CAT001", "T-Shirt", "Initial description", null, 10);
+
+        category.Update("T-Shirt", "   ", null, 10);
+
+        Assert.Null(category.Description);
+    }
 }

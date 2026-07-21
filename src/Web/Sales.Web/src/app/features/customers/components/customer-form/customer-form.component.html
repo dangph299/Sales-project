@@ -28,9 +28,9 @@
   </nz-form-item>
 
   <div class="form-actions">
-    <button nz-button nzType="primary" type="submit" [nzLoading]="saving">
+    <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="saving">
       {{ editing ? 'Save changes' : 'Create customer' }}
     </button>
-    <button nz-button type="button" (click)="cancel.emit()">Cancel</button>
+    <button nz-button type="button" (click)="cancel.emit()" [disabled]="saving">Cancel</button>
   </div>
 </form>

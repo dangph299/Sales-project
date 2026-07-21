@@ -1,4 +1,4 @@
-<form nz-form nzLayout="vertical" (ngSubmit)="save.emit()">
+<form nz-form nzLayout="vertical" (ngSubmit)="submit()">
   <nz-form-item *ngIf="editing">
     <nz-form-label>Product code</nz-form-label>
     <nz-form-control>
@@ -38,9 +38,9 @@
   </nz-form-item>
 
   <div class="form-actions">
-    <button nz-button nzType="primary" type="submit" [nzLoading]="saving">
+    <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="saving">
       {{ editing ? 'Save product' : 'Create product' }}
     </button>
-    <button nz-button type="button" (click)="cancel.emit()">Cancel</button>
+    <button nz-button type="button" (click)="cancel.emit()" [disabled]="saving">Cancel</button>
   </div>
 </form>

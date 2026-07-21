@@ -7,6 +7,7 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
@@ -54,10 +55,12 @@ import { CategoryTreeNode } from '../../models/category-tree-node.model';
 export class CategoryHierarchyPageComponent implements OnInit {
   private readonly categoryApi = inject(CategoryApiService);
   private readonly modal = inject(NzModalService);
+  private readonly notification = inject(NzNotificationService);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly errorMessage = signal('');
+  readonly mutationErrorMessage = signal('');
   readonly validationErrors = signal<ValidationError[]>([]);
   readonly selectedCategory = signal<CategoryResponse | null>(null);
   readonly expandedCategoryIds = signal<ReadonlySet<string>>(new Set());
@@ -141,14 +144,22 @@ export class CategoryHierarchyPageComponent implements OnInit {
   }
 
   openCreateCategory(): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.selectedCategory.set(null);
     this.categoryForm = emptyCategoryForm();
     this.validationErrors.set([]);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.categoryModalOpen.set(true);
   }
 
   openEditCategory(category: CategoryResponse): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.selectedCategory.set(category);
     this.categoryForm = {
       name: category.name,
@@ -158,21 +169,31 @@ export class CategoryHierarchyPageComponent implements OnInit {
       status: category.status as CategoryStatus
     };
     this.validationErrors.set([]);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.categoryModalOpen.set(true);
   }
 
   closeCategoryModal(): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.categoryModalOpen.set(false);
     this.selectedCategory.set(null);
     this.categoryForm = emptyCategoryForm();
     this.validationErrors.set([]);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
   }
 
-  async saveCategory(): Promise<void> {
+  async saveCategory(form = this.categoryForm): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
+    this.categoryForm = { ...form };
+    const description = form.description.trim();
     const missingFieldErrors: ValidationError[] = [];
-    if (!this.categoryForm.name.trim()) {
+    if (!form.name.trim()) {
       missingFieldErrors.push({ field: 'Name', message: 'Name is required.' });
     }
 
@@ -182,23 +203,23 @@ export class CategoryHierarchyPageComponent implements OnInit {
     }
 
     this.saving.set(true);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.validationErrors.set([]);
     try {
       const selected = this.selectedCategory();
       const saved = selected
         ? await this.categoryApi.update(selected.id, {
-            name: this.categoryForm.name.trim(),
-            description: this.categoryForm.description.trim() || null,
-            parentCategoryId: this.categoryForm.parentCategoryId || null,
-            sortOrder: this.categoryForm.sortOrder,
-            status: this.categoryForm.status
+            name: form.name.trim(),
+            description: description || null,
+            parentCategoryId: form.parentCategoryId || null,
+            sortOrder: form.sortOrder,
+            status: form.status
           })
         : await this.categoryApi.create({
-            name: this.categoryForm.name.trim(),
-            description: this.categoryForm.description.trim() || null,
-            parentCategoryId: this.categoryForm.parentCategoryId || null,
-            sortOrder: this.categoryForm.sortOrder
+            name: form.name.trim(),
+            description: description || null,
+            parentCategoryId: form.parentCategoryId || null,
+            sortOrder: form.sortOrder
           });
 
       this.upsertCategory(saved);
@@ -208,14 +229,21 @@ export class CategoryHierarchyPageComponent implements OnInit {
 
       this.selectedCategory.set(saved);
       this.categoryModalOpen.set(false);
+      this.categoryForm = emptyCategoryForm();
+      this.validationErrors.set([]);
+      this.mutationErrorMessage.set('');
     } catch (error) {
-      await this.handleMutationError(error);
+      await this.handleMutationError(error, 'Save Category Failed');
     } finally {
       this.saving.set(false);
     }
   }
 
   deleteCategory(category: CategoryResponse): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.modal.confirm({
       nzTitle: `Delete category "${category.name}"?`,
       nzContent: 'This action cannot be undone.',
@@ -256,7 +284,12 @@ export class CategoryHierarchyPageComponent implements OnInit {
   }
 
   private async confirmDeleteCategory(category: CategoryResponse): Promise<void> {
-    this.errorMessage.set('');
+    if (this.saving()) {
+      return;
+    }
+
+    this.saving.set(true);
+    this.mutationErrorMessage.set('');
     try {
       await this.categoryApi.delete(category.id);
       this.categories.set(this.categories().filter(existing => existing.id !== category.id));
@@ -264,14 +297,18 @@ export class CategoryHierarchyPageComponent implements OnInit {
       expanded.delete(category.id);
       this.expandedCategoryIds.set(expanded);
     } catch (error) {
-      await this.handleMutationError(error);
+      await this.handleMutationError(error, 'Delete Category Failed');
+      throw error;
+    } finally {
+      this.saving.set(false);
     }
   }
 
-  private async handleMutationError(error: unknown): Promise<void> {
+  private async handleMutationError(error: unknown, title: string): Promise<void> {
     if (this.isConcurrencyConflict(error)) {
       this.categoryModalOpen.set(false);
       this.validationErrors.set([]);
+      this.mutationErrorMessage.set('');
       await this.loadCategories();
       this.modal.warning({
         nzTitle: 'Category changed',
@@ -280,7 +317,7 @@ export class CategoryHierarchyPageComponent implements OnInit {
       return;
     }
 
-    this.handleFormError(error);
+    this.handleFormError(error, title);
   }
 
   private isConcurrencyConflict(error: unknown): boolean {
@@ -292,13 +329,17 @@ export class CategoryHierarchyPageComponent implements OnInit {
       || error.result.errors.some(item => item.code === 'current_version');
   }
 
-  private handleFormError(error: unknown): void {
+  private handleFormError(error: unknown, title: string): void {
     if (error instanceof ApiClientError) {
       this.validationErrors.set(error.result.validationErrors);
-      this.errorMessage.set(ApiResponseReader.formatFailure(error.result));
+      const message = ApiResponseReader.formatFailure(error.result);
+      this.mutationErrorMessage.set(message);
+      this.notification.error(title, message);
       return;
     }
 
-    this.errorMessage.set(describeApiError(error));
+    const message = describeApiError(error);
+    this.mutationErrorMessage.set(message);
+    this.notification.error(title, message);
   }
 }

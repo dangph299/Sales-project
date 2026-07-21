@@ -58,6 +58,7 @@ export class CustomerListPageComponent implements OnInit {
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly errorMessage = signal('');
+  readonly mutationErrorMessage = signal('');
   readonly customers = signal<CustomerResponse[]>([]);
   readonly total = signal(0);
   readonly selectedCustomer = signal<CustomerResponse | null>(null);
@@ -92,10 +93,16 @@ export class CustomerListPageComponent implements OnInit {
         page: this.pageIndex,
         pageSize: this.pageSize
       });
+      if (page.items.length === 0 && page.total > 0 && this.pageIndex > 1) {
+        this.pageIndex = Math.max(1, Math.ceil(page.total / this.pageSize));
+        await this.loadCustomers();
+        return;
+      }
+
       this.customers.set(page.items);
       this.total.set(page.total);
     } catch (error) {
-      this.notifyError('Load Customers Failed', error);
+      this.notifyError('Load Customers Failed', error, 'page');
     } finally {
       this.loading.set(false);
     }
@@ -107,15 +114,23 @@ export class CustomerListPageComponent implements OnInit {
   }
 
   openCreateCustomer(): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.selectedCustomer.set(null);
     this.detailModalOpen.set(false);
     this.customerForm = emptyCustomerForm();
     this.validationErrors.set([]);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.customerModalOpen.set(true);
   }
 
   openEditCustomer(customer: CustomerResponse): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.selectedCustomer.set(customer);
     this.customerForm = {
       name: customer.name,
@@ -124,15 +139,19 @@ export class CustomerListPageComponent implements OnInit {
       address: customer.address || ''
     };
     this.validationErrors.set([]);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.customerModalOpen.set(true);
   }
 
   closeCustomerModal(): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.customerModalOpen.set(false);
     this.customerForm = emptyCustomerForm();
     this.validationErrors.set([]);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
   }
 
   closeDetailModal(): void {
@@ -181,6 +200,10 @@ export class CustomerListPageComponent implements OnInit {
   }
 
   async saveCustomer(): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     if (!this.customerForm.name.trim() || !this.customerForm.phone.trim()) {
       this.validationErrors.set([
         { field: 'Name', message: 'Name is required.' },
@@ -192,6 +215,7 @@ export class CustomerListPageComponent implements OnInit {
 
     this.saving.set(true);
     this.validationErrors.set([]);
+    this.mutationErrorMessage.set('');
     try {
       const selected = this.selectedCustomer();
       const request = {
@@ -208,6 +232,7 @@ export class CustomerListPageComponent implements OnInit {
       this.customerModalOpen.set(false);
       this.customerForm = emptyCustomerForm();
       this.validationErrors.set([]);
+      this.mutationErrorMessage.set('');
       this.notification.success(selected ? 'Customer Updated' : 'Customer Created', `${saved.customerCode || saved.name} - ${saved.name}`);
     } catch (error) {
       this.handleFormError(error);
@@ -227,6 +252,10 @@ export class CustomerListPageComponent implements OnInit {
   }
 
   async changeCustomerStatus(customer: CustomerResponse | null, status: CustomerStatus): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     if (!customer) {
       return;
     }
@@ -245,13 +274,17 @@ export class CustomerListPageComponent implements OnInit {
       await this.loadCustomers();
       this.notification.success('Customer Status Updated', `${updated.customerCode || updated.name} is now ${updated.status}.`);
     } catch (error) {
-      this.notifyError('Update Customer Status Failed', error);
+      this.notifyError('Update Customer Status Failed', error, 'mutation');
     } finally {
       this.saving.set(false);
     }
   }
 
   async deleteCustomer(customer: CustomerResponse): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     if (!await confirmAction(
       this.modal,
       'Delete Customer',
@@ -269,7 +302,7 @@ export class CustomerListPageComponent implements OnInit {
       await this.loadCustomers();
       this.notification.success('Customer Deleted', `${customer.customerCode || customer.name} - ${customer.name}`);
     } catch (error) {
-      this.notifyError('Delete Customer Failed', error);
+      this.notifyError('Delete Customer Failed', error, 'mutation');
     } finally {
       this.saving.set(false);
     }
@@ -300,11 +333,11 @@ export class CustomerListPageComponent implements OnInit {
   private handleFormError(error: unknown): void {
     if (error instanceof ApiClientError) {
       this.validationErrors.set(error.result.validationErrors);
-      this.notifyError('Save Customer Failed', this.customerErrorMessage(error));
+      this.notifyError('Save Customer Failed', this.customerErrorMessage(error), 'mutation');
       return;
     }
 
-    this.notifyError('Save Customer Failed', error);
+    this.notifyError('Save Customer Failed', error, 'mutation');
   }
 
   private customerErrorMessage(error: ApiClientError): string {
@@ -319,8 +352,14 @@ export class CustomerListPageComponent implements OnInit {
     return ApiResponseReader.failureMessages(error.result).join(' ');
   }
 
-  private notifyError(title: string, error: unknown): void {
+  private notifyError(title: string, error: unknown, target: 'page' | 'mutation'): void {
     const message = typeof error === 'string' ? error : describeApiError(error);
+    if (target === 'page') {
+      this.errorMessage.set(message);
+    } else {
+      this.mutationErrorMessage.set(message);
+    }
+
     this.notification.error(title, message);
   }
 }

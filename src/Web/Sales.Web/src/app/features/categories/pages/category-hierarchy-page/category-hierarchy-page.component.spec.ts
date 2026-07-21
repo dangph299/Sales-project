@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { ApiClientError } from '../../../../core/api/api-client-result';
 import { CategoryApiService } from '../../api/category-api.service';
 import { CategoryResponse } from '../../api/responses/category.response';
@@ -15,16 +16,19 @@ describe('CategoryHierarchyPageComponent expansion', () => {
   let fixture: ComponentFixture<CategoryHierarchyPageComponent>;
   let component: CategoryHierarchyPageComponent;
   let categoryApi: jasmine.SpyObj<CategoryApiService>;
+  let notification: jasmine.SpyObj<NzNotificationService>;
 
   beforeEach(async () => {
-    categoryApi = jasmine.createSpyObj<CategoryApiService>('CategoryApiService', ['list', 'create']);
+    categoryApi = jasmine.createSpyObj<CategoryApiService>('CategoryApiService', ['list', 'create', 'update', 'delete']);
+    notification = jasmine.createSpyObj<NzNotificationService>('NzNotificationService', ['error', 'success', 'warning']);
     categoryApi.list.and.resolveTo(hierarchy);
 
     await TestBed.configureTestingModule({
       imports: [CategoryHierarchyPageComponent],
       providers: [
         provideNoopAnimations(),
-        { provide: CategoryApiService, useValue: categoryApi }
+        { provide: CategoryApiService, useValue: categoryApi },
+        { provide: NzNotificationService, useValue: notification }
       ]
     }).compileComponents();
 
@@ -131,7 +135,72 @@ describe('CategoryHierarchyPageComponent expansion', () => {
     fixture.detectChanges();
 
     expect(component.categoryModalOpen()).toBeTrue();
-    expect(component.errorMessage()).toContain('same unique value');
+    expect(component.errorMessage()).toBe('');
+    expect(component.mutationErrorMessage()).toContain('same unique value');
+    expect(notification.error).toHaveBeenCalled();
+  });
+
+  it('includes description in the create category request payload', async () => {
+    categoryApi.create.and.resolveTo(category('new', 'NEW', 'New category', null, 2, 'Create description'));
+
+    component.openCreateCategory();
+    component.categoryForm = {
+      name: 'New category',
+      description: '  Create description  ',
+      parentCategoryId: '',
+      sortOrder: 2,
+      status: 'Draft'
+    };
+
+    await component.saveCategory();
+
+    expect(categoryApi.create).toHaveBeenCalledOnceWith({
+      name: 'New category',
+      description: 'Create description',
+      parentCategoryId: null,
+      sortOrder: 2
+    });
+  });
+
+  it('patches and includes description in the update category request payload', async () => {
+    const existing = category('shirt', 'SHIRT', 'Shirt', 'blank', 1, 'Existing description');
+    categoryApi.update.and.resolveTo({ ...existing, description: 'Updated description' });
+
+    component.openEditCategory(existing);
+    expect(component.categoryForm.description).toBe('Existing description');
+
+    component.categoryForm.description = '  Updated description  ';
+    await component.saveCategory();
+
+    expect(categoryApi.update).toHaveBeenCalledOnceWith('shirt', {
+      name: 'Shirt',
+      description: 'Updated description',
+      parentCategoryId: 'blank',
+      sortOrder: 1,
+      status: 'Draft'
+    });
+  });
+
+  it('sends null description when the category description is blank', async () => {
+    categoryApi.create.and.resolveTo(category('new', 'NEW', 'New category', null, 2));
+
+    component.openCreateCategory();
+    component.categoryForm = {
+      name: 'New category',
+      description: '   ',
+      parentCategoryId: '',
+      sortOrder: 2,
+      status: 'Draft'
+    };
+
+    await component.saveCategory();
+
+    expect(categoryApi.create).toHaveBeenCalledOnceWith({
+      name: 'New category',
+      description: null,
+      parentCategoryId: null,
+      sortOrder: 2
+    });
   });
 
   function clickToggle(label: string): void {
@@ -156,14 +225,15 @@ function category(
   categoryCode: string,
   name: string,
   parentCategoryId: string | null,
-  sortOrder: number): CategoryResponse {
+  sortOrder: number,
+  description: string | null = null): CategoryResponse {
   return {
     id,
     categoryCode,
     name,
     parentCategoryId,
     sortOrder,
-    description: null,
+    description,
     status: 'Draft'
   };
 }

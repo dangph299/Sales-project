@@ -235,6 +235,12 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
         page: this.pageIndex,
         pageSize: this.pageSize
       });
+      if (page.items.length === 0 && page.total > 0 && this.pageIndex > 1) {
+        this.pageIndex = Math.max(1, Math.ceil(page.total / this.pageSize));
+        await this.loadOrders();
+        return;
+      }
+
       this.orders.set(page.items);
       this.total.set(page.total);
     } catch (error) {
@@ -335,6 +341,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   openCreateOrder(): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.modalMode.set('create');
     this.currentOrder.set(null);
     this.currentEtag.set(null);
@@ -349,6 +359,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async openEditOrder(order: OrderResponse): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     await this.loadOrderDetail(order.id);
     const selected = this.currentOrder();
     if (!selected) {
@@ -369,6 +383,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async closeOrderModal(): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     if (this.formDirty() && !await confirmAction(
       this.modal,
       'Discard Order Changes',
@@ -379,6 +397,8 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     this.orderModalOpen.set(false);
     this.formErrors.set({});
     this.formDirty.set(false);
+    this.selectedCustomer.set(null);
+    this.cartLines.set([]);
   }
 
   updateCartLines(lines: CartLine[]): void {
@@ -388,6 +408,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async saveOrder(): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     if (!this.validateOrderForm()) {
       return;
     }
@@ -401,6 +425,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async deleteOrder(order: OrderResponse): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     if (order.status === 'Cancelled') {
       return;
     }
@@ -416,6 +444,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async confirmRowOrder(order: OrderResponse): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     if (order.status !== 'Draft') {
       return;
     }
@@ -424,6 +456,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async undoConfirmRowOrder(order: OrderResponse): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     if (order.status !== 'Confirmed') {
       return;
     }
@@ -444,6 +480,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async createOrder(): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     const customer = this.selectedCustomer();
     if (!customer || customer.status !== 'Normal') {
       this.formErrors.set({ ...this.formErrors(), customer: 'Select a Normal customer.' });
@@ -451,6 +491,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     }
 
     this.saving.set(true);
+    this.formErrors.set({});
     try {
       const lines: OrderLineRequest[] = this.cartLines().map(line => ({
         productVariantId: line.variant.id,
@@ -463,6 +504,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       await this.subscribeToOrder(result.body.id);
       this.updateWaitingState(result.body);
       this.cartLines.set([]);
+      this.selectedCustomer.set(null);
       this.orderModalOpen.set(false);
       this.formDirty.set(false);
       await this.loadOrders();
@@ -474,6 +516,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async replaceOrderLines(): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     const order = this.currentOrder();
     const etag = this.currentEtag();
     if (!order || !etag) {
@@ -482,6 +528,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     }
 
     this.saving.set(true);
+    this.formErrors.set({});
     try {
       const lines: OrderLineRequest[] = this.cartLines().map(line => ({
         productVariantId: line.variant.id,
@@ -536,10 +583,18 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   confirmOrder(): Promise<void> {
+    if (this.saving()) {
+      return Promise.resolve();
+    }
+
     return this.transitionOrder('confirm');
   }
 
   undoConfirmOrder(): Promise<void> {
+    if (this.saving()) {
+      return Promise.resolve();
+    }
+
     const order = this.currentOrder();
     if (order && !this.canUndoConfirmOrder(order)) {
       this.notificationService.warning('Cannot Undo Confirm', 'This order used discontinued variants for sell-through and cannot be undone after confirmation.');
@@ -550,6 +605,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async cancelOrder(): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     if (!await confirmAction(
       this.modal,
       'Cancel Order',
@@ -579,6 +638,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   private async transitionOrder(action: 'confirm' | 'cancel' | 'undo'): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     const order = this.currentOrder();
     const etag = this.currentEtag();
     if (!order || !etag) {
@@ -605,6 +668,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   private async transitionRowOrder(order: OrderResponse, action: 'confirm' | 'cancel' | 'undo'): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     await this.loadOrderDetail(order.id);
     await this.transitionOrder(action);
   }

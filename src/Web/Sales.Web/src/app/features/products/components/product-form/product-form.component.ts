@@ -28,9 +28,13 @@ export class ProductFormComponent {
   /** Backend-assigned product code, shown read-only while editing. */
   @Input() assignedCode = '';
 
-  @Output() save = new EventEmitter<void>();
+  @Output() save = new EventEmitter<ProductFormModel>();
   @Output() cancel = new EventEmitter<void>();
 
   /** Backend-loaded categories, labelled `CODE - Name`. */
   readonly categoryOptions = this.common.categoryOptions;
+
+  submit(): void {
+    this.save.emit({ ...this.model });
+  }
 }

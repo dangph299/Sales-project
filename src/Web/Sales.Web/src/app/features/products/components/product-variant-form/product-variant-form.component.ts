@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { NzSelectModule } from 'ng-zorro-antd/select';
@@ -14,7 +15,7 @@ import { ProductVariantStatus } from '../../constants/product-variant-status';
 @Component({
   selector: 'app-product-variant-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzButtonModule, NzFormModule, NzInputNumberModule, NzSelectModule],
+  imports: [CommonModule, FormsModule, NzAlertModule, NzButtonModule, NzFormModule, NzInputNumberModule, NzSelectModule],
   templateUrl: './product-variant-form.component.html',
   styleUrl: './product-variant-form.component.scss'
 })
@@ -25,6 +26,7 @@ export class ProductVariantFormComponent {
   /** Product code the SKU preview is derived from. */
   @Input() productCode = '';
   @Input() saving = false;
+  @Input() errorMessage = '';
   @Input() disabled = false;
   @Input() editing = false;
   @Input() statusOptions: ProductVariantStatus[] = ['Draft', 'Published'];

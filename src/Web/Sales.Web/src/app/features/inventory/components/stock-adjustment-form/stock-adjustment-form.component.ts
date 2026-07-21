@@ -34,6 +34,7 @@ export class StockAdjustmentFormComponent {
   @Input({ required: true }) row!: StockRow;
   @Input({ required: true }) model!: StockAdjustmentFormModel;
   @Input() saving = false;
+  @Input() errorMessage = '';
 
   @Output() apply = new EventEmitter<void>();
 

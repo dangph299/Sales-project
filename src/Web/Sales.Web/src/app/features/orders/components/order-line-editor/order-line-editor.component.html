@@ -50,7 +50,7 @@
       </td>
       <td class="number-column line-total">{{ lineTotal(line) | money }}</td>
       <td class="line-action-column">
-        <button nz-button nzDanger nzSize="small" type="button" (click)="removeLine(line.variant.id)">Delete</button>
+        <button nz-button nzDanger nzSize="small" type="button" (click)="removeLine(line.variant.id)" [disabled]="saving">Delete</button>
       </td>
     </tr>
   </tbody>
@@ -66,7 +66,7 @@
     type="button"
     (click)="createOrder.emit()"
     [nzLoading]="saving"
-    [disabled]="!canCreateOrder || lines.length === 0">
+    [disabled]="saving || !canCreateOrder || lines.length === 0">
     {{ actionLabel }}
   </button>
 </section>

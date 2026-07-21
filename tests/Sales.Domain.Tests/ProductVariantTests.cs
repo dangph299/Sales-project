@@ -11,6 +11,30 @@ public sealed class ProductVariantTests
     }
 
     [Fact]
+    public void Product_create_and_update_preserve_description()
+    {
+        var categoryId = Guid.NewGuid();
+        var product = Product.Create("PRD001", "Basic T-Shirt", "  Initial description  ", categoryId);
+
+        Assert.Equal("Initial description", product.Description);
+
+        product.Update("Basic T-Shirt", "  Updated description  ", categoryId);
+
+        Assert.Equal("Updated description", product.Description);
+    }
+
+    [Fact]
+    public void Product_blank_description_is_normalized_to_null()
+    {
+        var categoryId = Guid.NewGuid();
+        var product = Product.Create("PRD001", "Basic T-Shirt", "Initial description", categoryId);
+
+        product.Update("Basic T-Shirt", "   ", categoryId);
+
+        Assert.Null(product.Description);
+    }
+
+    [Fact]
     public void Variant_rejects_negative_price()
     {
         var product = Product.Create("PRD001", "Basic T-Shirt", null, Guid.NewGuid());

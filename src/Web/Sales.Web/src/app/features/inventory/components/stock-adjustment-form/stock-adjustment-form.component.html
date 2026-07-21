@@ -6,6 +6,13 @@
 </nz-descriptions>
 
 <form nz-form nzLayout="vertical" (ngSubmit)="apply.emit()">
+  <nz-alert
+    *ngIf="errorMessage"
+    class="notice"
+    nzType="error"
+    nzShowIcon
+    [nzMessage]="errorMessage"></nz-alert>
+
   <nz-form-item>
     <nz-form-label>Operation</nz-form-label>
     <nz-form-control>
@@ -37,7 +44,7 @@
     nzShowIcon
     nzMessage="Only Published products and Published variants can receive stock."></nz-alert>
 
-  <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="!canAdjust">
+  <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="saving || !canAdjust">
     Apply adjustment
   </button>
 </form>

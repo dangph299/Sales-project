@@ -196,11 +196,11 @@
     <app-product-form
       [model]="productForm"
       [validationErrors]="validationErrors()"
-      [errorMessage]="errorMessage()"
+      [errorMessage]="mutationErrorMessage()"
       [saving]="saving()"
       [editing]="!!selectedProduct()"
       [assignedCode]="selectedProduct()?.productCode || ''"
-      (save)="saveProduct()"
+      (save)="saveProduct($event)"
       (cancel)="closeProductModal()"></app-product-form>
   </ng-container>
 </nz-modal>
@@ -217,6 +217,7 @@
       [model]="variantForm"
       [productCode]="(selectedProduct()?.productCode || selectedProduct()?.sku) || ''"
       [saving]="saving()"
+      [errorMessage]="mutationErrorMessage()"
       [editing]="!!selectedVariant()"
       [statusOptions]="variantStatusOptions()"
       (save)="saveVariant()"

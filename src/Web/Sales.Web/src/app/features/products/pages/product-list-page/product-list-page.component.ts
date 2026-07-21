@@ -70,6 +70,7 @@ export class ProductListPageComponent implements OnInit {
   readonly loading = signal(false);
   readonly saving = signal(false);
   readonly errorMessage = signal('');
+  readonly mutationErrorMessage = signal('');
   readonly products = signal<ProductResponse[]>([]);
   readonly total = signal(0);
   readonly selectedProduct = signal<ProductResponse | null>(null);
@@ -115,7 +116,7 @@ export class ProductListPageComponent implements OnInit {
       this.total.set(page.total);
       this.reselectAfterReload();
     } catch (error) {
-      this.notifyError('Load Products Failed', error);
+      this.notifyError('Load Products Failed', error, 'page');
     } finally {
       this.loading.set(false);
     }
@@ -127,14 +128,22 @@ export class ProductListPageComponent implements OnInit {
   }
 
   openCreateProduct(): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.selectedProduct.set(null);
     this.productForm = emptyProductForm(this.common.defaultCategoryId());
     this.validationErrors.set([]);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.productModalOpen.set(true);
   }
 
   openEditProduct(product: ProductResponse): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.selectedProduct.set(product);
     this.productForm = {
       name: product.name,
@@ -143,16 +152,25 @@ export class ProductListPageComponent implements OnInit {
       status: (product.status || (product.isActive ? 'Published' : 'Draft')) as ProductStatus
     };
     this.validationErrors.set([]);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.productModalOpen.set(true);
   }
 
   closeProductModal(): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.productModalOpen.set(false);
     this.validationErrors.set([]);
+    this.mutationErrorMessage.set('');
   }
 
   openCreateVariant(): void {
+    if (this.saving()) {
+      return;
+    }
+
     const selected = this.selectedProduct();
     if (!selected) {
       this.notification.warning('Cannot Add Variant', 'Select a product before adding variants.');
@@ -165,11 +183,15 @@ export class ProductListPageComponent implements OnInit {
       this.common.defaultSizeId());
     this.variantStatusOptions.set(['Draft', 'Published']);
     this.validationErrors.set([]);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.variantModalOpen.set(true);
   }
 
   openEditVariant(variant: ProductVariantResponse): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.selectedVariant.set(variant);
     const statusOptions = this.allowedVariantStatuses(variant.status as ProductVariantStatus);
     this.variantForm = {
@@ -180,45 +202,61 @@ export class ProductListPageComponent implements OnInit {
     };
     this.variantStatusOptions.set(statusOptions);
     this.validationErrors.set([]);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.variantModalOpen.set(true);
   }
 
   closeVariantModal(): void {
+    if (this.saving()) {
+      return;
+    }
+
     this.variantModalOpen.set(false);
     this.selectedVariant.set(null);
     this.validationErrors.set([]);
+    this.mutationErrorMessage.set('');
   }
 
-  async saveProduct(): Promise<void> {
-    if (!this.productForm.name.trim() || !this.productForm.categoryId.trim()) {
+  async saveProduct(form = this.productForm): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
+    this.productForm = { ...form };
+    const description = form.description.trim();
+
+    if (!form.name.trim() || !form.categoryId.trim()) {
       this.validationErrors.set([{ field: 'Product', message: 'Name and category are required.' }]);
       this.notification.warning('Check Product Form', 'Name and category are required.');
       return;
     }
 
     this.saving.set(true);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.validationErrors.set([]);
     try {
       const selected = this.selectedProduct();
       const saved = selected
         ? await this.productApi.update(selected.id, {
-            name: this.productForm.name.trim(),
-            description: this.productForm.description.trim() || null,
-            categoryId: this.productForm.categoryId,
-            status: (selected.status || 'Draft') as ProductStatus
+            name: form.name.trim(),
+            description: description || null,
+            categoryId: form.categoryId,
+            status: form.status
           })
         : await this.productApi.create({
-            name: this.productForm.name.trim(),
-            description: this.productForm.description.trim() || null,
-            categoryId: this.productForm.categoryId,
+            name: form.name.trim(),
+            description: description || null,
+            categoryId: form.categoryId,
             variants: []
           });
 
       this.upsertProduct(saved);
       this.selectedProduct.set(saved);
       this.productModalOpen.set(false);
+      this.productForm = emptyProductForm(this.common.defaultCategoryId());
+      this.validationErrors.set([]);
+      this.mutationErrorMessage.set('');
+      await this.loadProducts();
       this.notification.success(selected ? 'Product Updated' : 'Product Created', `${saved.productCode || saved.sku} - ${saved.name}`);
     } catch (error) {
       this.handleFormError(error);
@@ -228,6 +266,10 @@ export class ProductListPageComponent implements OnInit {
   }
 
   async saveVariant(): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     const selected = this.selectedProduct();
     if (!selected) {
       return;
@@ -240,7 +282,7 @@ export class ProductListPageComponent implements OnInit {
     }
 
     this.saving.set(true);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     this.validationErrors.set([]);
     try {
       const selectedVariant = this.selectedVariant();
@@ -256,7 +298,14 @@ export class ProductListPageComponent implements OnInit {
 
       this.upsertProduct(saved);
       this.selectedProduct.set(saved);
-      this.closeVariantModal();
+      this.variantModalOpen.set(false);
+      this.selectedVariant.set(null);
+      this.variantForm = emptyProductVariantForm(
+        this.common.defaultColorId(),
+        this.common.defaultSizeId());
+      this.validationErrors.set([]);
+      this.mutationErrorMessage.set('');
+      await this.loadProducts();
       this.notification.success(selectedVariant ? 'Variant Updated' : 'Variant Added', saved.productCode || saved.sku);
     } catch (error) {
       this.handleFormError(error);
@@ -266,6 +315,10 @@ export class ProductListPageComponent implements OnInit {
   }
 
   async discontinueVariant(variant: ProductVariantResponse): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     const selected = this.selectedProduct();
     if (!selected) {
       return;
@@ -292,6 +345,10 @@ export class ProductListPageComponent implements OnInit {
   }
 
   async changeVariantStatus(variant: ProductVariantResponse, status: ProductVariantStatus): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     const selected = this.selectedProduct();
     if (!selected) {
       return;
@@ -307,7 +364,7 @@ export class ProductListPageComponent implements OnInit {
     }
 
     this.saving.set(true);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     try {
       const saved = await this.productApi.updateVariant(selected.id, variant.id, {
         colorId: variant.color?.id || this.common.defaultColorId(),
@@ -326,6 +383,10 @@ export class ProductListPageComponent implements OnInit {
   }
 
   async deleteVariant(variant: ProductVariantResponse): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     const selected = this.selectedProduct();
     if (!selected) {
       return;
@@ -349,7 +410,7 @@ export class ProductListPageComponent implements OnInit {
     }
 
     this.saving.set(true);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     try {
       await this.productApi.deleteVariant(selected.id, variant.id);
       await this.loadProducts();
@@ -362,6 +423,10 @@ export class ProductListPageComponent implements OnInit {
   }
 
   async deleteProduct(product: ProductResponse): Promise<void> {
+    if (this.saving()) {
+      return;
+    }
+
     if (!this.canDeleteProduct(product)) {
       this.notification.warning(
         'Cannot Delete Product',
@@ -384,7 +449,7 @@ export class ProductListPageComponent implements OnInit {
     }
 
     this.saving.set(true);
-    this.errorMessage.set('');
+    this.mutationErrorMessage.set('');
     try {
       await this.productApi.delete(product.id);
       if (this.selectedProduct()?.id === product.id) {
@@ -466,14 +531,21 @@ export class ProductListPageComponent implements OnInit {
   private handleFormError(error: unknown): void {
     if (error instanceof ApiClientError) {
       this.validationErrors.set(error.result.validationErrors);
-      this.notifyError('Save Product Failed', error);
+      this.notifyError('Save Product Failed', error, 'mutation');
       return;
     }
 
-    this.notifyError('Save Product Failed', error);
+    this.notifyError('Save Product Failed', error, 'mutation');
   }
 
-  private notifyError(title: string, error: unknown): void {
-    this.notification.error(title, describeApiError(error));
+  private notifyError(title: string, error: unknown, target: 'page' | 'mutation' = 'mutation'): void {
+    const message = describeApiError(error);
+    if (target === 'page') {
+      this.errorMessage.set(message);
+    } else {
+      this.mutationErrorMessage.set(message);
+    }
+
+    this.notification.error(title, message);
   }
 }

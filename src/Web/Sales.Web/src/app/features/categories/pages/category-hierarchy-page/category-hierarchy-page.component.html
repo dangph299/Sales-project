@@ -159,11 +159,11 @@
       [model]="categoryForm"
       [parentOptions]="parentOptions()"
       [validationErrors]="validationErrors()"
-      [errorMessage]="errorMessage()"
+      [errorMessage]="mutationErrorMessage()"
       [saving]="saving()"
       [editing]="!!selectedCategory()"
       [assignedCode]="selectedCategory()?.categoryCode || ''"
-      (save)="saveCategory()"
+      (save)="saveCategory($event)"
       (cancel)="closeCategoryModal()"></app-category-form>
   </ng-container>
 </nz-modal>
