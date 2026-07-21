@@ -73,7 +73,10 @@ public static class DependencyInjection
             var cache = sp.GetRequiredService<IProductCache>();
             return new CachedProductReadService(inner, cache);
         });
+        services.AddScoped<IReferenceDataReadService, ReferenceDataReadService>();
+        services.AddScoped<ICategoryReadService, CategoryReadService>();
         services.AddScoped<ICustomerReadService, CustomerReadService>();
+        services.AddScoped<ICustomerCodeGenerator, CustomerCodeGenerator>();
         services.AddScoped<IOrderReadService, OrderReadService>();
         return services;
     }

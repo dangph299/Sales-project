@@ -11,6 +11,7 @@ using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Sales.Api.Middleware;
+using Sales.Api.Realtime;
 using Sales.Application;
 using Sales.Application.Common.Exceptions;
 using Sales.Infrastructure;
@@ -51,6 +52,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSalesInfrastructure(builder.Configuration);
         builder.Services.AddSalesBackgroundJobs(builder.Configuration);
         builder.Services.AddSalesIdentity();
+        builder.Services.AddSalesRealtime(builder.Configuration);
 
         return builder;
     }

@@ -2,6 +2,7 @@ using FluentValidation;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Sales.Application.Features.Customers.Commands;
+using Sales.Application.Features.Customers.Interfaces;
 using Sales.Application.Features.Orders.Commands;
 using Sales.Application.Features.Orders.DTOs;
 using Sales.Domain;
@@ -17,6 +18,7 @@ public sealed class ValidationBehaviorTests
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<CreateCustomer>());
         services.AddSalesApplication();
         services.AddSingleton<IRepository<Customer>, FakeCustomerRepository>();
+        services.AddSingleton<ICustomerCodeGenerator, FakeCustomerCodeGenerator>();
         services.AddSingleton<IUnitOfWork, FakeUnitOfWork>();
         return services.BuildServiceProvider().GetRequiredService<IMediator>();
     }
@@ -52,6 +54,7 @@ public sealed class ValidationBehaviorTests
         services.AddSalesApplication();
         services.AddSingleton<IOrderRepository, FakeOrderRepository>();
         services.AddSingleton<IRepository<Customer>, FakeCustomerRepository>();
+        services.AddSingleton<ICustomerCodeGenerator, FakeCustomerCodeGenerator>();
         services.AddSingleton<IProductRepository, FakeProductRepository>();
         services.AddSingleton<IUnitOfWork, FakeUnitOfWork>();
         var mediator = services.BuildServiceProvider().GetRequiredService<IMediator>();
@@ -103,5 +106,10 @@ public sealed class ValidationBehaviorTests
     private sealed class FakeUnitOfWork : IUnitOfWork
     {
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Task.FromResult(1);
+    }
+
+    private sealed class FakeCustomerCodeGenerator : ICustomerCodeGenerator
+    {
+        public Task<string> NextCodeAsync(CancellationToken cancellationToken = default) => Task.FromResult("CUS000001");
     }
 }

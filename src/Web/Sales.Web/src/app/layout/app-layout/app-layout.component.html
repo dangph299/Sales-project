@@ -1,0 +1,37 @@
+<nz-layout class="app-layout">
+  <nz-sider
+    class="app-sider"
+    nzCollapsible
+    [nzCollapsed]="sidebarCollapsed()"
+    (nzCollapsedChange)="sidebarCollapsed.set($event)"
+    [nzBreakpoint]="'lg'"
+    [nzTrigger]="null">
+    <app-sidebar [collapsed]="sidebarCollapsed()"></app-sidebar>
+  </nz-sider>
+
+  <nz-layout>
+    <nz-header class="app-header">
+      <app-header
+        [pageTitle]="pageTitle()"
+        [collapsed]="sidebarCollapsed()"
+        (collapsedChange)="sidebarCollapsed.set($event)"
+        (errorMessageChange)="errorMessage.set($event)"
+        (signedOut)="onSignedOut()"></app-header>
+    </nz-header>
+
+    <app-status-bar [errorMessage]="errorMessage()"></app-status-bar>
+
+    <nz-content class="app-content">
+      <nz-breadcrumb class="breadcrumb">
+        <nz-breadcrumb-item>
+          <a routerLink="/dashboard">Home</a>
+        </nz-breadcrumb-item>
+        <nz-breadcrumb-item *ngFor="let crumb of breadcrumbs()">
+          <a [routerLink]="crumb.url">{{ crumb.label }}</a>
+        </nz-breadcrumb-item>
+      </nz-breadcrumb>
+
+      <router-outlet></router-outlet>
+    </nz-content>
+  </nz-layout>
+</nz-layout>

@@ -44,7 +44,7 @@ public sealed class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Searches products by name.
+    /// Searches products by catalog and variant filters.
     /// </summary>
     /// <param name="productCode">Optional product code filter.</param>
     /// <param name="name">An optional substring to match against the product's name.</param>

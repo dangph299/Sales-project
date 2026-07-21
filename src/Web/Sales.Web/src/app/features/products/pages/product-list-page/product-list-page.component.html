@@ -1,0 +1,224 @@
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Catalog</p>
+    <h1>Products</h1>
+    <p>Products store shared catalog information. Selling SKU, price, color, and size belong to ProductVariant.</p>
+  </div>
+  <div class="page-header__actions">
+    <button nz-button type="button" (click)="loadProducts()">Refresh</button>
+    <button nz-button nzType="primary" type="button" (click)="openCreateProduct()">New product</button>
+  </div>
+</section>
+
+<section class="toolbar">
+  <label>
+    Product code
+    <input nz-input name="productCodeFilter" [(ngModel)]="productCodeFilter" (keyup.enter)="loadProducts()">
+  </label>
+  <label>
+    Name
+    <input nz-input name="productNameFilter" [(ngModel)]="nameFilter" (keyup.enter)="loadProducts()">
+  </label>
+  <label>
+    SKU
+    <input nz-input name="skuFilter" [(ngModel)]="skuFilter" (keyup.enter)="loadProducts()">
+  </label>
+  <div class="filter-field">
+    <span>Status</span>
+    <nz-select name="productStatusFilter" [(ngModel)]="statusFilter" style="width: 150px" (ngModelChange)="loadProducts()">
+      <nz-option nzValue="" nzLabel="All"></nz-option>
+      <nz-option nzValue="Draft" nzLabel="Draft"></nz-option>
+      <nz-option nzValue="Published" nzLabel="Published"></nz-option>
+      <nz-option nzValue="Discontinued" nzLabel="Discontinued"></nz-option>
+    </nz-select>
+  </div>
+  <div class="filter-field">
+    <span>Color</span>
+    <nz-select name="colorFilter" [(ngModel)]="colorFilter" style="width: 150px" (ngModelChange)="loadProducts()">
+      <nz-option nzValue="" nzLabel="All"></nz-option>
+      <nz-option *ngFor="let color of colors()" [nzValue]="color.id" [nzLabel]="color.code"></nz-option>
+    </nz-select>
+  </div>
+  <div class="filter-field">
+    <span>Size</span>
+    <nz-select name="sizeFilter" [(ngModel)]="sizeFilter" style="width: 150px" (ngModelChange)="loadProducts()">
+      <nz-option nzValue="" nzLabel="All"></nz-option>
+      <nz-option *ngFor="let size of sizes()" [nzValue]="size.id" [nzLabel]="size.code"></nz-option>
+    </nz-select>
+  </div>
+  <button nz-button nzType="primary" type="button" (click)="loadProducts()">Search</button>
+</section>
+
+<app-page-state
+  [loading]="loading()"
+  [errorMessage]="errorMessage()"
+  [empty]="products().length === 0"
+  emptyTitle="No products found"
+  emptyText="Create a draft product, add variants, then publish it."
+  (retry)="loadProducts()"></app-page-state>
+
+<nz-card *ngIf="!loading() && products().length > 0" nzTitle="Product List" [nzExtra]="recordCount">
+  <ng-template #recordCount>{{ total() }} records</ng-template>
+
+  <nz-table #productTable [nzData]="products()" [nzShowPagination]="false" nzSize="small">
+    <thead>
+      <tr>
+        <th>Code</th>
+        <th>Name</th>
+        <th>Category</th>
+        <th>Status</th>
+        <th>Variants</th>
+        <th>Price range</th>
+        <th>Updated</th>
+        <th class="actions-column">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr
+        *ngFor="let product of productTable.data"
+        class="selectable"
+        [class.ant-table-row-selected]="selectedProduct()?.id === product.id"
+        (click)="viewProduct(product)">
+        <td>{{ product.productCode || product.sku }}</td>
+        <td>{{ product.name }}</td>
+        <td>{{ product.category?.name || '-' }}</td>
+        <td>
+          <app-status-tag
+            [display]="statusDisplay(product.status || (product.isActive ? 'Published' : 'Draft'))"></app-status-tag>
+        </td>
+        <td>{{ product.variants?.length || 0 }} / {{ publishedVariantCount(product) }} published</td>
+        <td>{{ product.minPrice | priceRange: product.maxPrice }}</td>
+        <td>{{ product.updatedAt | dateTime }}</td>
+        <td class="actions-column">
+          <div class="actions" (click)="$event.stopPropagation()">
+            <button nz-button nzSize="small" type="button" (click)="openEditProduct(product)">Edit</button>
+            <button
+              nz-button
+              nzSize="small"
+              type="button"
+              (click)="viewProduct(product); changeProductStatus('Published')"
+              [disabled]="product.status === 'Published'">
+              Publish
+            </button>
+            <button
+              nz-button
+              nzDanger
+              nzSize="small"
+              type="button"
+              (click)="viewProduct(product); changeProductStatus('Discontinued')"
+              [disabled]="product.status === 'Discontinued'">
+              Discontinue
+            </button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </nz-table>
+</nz-card>
+
+<nz-card
+  *ngIf="selectedProduct() as product"
+  class="variants-card"
+  [nzTitle]="'Variants — ' + (product.productCode || product.sku) + ' — ' + product.name"
+  [nzExtra]="variantActions">
+  <ng-template #variantActions>
+    <span class="variants-card__price">{{ product.minPrice | priceRange: product.maxPrice }}</span>
+    <button
+      nz-button
+      nzType="primary"
+      nzSize="small"
+      type="button"
+      (click)="openCreateVariant()"
+      [disabled]="product.status !== 'Published'">
+      Add variant
+    </button>
+  </ng-template>
+
+  <nz-table
+    *ngIf="(product.variants || []).length > 0; else noVariants"
+    #variantTable
+    [nzData]="product.variants || []"
+    [nzShowPagination]="false"
+    nzSize="small">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Color</th>
+        <th>Size</th>
+        <th>Price</th>
+        <th>Status</th>
+        <th class="actions-column">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let variant of variantTable.data">
+        <td class="mono">{{ variant.sku }}</td>
+        <td>
+          <span class="swatch" [style.background]="variant.color?.hexCode || 'transparent'"></span>
+          {{ variant.color?.code || '-' }}
+          <span class="muted">{{ variant.color?.name || '' }}</span>
+        </td>
+        <td>{{ variant.size?.code || '-' }}</td>
+        <td>{{ variant.price | money }}</td>
+        <td><app-status-tag [display]="variantStatusDisplay(variant.status)"></app-status-tag></td>
+        <td class="actions-column">
+          <div class="actions">
+            <button nz-button nzSize="small" type="button" (click)="openEditVariant(variant)">Edit</button>
+            <button
+              nz-button
+              nzDanger
+              nzSize="small"
+              type="button"
+              (click)="discontinueVariant(variant)"
+              [disabled]="variant.status === 'Discontinued'">
+              Discontinue
+            </button>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </nz-table>
+
+  <ng-template #noVariants>
+    <nz-empty nzNotFoundContent="This product has no variants yet. Add one before publishing."></nz-empty>
+  </ng-template>
+</nz-card>
+
+<nz-modal
+  [nzVisible]="productModalOpen()"
+  [nzTitle]="selectedProduct() ? 'Edit Product' : 'New Product'"
+  [nzFooter]="null"
+  [nzWidth]="640"
+  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (nzOnCancel)="closeProductModal()">
+  <ng-container *nzModalContent>
+    <app-product-form
+      [model]="productForm"
+      [validationErrors]="validationErrors()"
+      [errorMessage]="errorMessage()"
+      [saving]="saving()"
+      [editing]="!!selectedProduct()"
+      (save)="saveProduct()"
+      (cancel)="closeProductModal()"></app-product-form>
+  </ng-container>
+</nz-modal>
+
+<nz-modal
+  [nzVisible]="variantModalOpen()"
+  [nzTitle]="selectedVariant() ? 'Edit Variant' : 'Add Variant'"
+  [nzFooter]="null"
+  [nzWidth]="720"
+  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (nzOnCancel)="closeVariantModal()">
+  <ng-container *nzModalContent>
+    <app-product-variant-form
+      [model]="variantForm"
+      [productCode]="(selectedProduct()?.productCode || selectedProduct()?.sku) || ''"
+      [saving]="saving()"
+      [disabled]="selectedProduct()?.status !== 'Published'"
+      [editing]="!!selectedVariant()"
+      [statusOptions]="variantStatusOptions()"
+      (save)="saveVariant()"
+      (cancel)="closeVariantModal()"></app-product-variant-form>
+  </ng-container>
+</nz-modal>

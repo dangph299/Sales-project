@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Sales.Api.Extensions;
 using Sales.Api.Models.Requests;
 using Sales.Application.Features.Products.Commands;
+using Sales.Application.Features.Products.Queries;
 
 namespace Sales.Api.Controllers;
 
@@ -16,6 +17,20 @@ namespace Sales.Api.Controllers;
 [Route("api/categories")]
 public sealed class CategoriesController(ISender sender) : ControllerBase
 {
+    /// <summary>
+    /// Lists categories available for catalog assignment. Readable by any authenticated user because
+    /// the product form binds its category dropdown to this list; mutations remain Admin-only.
+    /// </summary>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the categories ordered by sort order, then name.</returns>
+    [HttpGet]
+    [Authorize]
+    public async Task<IActionResult> List(CancellationToken ct)
+    {
+        var categories = await sender.Send(new ListCategoriesQuery(), ct);
+        return this.ToOkResponse(categories);
+    }
+
     /// <summary>
     /// Creates a category.
     /// </summary>
@@ -56,5 +71,18 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
                 request.Status),
             ct);
         return this.ToOkResponse(category);
+    }
+
+    /// <summary>
+    /// Soft-deletes a category.
+    /// </summary>
+    /// <param name="id">Category identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>204 No Content</c> after the category has been soft-deleted.</returns>
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        await sender.Send(new DeleteCategoryCommand(id), ct);
+        return this.ToNoContentResponse();
     }
 }

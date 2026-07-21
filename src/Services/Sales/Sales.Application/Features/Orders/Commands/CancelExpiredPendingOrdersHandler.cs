@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Sales.Application.Features.Orders.Realtime;
 using Sales.Domain;
 
 namespace Sales.Application.Features.Orders.Commands;
@@ -77,6 +78,7 @@ public sealed class CancelExpiredPendingOrdersHandler(
         using var scope = serviceScopeFactory.CreateScope();
         var scopedOrderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var orderRealtimeNotifier = scope.ServiceProvider.GetRequiredService<IOrderRealtimeNotifier>();
 
         var order = await scopedOrderRepository.GetWithLinesAsync(orderId, cancellationToken);
         if (order is null)
@@ -84,6 +86,7 @@ public sealed class CancelExpiredPendingOrdersHandler(
             return false;
         }
 
+        var previousStatus = order.Status;
         var wasOrderCancelled = order.CancelDueToExpiration(orderUpdatedBefore);
         if (!wasOrderCancelled)
         {
@@ -91,6 +94,39 @@ public sealed class CancelExpiredPendingOrdersHandler(
         }
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
+        await NotifyOrderCancelledAfterSave(
+            orderRealtimeNotifier,
+            order,
+            previousStatus,
+            cancellationToken);
         return true;
+    }
+
+    private async Task NotifyOrderCancelledAfterSave(
+        IOrderRealtimeNotifier orderRealtimeNotifier,
+        Order order,
+        OrderStatus previousStatus,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await orderRealtimeNotifier.NotifyOrderStatusChangedAsync(
+                new OrderStatusChangedNotification(
+                    order.Id,
+                    previousStatus,
+                    order.Status,
+                    order.UpdatedAt,
+                    order.Version),
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                exception,
+                "Expired order realtime notification failed after save {OrderId} {PreviousStatus} {CurrentStatus}",
+                order.Id,
+                previousStatus,
+                order.Status);
+        }
     }
 }

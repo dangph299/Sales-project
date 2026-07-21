@@ -1,0 +1,74 @@
+<form nz-form nzLayout="vertical" (ngSubmit)="save.emit()">
+  <div class="field-grid">
+    <nz-form-item>
+      <nz-form-label nzRequired>Color</nz-form-label>
+      <nz-form-control>
+        <nz-select name="variantColor" [(ngModel)]="model.colorId" nzPlaceHolder="Select a color">
+          <nz-option
+            *ngFor="let color of colors()"
+            nzCustomContent
+            [nzValue]="color.id"
+            [nzLabel]="color.code + ' - ' + color.name">
+            <span class="swatch" [style.background]="color.hexCode || 'transparent'"></span>
+            <span class="option-code">{{ color.code }}</span>
+            <span class="option-name">{{ color.name }}</span>
+          </nz-option>
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-label nzRequired>Size</nz-form-label>
+      <nz-form-control>
+        <nz-select name="variantSize" [(ngModel)]="model.sizeId" nzPlaceHolder="Select a size">
+          <nz-option
+            *ngFor="let size of sizes()"
+            nzCustomContent
+            [nzValue]="size.id"
+            [nzLabel]="size.code + ' - ' + size.name">
+            <span class="option-code">{{ size.code }}</span>
+            <span class="option-name">{{ size.name }}</span>
+          </nz-option>
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-label nzRequired>Price</nz-form-label>
+      <nz-form-control nzExtra="Selling price for this variant.">
+        <nz-input-number
+          class="price-input"
+          name="variantPrice"
+          [(ngModel)]="model.price"
+          [nzMin]="0"
+          [nzStep]="1000"
+          [nzFormatter]="formatPrice"
+          [nzParser]="parsePrice"></nz-input-number>
+      </nz-form-control>
+    </nz-form-item>
+
+    <nz-form-item>
+      <nz-form-label>Status</nz-form-label>
+      <nz-form-control nzExtra="Only published variants can be sold.">
+        <nz-select name="variantStatus" [(ngModel)]="model.status">
+          <nz-option *ngFor="let status of statusOptions" [nzValue]="status" [nzLabel]="status"></nz-option>
+        </nz-select>
+      </nz-form-control>
+    </nz-form-item>
+  </div>
+
+  <div class="sku-preview">
+    <span class="sku-preview__swatch" [style.background]="selectedColorHex"></span>
+    <div class="sku-preview__text">
+      <span class="sku-preview__label">Generated SKU</span>
+      <span class="sku-preview__value">{{ skuPreview }}</span>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button nz-button type="button" (click)="cancel.emit()">Cancel</button>
+    <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="disabled">
+      {{ editing ? 'Save variant' : 'Add variant' }}
+    </button>
+  </div>
+</form>

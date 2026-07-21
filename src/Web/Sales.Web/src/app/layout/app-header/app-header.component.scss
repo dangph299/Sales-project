@@ -1,0 +1,49 @@
+:host {
+  align-items: center;
+  display: flex;
+  gap: 16px;
+  width: 100%;
+}
+
+.trigger {
+  font-size: 18px;
+}
+
+.header-title {
+  flex: 1;
+  min-width: 160px;
+
+  span {
+    color: #8c8c8c;
+    display: block;
+    line-height: 1.2;
+  }
+}
+
+.login-panel {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+
+  input {
+    width: 150px;
+  }
+}
+
+@media (max-width: 860px) {
+  :host {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .login-panel {
+    justify-content: flex-start;
+    width: 100%;
+
+    input {
+      width: min(100%, 220px);
+    }
+  }
+}

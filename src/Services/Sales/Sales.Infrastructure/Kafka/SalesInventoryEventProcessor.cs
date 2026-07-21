@@ -3,6 +3,7 @@ using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Sales.Application.Features.Orders.Realtime;
 
 namespace Sales.Infrastructure;
 
@@ -12,6 +13,7 @@ namespace Sales.Infrastructure;
 public sealed class SalesInventoryEventProcessor(
     SalesDbContext db,
     IClock clock,
+    IOrderRealtimeNotifier orderRealtimeNotifier,
     ILogger<SalesInventoryEventProcessor> logger) : IIntegrationEventProcessor
 {
     /// <inheritdoc />
@@ -59,7 +61,9 @@ public sealed class SalesInventoryEventProcessor(
             return ErrorCodes.OrderNotFound;
         }
 
+        var previousStatus = order.Status;
         var transition = ApplyOrderTransition(envelope, order);
+        var currentStatus = order.Status;
 
         // Save unconditionally: the Order transition and the Inbox row's own processing state are two
         // separate changes, and only the first of them depends on the transition. An event Sales has
@@ -69,6 +73,11 @@ public sealed class SalesInventoryEventProcessor(
         await db.SaveChangesAsync();
         await transaction.CommitAsync();
 
+        await NotifyOrderStatusChangedAfterCommit(
+            order,
+            previousStatus,
+            currentStatus);
+
         // Metric unchanged: it counts events that moved a Sales Order, not inbox rows retired.
         if (transition != OrderTransition.Ignored)
         {
@@ -76,6 +85,38 @@ public sealed class SalesInventoryEventProcessor(
         }
 
         return transition.GetDescription();
+    }
+
+    private async Task NotifyOrderStatusChangedAfterCommit(
+        Sales.Domain.Order order,
+        Sales.Domain.OrderStatus previousStatus,
+        Sales.Domain.OrderStatus currentStatus)
+    {
+        if (previousStatus == currentStatus)
+        {
+            return;
+        }
+
+        try
+        {
+            await orderRealtimeNotifier.NotifyOrderStatusChangedAsync(
+                new OrderStatusChangedNotification(
+                    order.Id,
+                    previousStatus,
+                    currentStatus,
+                    clock.UtcNow,
+                    order.Version),
+                CancellationToken.None);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            logger.LogWarning(
+                exception,
+                "Order realtime notification failed after commit {OrderId} {PreviousStatus} {CurrentStatus}",
+                order.Id,
+                previousStatus,
+                currentStatus);
+        }
     }
 
     private static OrderTransition ApplyOrderTransition(EventEnvelope envelope, Sales.Domain.Order order)

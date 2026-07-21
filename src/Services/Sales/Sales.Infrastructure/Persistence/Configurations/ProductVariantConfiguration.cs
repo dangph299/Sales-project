@@ -13,6 +13,7 @@ public sealed class ProductVariantConfiguration : IEntityTypeConfiguration<Produ
 
         entity.ToTable("product_variants");
         entity.HasKey(x => x.Id);
+        entity.Property(x => x.Id).ValueGeneratedNever();
         entity.HasQueryFilter(x => !x.IsDelete);
         entity.HasIndex(x => x.Sku).IsUnique();
         entity.HasIndex(x => new { x.ProductId, x.ColorId, x.SizeId }).IsUnique();

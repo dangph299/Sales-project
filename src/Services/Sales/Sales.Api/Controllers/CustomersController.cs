@@ -32,12 +32,13 @@ public sealed class CustomersController : ControllerBase
     /// <summary>
     /// Creates a new customer.
     /// </summary>
-    /// <param name="command">Customer to create.</param>
+    /// <param name="request">Customer to create.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns><c>201 Created</c> with the created customer.</returns>
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] CreateCustomer command, CancellationToken ct)
+    public async Task<IActionResult> Create([FromBody] CreateCustomerRequestDto request, CancellationToken ct)
     {
+        var command = new CreateCustomer(request.Name, request.Phone, request.Email, request.Address);
         var customer = await _sender.Send(command, ct);
         return this.ToCreatedResponse("/api/customers", customer);
     }
@@ -80,16 +81,16 @@ public sealed class CustomersController : ControllerBase
     }
 
     /// <summary>
-    /// Updates an existing customer's name and phone number.
+    /// Updates an existing customer's contact details.
     /// </summary>
     /// <param name="id">Customer to update, from the route.</param>
-    /// <param name="body">Customer's new name and phone number.</param>
+    /// <param name="body">Customer's new contact details.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns><c>200 OK</c> with the updated customer.</returns>
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCustomerRequest body, CancellationToken ct)
     {
-        var customer = await _sender.Send(new UpdateCustomer(id, body.Name, body.Phone), ct);
+        var customer = await _sender.Send(new UpdateCustomer(id, body.Name, body.Phone, body.Email, body.Address), ct);
         return this.ToOkResponse(customer);
     }
 

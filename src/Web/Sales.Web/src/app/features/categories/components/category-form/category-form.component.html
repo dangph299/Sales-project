@@ -1,0 +1,69 @@
+<nz-alert *ngIf="errorMessage" class="notice" nzType="error" [nzMessage]="errorMessage" nzShowIcon></nz-alert>
+<nz-alert
+  *ngIf="errorSummary.length > 0"
+  class="notice"
+  nzType="error"
+  [nzMessage]="errorSummary.join(' · ')"
+  nzShowIcon></nz-alert>
+
+<form nz-form nzLayout="vertical" (ngSubmit)="save.emit()">
+  <nz-form-item>
+    <nz-form-label nzRequired>Category code</nz-form-label>
+    <nz-form-control [nzErrorTip]="fieldError('CategoryCode')">
+      <input nz-input name="categoryCode" [(ngModel)]="model.categoryCode" [disabled]="editing" required>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label nzRequired>Name</nz-form-label>
+    <nz-form-control [nzErrorTip]="fieldError('Name')">
+      <input nz-input name="categoryName" [(ngModel)]="model.name" required>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label>Description</nz-form-label>
+    <nz-form-control>
+      <textarea nz-input name="categoryDescription" rows="3" [(ngModel)]="model.description"></textarea>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label>Parent Category</nz-form-label>
+    <nz-form-control>
+      <nz-tree-select
+        name="parentCategoryId"
+        [(ngModel)]="model.parentCategoryId"
+        [nzNodes]="parentOptions"
+        nzPlaceHolder="No parent"
+        nzShowSearch
+        nzAllowClear>
+      </nz-tree-select>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label nzRequired>Sort Order</nz-form-label>
+    <nz-form-control>
+      <nz-input-number name="sortOrder" [(ngModel)]="model.sortOrder" [nzMin]="0"></nz-input-number>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label>Status</nz-form-label>
+    <nz-form-control>
+      <nz-select name="categoryStatus" [(ngModel)]="model.status" [nzDisabled]="!editing">
+        <nz-option nzValue="Draft" nzLabel="Draft"></nz-option>
+        <nz-option nzValue="Published" nzLabel="Published"></nz-option>
+        <nz-option nzValue="Archived" nzLabel="Archived"></nz-option>
+      </nz-select>
+    </nz-form-control>
+  </nz-form-item>
+
+  <div class="form-actions">
+    <button nz-button nzType="primary" type="submit" [nzLoading]="saving">
+      {{ editing ? 'Save Changes' : 'Create Category' }}
+    </button>
+    <button nz-button type="button" (click)="cancel.emit()">Cancel</button>
+  </div>
+</form>

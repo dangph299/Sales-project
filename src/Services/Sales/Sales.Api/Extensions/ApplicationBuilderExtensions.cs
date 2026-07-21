@@ -2,6 +2,7 @@ using BuildingBlocks.Web;
 using BuildingBlocks.Web.OpenApi;
 using Hangfire;
 using Sales.Api.Filters;
+using Sales.Api.Realtime;
 
 namespace Sales.Api.Extensions;
 
@@ -19,6 +20,7 @@ public static class ApplicationBuilderExtensions
     public static WebApplication ConfigureApplication(this WebApplication app)
     {
         app.UseBuildingBlocksRequestPipeline();
+        app.UseCors(RealtimeServiceCollectionExtensions.SalesWebCorsPolicy);
         app.UseAuthentication();
         app.UseAuthorization();
         app.UseHangfireDashboard("/hangfire", new DashboardOptions
@@ -29,6 +31,7 @@ public static class ApplicationBuilderExtensions
             "Sales API",
             additionalDocuments: SalesSwaggerDocumentsFactory.Create(app.Configuration));
         app.MapControllers();
+        app.MapSalesRealtime();
 
         return app;
     }

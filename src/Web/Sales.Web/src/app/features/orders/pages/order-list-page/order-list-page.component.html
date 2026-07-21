@@ -1,0 +1,284 @@
+<section class="page-header order-page-header">
+  <div>
+    <h1>Orders</h1>
+    <p>Manage customer orders, inventory confirmation, and order lines.</p>
+  </div>
+  <button nz-button nzType="primary" type="button" (click)="openCreateOrder()">Create Order</button>
+</section>
+
+<section class="order-filter-panel">
+  <label class="filter-field filter-field--wide">
+    Search
+    <input
+      nz-input
+      name="orderSearch"
+      [(ngModel)]="orderSearch"
+      (keyup.enter)="searchOrders()"
+      placeholder="Order number, customer, or phone">
+  </label>
+
+  <label class="filter-field">
+    Status
+    <nz-select name="orderStatusFilter" [(ngModel)]="statusFilter" nzAllowClear nzPlaceHolder="All statuses">
+      <nz-option *ngFor="let status of orderStatuses" [nzValue]="status.value" [nzLabel]="status.label"></nz-option>
+    </nz-select>
+  </label>
+
+  <label class="filter-field">
+    From
+    <input nz-input name="orderFromDate" type="date" [(ngModel)]="fromDate">
+  </label>
+
+  <label class="filter-field">
+    To
+    <input nz-input name="orderToDate" type="date" [(ngModel)]="toDate">
+  </label>
+
+  <div class="filter-actions">
+    <button nz-button nzType="primary" type="button" (click)="searchOrders()">Search</button>
+    <button nz-button type="button" (click)="resetFilters()">Reset</button>
+  </div>
+</section>
+
+<app-page-state
+  [loading]="loading()"
+  [errorMessage]="errorMessage()"
+  [empty]="!loading() && displayedOrders().length === 0"
+  emptyTitle="No orders found"
+  emptyText="Create an order or adjust the filters."
+  (retry)="loadOrders()"></app-page-state>
+
+<section class="order-grid-panel" *ngIf="!loading() && displayedOrders().length > 0">
+  <div class="grid-summary">
+    <strong>Order Grid</strong>
+    <span>{{ total() }} records</span>
+  </div>
+
+  <nz-table
+    #orderTable
+    [nzData]="displayedOrders()"
+    [nzFrontPagination]="false"
+    [nzShowPagination]="true"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex"
+    [nzPageSize]="pageSize"
+    [nzPageSizeOptions]="pageSizeOptions"
+    [nzShowSizeChanger]="true"
+    [nzShowTotal]="totalTemplate"
+    [nzScroll]="{ x: '1175px' }"
+    nzSize="small"
+    (nzPageIndexChange)="changePage($event)"
+    (nzPageSizeChange)="changePageSize($event)">
+    <thead>
+      <tr>
+        <th nzWidth="130px">
+          <button class="sort-header" type="button" (click)="sortBy('orderNumber')">
+            Order Number <span>{{ sortIndicator('orderNumber') }}</span>
+          </button>
+        </th>
+        <th nzWidth="180px">
+          <button class="sort-header" type="button" (click)="sortBy('customer')">
+            Customer <span>{{ sortIndicator('customer') }}</span>
+          </button>
+        </th>
+        <th nzWidth="130px">
+          <button class="sort-header" type="button" (click)="sortBy('phone')">
+            Phone <span>{{ sortIndicator('phone') }}</span>
+          </button>
+        </th>
+        <th nzWidth="145px">
+          <button class="sort-header" type="button" (click)="sortBy('createdAt')">
+            Order Date <span>{{ sortIndicator('createdAt') }}</span>
+          </button>
+        </th>
+        <th class="number-column" nzWidth="125px">
+          <button class="sort-header sort-header--right" type="button" (click)="sortBy('total')">
+            Total Amount <span>{{ sortIndicator('total') }}</span>
+          </button>
+        </th>
+        <th nzWidth="140px">
+          <button class="sort-header" type="button" (click)="sortBy('status')">
+            Status <span>{{ sortIndicator('status') }}</span>
+          </button>
+        </th>
+        <th nzWidth="145px">
+          <button class="sort-header" type="button" (click)="sortBy('updatedAt')">
+            Last Updated <span>{{ sortIndicator('updatedAt') }}</span>
+          </button>
+        </th>
+        <th class="actions-column" nzWidth="180px">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let order of orderTable.data" class="order-row">
+        <td>
+          <button class="order-number-link" type="button" (click)="openEditOrder(order)">
+            {{ orderNumber(order) }}
+          </button>
+        </td>
+        <td class="truncate-cell" [title]="order.customerName">{{ order.customerName }}</td>
+        <td class="nowrap-cell">{{ order.customerPhone }}</td>
+        <td class="nowrap-cell">{{ order.createdAt | dateTime }}</td>
+        <td class="number-column">{{ order.total | money }}</td>
+        <td class="nowrap-cell"><app-status-tag [display]="statusDisplay(order.status)"></app-status-tag></td>
+        <td class="nowrap-cell">{{ order.updatedAt | dateTime }}</td>
+        <td class="actions-column">
+          <div class="row-actions">
+            <button nz-button nzSize="small" type="button" (click)="openEditOrder(order)">Edit</button>
+            <button
+              nz-button
+              nzDanger
+              nzSize="small"
+              type="button"
+              (click)="deleteOrder(order)"
+              [disabled]="order.status === 'Cancelled'">
+              Delete
+            </button>
+            <button nz-button nzSize="small" nz-dropdown [nzDropdownMenu]="orderMoreMenu" type="button">More</button>
+          </div>
+          <nz-dropdown-menu #orderMoreMenu="nzDropdownMenu">
+            <ul nz-menu>
+              <li nz-menu-item (click)="confirmRowOrder(order)" [nzDisabled]="order.status !== 'Draft'">Confirm</li>
+              <li nz-menu-item (click)="undoConfirmRowOrder(order)" [nzDisabled]="order.status !== 'Confirmed'">Undo Confirm</li>
+              <li nz-menu-item (click)="loadRowReservation(order)">Load Reservation</li>
+            </ul>
+          </nz-dropdown-menu>
+        </td>
+      </tr>
+    </tbody>
+  </nz-table>
+  <ng-template #totalTemplate let-total>Total {{ total }} records</ng-template>
+</section>
+
+<section class="realtime-strip" *ngIf="currentOrder() as order">
+  <span>Selected: {{ orderNumber(order) }}</span>
+  <app-status-tag [display]="statusDisplay(order.status)"></app-status-tag>
+  <span *ngIf="order.status === 'PendingInventory'">Awaiting inventory since {{ waitingSinceText() || 'now' }}</span>
+  <span *ngIf="realtimeMessage()">{{ realtimeMessage() }}</span>
+  <span>Realtime: {{ realtimeLabel() }}</span>
+</section>
+
+<pre *ngIf="reservationText()" class="reservation">{{ reservationText() }}</pre>
+
+<nz-modal
+  [nzVisible]="orderModalOpen()"
+  [nzTitle]="modalTitle()"
+  [nzFooter]="modalFooter"
+  [nzWidth]="1040"
+  [nzMaskClosable]="false"
+  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 210px)', 'overflow-y': 'auto' }"
+  (nzOnCancel)="closeOrderModal()">
+  <ng-container *nzModalContent>
+    <section class="order-form-layout">
+      <div class="order-form-section">
+        <div class="section-heading">
+          <h2>Order Information</h2>
+          <app-status-tag
+            *ngIf="currentOrder() as order"
+            [display]="statusDisplay(order.status)"></app-status-tag>
+        </div>
+
+        <div class="form-grid">
+          <label class="filter-field filter-field--wide">
+            Customer
+            <input
+              nz-input
+              [value]="selectedCustomer()?.name || ''"
+              readonly
+              placeholder="Select a customer below">
+            <span class="field-error" *ngIf="formErrors().customer">{{ formErrors().customer }}</span>
+          </label>
+
+          <label class="filter-field">
+            Order Date
+            <input nz-input type="text" [value]="currentOrder()?.createdAt ? (currentOrder()?.createdAt | dateTime) : 'Today'" readonly>
+          </label>
+
+          <label class="filter-field">
+            Status
+            <input nz-input type="text" [value]="currentOrder()?.status ? statusDisplay(currentOrder()?.status).label : 'Draft'" readonly>
+          </label>
+
+          <label class="filter-field filter-field--wide">
+            Note
+            <textarea nz-input rows="2" readonly placeholder="Not available in the current order API"></textarea>
+          </label>
+        </div>
+      </div>
+
+      <div class="picker-grid">
+        <section class="picker-panel" *ngIf="modalMode() === 'create'">
+          <div class="section-heading">
+            <h2>Customer</h2>
+            <button nz-button nzSize="small" type="button" (click)="loadCustomers()">Search</button>
+          </div>
+          <div class="picker-toolbar">
+            <input nz-input name="modalCustomerName" [(ngModel)]="customerSearch" (keyup.enter)="loadCustomers()" placeholder="Customer name">
+            <input nz-input name="modalCustomerPhone" [(ngModel)]="customerPhoneSearch" (keyup.enter)="loadCustomers()" placeholder="Phone">
+          </div>
+          <div class="picker-list">
+            <button
+              nz-button
+              type="button"
+              *ngFor="let customer of customers()"
+              (click)="selectCustomer(customer)"
+              [class.selected]="selectedCustomer()?.id === customer.id"
+              [disabled]="customer.status !== 'Normal'">
+              <span>{{ customer.customerCode || customer.name }} - {{ customer.name }}</span>
+              <app-status-tag [display]="customerDisplay(customer.status)"></app-status-tag>
+            </button>
+          </div>
+        </section>
+
+        <section class="picker-panel">
+          <div class="section-heading">
+            <h2>Add Product</h2>
+            <button nz-button nzSize="small" type="button" (click)="loadProducts()">Search</button>
+          </div>
+          <div class="picker-toolbar">
+            <input nz-input name="modalProductSearch" [(ngModel)]="productSearch" (keyup.enter)="loadProducts()" placeholder="Product or SKU">
+          </div>
+          <div class="picker-list">
+            <button
+              nz-button
+              type="button"
+              *ngFor="let option of sellableVariants()"
+              (click)="addCartLine(option.product, option.variant)">
+              <span>{{ option.variant.sku }} - {{ option.product.name }}</span>
+              <strong>{{ option.variant.price | money }}</strong>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <section class="order-form-section">
+        <div class="section-heading">
+          <h2>Order Lines</h2>
+          <span>{{ cartLines().length }} lines</span>
+        </div>
+        <span class="field-error" *ngIf="formErrors().lines">{{ formErrors().lines }}</span>
+        <app-order-line-editor
+          [lines]="cartLines()"
+          [canCreateOrder]="!!selectedCustomer()"
+          [saving]="saving()"
+          [showFooterAction]="false"
+          (linesChange)="updateCartLines($event)"></app-order-line-editor>
+      </section>
+    </section>
+  </ng-container>
+</nz-modal>
+
+<ng-template #modalFooter>
+  <div class="modal-footer">
+    <div class="order-total">
+      <span>Order Total</span>
+      <strong>{{ modalGrandTotal() | money }}</strong>
+    </div>
+    <div class="modal-actions">
+      <button nz-button type="button" (click)="closeOrderModal()" [disabled]="saving()">Cancel</button>
+      <button nz-button nzType="primary" type="button" (click)="saveOrder()" [nzLoading]="saving()" [disabled]="saving()">
+        Save
+      </button>
+    </div>
+  </div>
+</ng-template>

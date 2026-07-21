@@ -1,0 +1,43 @@
+<nz-descriptions nzBordered nzSize="small" [nzColumn]="1">
+  <nz-descriptions-item nzTitle="SKU">{{ row.variant.sku }}</nz-descriptions-item>
+  <nz-descriptions-item nzTitle="Product">{{ row.product.name }}</nz-descriptions-item>
+  <nz-descriptions-item nzTitle="Unit price">{{ row.variant.price | money }}</nz-descriptions-item>
+  <nz-descriptions-item nzTitle="Current available">{{ row.inventory?.available ?? 0 }}</nz-descriptions-item>
+</nz-descriptions>
+
+<form nz-form nzLayout="vertical" (ngSubmit)="apply.emit()">
+  <nz-form-item>
+    <nz-form-label>Operation</nz-form-label>
+    <nz-form-control>
+      <nz-select name="adjustmentOperation" [(ngModel)]="model.operation">
+        <nz-option nzValue="receive" nzLabel="Receive Stock"></nz-option>
+        <nz-option nzValue="adjust" nzLabel="Adjust Stock"></nz-option>
+      </nz-select>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label nzRequired>Adjustment quantity</nz-form-label>
+    <nz-form-control>
+      <nz-input-number name="quantityDelta" [(ngModel)]="model.quantityDelta" [nzStep]="1"></nz-input-number>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label>Reason</nz-form-label>
+    <nz-form-control>
+      <input nz-input name="adjustmentReason" [(ngModel)]="model.reason" placeholder="Purchase receipt, cycle count...">
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-alert
+    *ngIf="!canAdjust"
+    class="notice"
+    nzType="warning"
+    nzShowIcon
+    nzMessage="Only Published products and Published variants can receive stock."></nz-alert>
+
+  <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="!canAdjust">
+    Apply adjustment
+  </button>
+</form>

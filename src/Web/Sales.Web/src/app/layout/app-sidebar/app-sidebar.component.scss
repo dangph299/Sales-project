@@ -1,0 +1,29 @@
+.brand {
+  align-items: center;
+  color: #fff;
+  display: flex;
+  gap: 10px;
+  min-height: 64px;
+  padding: 0 18px;
+
+  &:hover {
+    color: #fff;
+  }
+}
+
+.brand-mark {
+  align-items: center;
+  background: #1677ff;
+  border-radius: 6px;
+  display: inline-flex;
+  font-weight: 800;
+  height: 34px;
+  justify-content: center;
+  min-width: 34px;
+}
+
+.brand-copy small {
+  color: rgba(255, 255, 255, .62);
+  display: block;
+  line-height: 1.2;
+}

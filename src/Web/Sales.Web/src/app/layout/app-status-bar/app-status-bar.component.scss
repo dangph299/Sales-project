@@ -1,0 +1,13 @@
+:host {
+  align-items: center;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 8px 24px;
+}
+
+nz-alert {
+  max-width: 520px;
+}

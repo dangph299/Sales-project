@@ -1,0 +1,34 @@
+<a class="brand" routerLink="/dashboard">
+  <span class="brand-mark">SM</span>
+  <span class="brand-copy" *ngIf="!collapsed">
+    <strong>Sales Management</strong>
+    <small>Internal operations</small>
+  </span>
+</a>
+
+<ul nz-menu nzTheme="dark" nzMode="inline">
+  <ng-container *ngFor="let item of items">
+    <li
+      *ngIf="item.route; else groupItem"
+      nz-menu-item
+      [routerLink]="item.route"
+      routerLinkActive="ant-menu-item-selected">
+      <span nz-icon [nzType]="item.icon"></span>
+      <span>{{ item.label }}</span>
+    </li>
+
+    <ng-template #groupItem>
+      <li nz-submenu [nzTitle]="item.label" [nzIcon]="item.icon" nzOpen>
+        <ul>
+          <li
+            *ngFor="let link of item.links"
+            nz-menu-item
+            [routerLink]="link.route"
+            routerLinkActive="ant-menu-item-selected">
+            {{ link.label }}
+          </li>
+        </ul>
+      </li>
+    </ng-template>
+  </ng-container>
+</ul>

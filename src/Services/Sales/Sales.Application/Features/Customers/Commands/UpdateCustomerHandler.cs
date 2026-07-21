@@ -25,7 +25,7 @@ public sealed class UpdateCustomerHandler(
     {
         var customer = await customerRepository.GetByIdAsync(request.Id, cancellationToken) ??
             throw new NotFoundException(nameof(Customer), request.Id);
-        customer.Update(request.Name, request.Phone);
+        customer.Update(request.Name, request.Phone, request.Email, request.Address);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return mapper.Map<CustomerDto>(customer);
     }

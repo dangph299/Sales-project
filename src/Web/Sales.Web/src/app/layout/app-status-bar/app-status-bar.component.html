@@ -1,0 +1,14 @@
+<nz-tag [nzColor]="isAuthenticated() ? 'success' : 'default'">
+  {{ isAuthenticated() ? 'Authenticated' : 'Not authenticated' }}
+</nz-tag>
+
+<nz-badge [nzStatus]="realtimeBadgeStatus()" [nzText]="realtimeLabel()"></nz-badge>
+
+<button nz-button nzType="link" type="button" (click)="checkHealth()">
+  <span nz-icon nzType="reload"></span>
+  Check API
+</button>
+
+<span>{{ healthText() }}</span>
+
+<nz-alert *ngIf="errorMessage" nzType="error" [nzMessage]="errorMessage" nzShowIcon></nz-alert>

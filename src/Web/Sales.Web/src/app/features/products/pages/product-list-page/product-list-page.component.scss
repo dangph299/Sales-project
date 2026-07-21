@@ -1,0 +1,63 @@
+.page-header__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+  }
+}
+
+.selectable {
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions-column {
+  text-align: center;
+  white-space: nowrap;
+  width: 120px;
+}
+
+.variants-card {
+  margin-top: 18px;
+}
+
+.variants-card__price {
+  color: #8c8c8c;
+  margin-right: 12px;
+}
+
+.swatch {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+  display: inline-block;
+  height: 12px;
+  margin-right: 6px;
+  vertical-align: middle;
+  width: 12px;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.muted {
+  color: #8c8c8c;
+  margin-left: 6px;
+}

@@ -6,6 +6,7 @@ using BuildingBlocks.Infrastructure;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Sales.Application.Features.Orders.Realtime;
 using Sales.Domain;
 
 namespace Sales.Infrastructure.Tests;
@@ -30,6 +31,10 @@ public sealed class SalesInventoryEventProcessorTests
         Assert.Equal("Reserved", outcome);
         await using var verify = fixture.CreateContext();
         Assert.Equal(OrderStatus.Confirmed, (await verify.Orders.SingleAsync(o => o.Id == order.Id)).Status);
+        var notification = Assert.Single(fixture.Notifier.Notifications);
+        Assert.Equal(order.Id, notification.OrderId);
+        Assert.Equal(OrderStatus.PendingInventory, notification.PreviousStatus);
+        Assert.Equal(OrderStatus.Confirmed, notification.CurrentStatus);
     }
 
     [Fact]
@@ -49,6 +54,10 @@ public sealed class SalesInventoryEventProcessorTests
         var rejectedOrder = await verify.Orders.SingleAsync(o => o.Id == order.Id);
         Assert.Equal(OrderStatus.InventoryRejected, rejectedOrder.Status);
         Assert.Equal("out of stock", rejectedOrder.RejectionReason);
+        var notification = Assert.Single(fixture.Notifier.Notifications);
+        Assert.Equal(order.Id, notification.OrderId);
+        Assert.Equal(OrderStatus.PendingInventory, notification.PreviousStatus);
+        Assert.Equal(OrderStatus.InventoryRejected, notification.CurrentStatus);
     }
 
     [Fact]
@@ -62,6 +71,7 @@ public sealed class SalesInventoryEventProcessorTests
         Assert.Equal("Ignored", outcome);
         await using var verify = fixture.CreateContext();
         Assert.Equal(OrderStatus.PendingInventory, (await verify.Orders.SingleAsync(o => o.Id == order.Id)).Status);
+        Assert.Empty(fixture.Notifier.Notifications);
     }
 
     [Fact]
@@ -77,6 +87,7 @@ public sealed class SalesInventoryEventProcessorTests
         Assert.Equal("Duplicate", outcome);
         await using var verify = fixture.CreateContext();
         Assert.Equal(OrderStatus.PendingInventory, (await verify.Orders.SingleAsync(o => o.Id == order.Id)).Status);
+        Assert.Empty(fixture.Notifier.Notifications);
     }
 
     [Fact]
@@ -94,6 +105,7 @@ public sealed class SalesInventoryEventProcessorTests
         await using var verify = fixture.CreateContext();
         Assert.Equal(OrderStatus.Confirmed, (await verify.Orders.SingleAsync(o => o.Id == order.Id)).Status);
         Assert.Equal(1, await verify.InboxMessages.CountAsync(inboxMessage => inboxMessage.EventId == envelope.EventId));
+        Assert.Single(fixture.Notifier.Notifications);
     }
 
     [Fact]
@@ -227,6 +239,7 @@ public sealed class SalesInventoryEventProcessorTests
         private readonly SqliteConnection connection;
         private readonly DbContextOptions<SalesDbContext> options;
         private readonly TestExecutionContext executionContext = new();
+        public RecordingOrderRealtimeNotifier Notifier { get; } = new();
 
         private SalesInventoryFixture(SqliteConnection connection, DbContextOptions<SalesDbContext> options)
         {
@@ -311,6 +324,7 @@ public sealed class SalesInventoryEventProcessorTests
             var processor = new SalesInventoryEventProcessor(
                 context,
                 new FixedClock(ConsumedAt),
+                Notifier,
                 NullLogger<SalesInventoryEventProcessor>.Instance);
             return await processor.ProcessAsync(envelope);
         }
@@ -324,5 +338,18 @@ public sealed class SalesInventoryEventProcessorTests
     private sealed class FixedClock(DateTimeOffset currentUtc) : IClock
     {
         public DateTimeOffset UtcNow => currentUtc;
+    }
+
+    public sealed class RecordingOrderRealtimeNotifier : IOrderRealtimeNotifier
+    {
+        public List<OrderStatusChangedNotification> Notifications { get; } = [];
+
+        public Task NotifyOrderStatusChangedAsync(
+            OrderStatusChangedNotification notification,
+            CancellationToken cancellationToken)
+        {
+            Notifications.Add(notification);
+            return Task.CompletedTask;
+        }
     }
 }

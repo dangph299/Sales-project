@@ -1,0 +1,65 @@
+<nz-alert *ngIf="errorMessage" class="notice" nzType="error" [nzMessage]="errorMessage" nzShowIcon></nz-alert>
+<nz-alert
+  *ngIf="errorSummary.length > 0"
+  class="notice"
+  nzType="error"
+  [nzMessage]="errorSummary.join(' · ')"
+  nzShowIcon></nz-alert>
+
+<form nz-form nzLayout="vertical" (ngSubmit)="save.emit()">
+  <nz-form-item>
+    <nz-form-label nzRequired>Product code</nz-form-label>
+    <nz-form-control>
+      <input nz-input name="productCode" [(ngModel)]="model.productCode" [disabled]="editing" required>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label nzRequired>Name</nz-form-label>
+    <nz-form-control>
+      <input nz-input name="productName" [(ngModel)]="model.name" required>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label>Description</nz-form-label>
+    <nz-form-control>
+      <textarea nz-input name="productDescription" rows="3" [(ngModel)]="model.description"></textarea>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label nzRequired>Category</nz-form-label>
+    <nz-form-control>
+      <nz-select
+        name="productCategoryId"
+        [(ngModel)]="model.categoryId"
+        nzShowSearch
+        nzPlaceHolder="Select a category"
+        required>
+        <nz-option
+          *ngFor="let category of categoryOptions()"
+          [nzValue]="category.id"
+          [nzLabel]="category.label"></nz-option>
+      </nz-select>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label>Status</nz-form-label>
+    <nz-form-control>
+      <nz-select name="productStatus" [(ngModel)]="model.status" [nzDisabled]="!editing">
+        <nz-option nzValue="Draft" nzLabel="Draft"></nz-option>
+        <nz-option nzValue="Published" nzLabel="Published"></nz-option>
+        <nz-option nzValue="Discontinued" nzLabel="Discontinued"></nz-option>
+      </nz-select>
+    </nz-form-control>
+  </nz-form-item>
+
+  <div class="form-actions">
+    <button nz-button nzType="primary" type="submit" [nzLoading]="saving">
+      {{ editing ? 'Save product' : 'Create product' }}
+    </button>
+    <button nz-button type="button" (click)="cancel.emit()">Cancel</button>
+  </div>
+</form>
