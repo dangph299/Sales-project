@@ -13,15 +13,15 @@
 <section class="toolbar">
   <label>
     Product code
-    <input nz-input name="productCodeFilter" [(ngModel)]="productCodeFilter" (keyup.enter)="loadProducts()">
+    <input nz-input name="productCodeFilter" [(ngModel)]="productCodeFilter" (keyup.enter)="loadProducts()" placeholder="Search by product code">
   </label>
   <label>
     Name
-    <input nz-input name="productNameFilter" [(ngModel)]="nameFilter" (keyup.enter)="loadProducts()">
+    <input nz-input name="productNameFilter" [(ngModel)]="nameFilter" (keyup.enter)="loadProducts()" placeholder="Search by name">
   </label>
   <label>
     SKU
-    <input nz-input name="skuFilter" [(ngModel)]="skuFilter" (keyup.enter)="loadProducts()">
+    <input nz-input name="skuFilter" [(ngModel)]="skuFilter" (keyup.enter)="loadProducts()" placeholder="Search by SKU">
   </label>
   <div class="filter-field">
     <span>Color</span>
