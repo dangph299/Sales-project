@@ -14,7 +14,6 @@ public sealed class CreateProductValidator : AbstractValidator<CreateProductComm
     /// </summary>
     public CreateProductValidator()
     {
-        RuleFor(x => x.ProductCode).NotEmpty().MaximumLength(32);
         RuleFor(x => x.Name).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Description).MaximumLength(1000);
         RuleFor(x => x.CategoryId).ValidAggregateId();

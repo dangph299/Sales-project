@@ -20,6 +20,7 @@ public sealed class OrderLine : Entity<Guid>
         ColorName = product.ColorName;
         SizeCode = product.SizeCode;
         UnitPrice = product.UnitPrice;
+        IsSellThroughDiscontinued = product.IsSellThroughDiscontinued;
         Quantity = quantity;
         DiscountPercent = discountPercent;
     }
@@ -53,6 +54,8 @@ public sealed class OrderLine : Entity<Guid>
     public string ColorName { get; private set; } = null!;
 
     public string SizeCode { get; private set; } = null!;
+
+    public bool IsSellThroughDiscontinued { get; private set; }
 
     /// <summary>
     /// Gets the product's unit price as it was at the time this line was created or last replaced.
@@ -93,6 +96,7 @@ public sealed class OrderLine : Entity<Guid>
         ColorName = product.ColorName;
         SizeCode = product.SizeCode;
         UnitPrice = product.UnitPrice;
+        IsSellThroughDiscontinued = product.IsSellThroughDiscontinued;
         Quantity = quantity;
         DiscountPercent = discountPercent;
     }

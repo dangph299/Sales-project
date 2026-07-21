@@ -1,0 +1,169 @@
+.page-header {
+  margin-bottom: 10px;
+}
+
+.page-header h1 {
+  font-size: 1.45rem;
+  margin-bottom: 2px;
+}
+
+.page-header p:not(.eyebrow) {
+  font-size: .9rem;
+  line-height: 1.35;
+}
+
+.eyebrow {
+  margin-bottom: 2px;
+}
+
+.notice {
+  margin-bottom: 14px;
+}
+
+.category-toolbar {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(220px, 1fr) minmax(420px, 2fr) auto;
+  margin-bottom: 16px;
+}
+
+.category-state {
+  display: block;
+}
+
+.category-toolbar label,
+.filter-field {
+  color: #637083;
+  display: grid;
+  font-size: .82rem;
+  gap: 6px;
+}
+
+.toolbar-filters {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(118px, 1fr));
+}
+
+.toolbar-actions,
+.row-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.category-column {
+  min-width: 250px;
+}
+
+.code-column {
+  min-width: 120px;
+}
+
+.parent-column {
+  min-width: 150px;
+}
+
+.status-column {
+  min-width: 120px;
+}
+
+.number-column {
+  min-width: 84px;
+  text-align: right;
+}
+
+.date-column {
+  min-width: 150px;
+}
+
+.actions-column {
+  min-width: 150px;
+  text-align: center;
+  width: 150px;
+}
+
+.tree-cell {
+  --indent-step: 22px;
+  align-items: center;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: calc(var(--tree-level) * var(--indent-step)) 26px minmax(0, 1fr) auto;
+  min-width: 0;
+}
+
+.tree-indent {
+  align-self: stretch;
+  border-left: 1px solid #edf0f5;
+  display: block;
+  margin-left: 11px;
+}
+
+.tree-toggle,
+.tree-toggle-placeholder {
+  align-items: center;
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  width: 24px;
+}
+
+.tree-toggle {
+  color: #42526e;
+}
+
+.category-name {
+  color: #172033;
+  font-weight: 600;
+}
+
+.cell-ellipsis {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+}
+
+tr.context-row .category-name {
+  color: #8c8c8c;
+  font-weight: 500;
+}
+
+:host ::ng-deep .ant-table-tbody > tr:hover > td {
+  background: #f8fbff;
+}
+
+:host ::ng-deep .ant-table-cell {
+  vertical-align: middle;
+}
+
+@media (max-width: 1180px) {
+  .category-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .toolbar-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .toolbar-actions {
+    flex-wrap: wrap;
+  }
+}

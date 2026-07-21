@@ -8,38 +8,31 @@ export const routes: Routes = [
   },
   {
     path: 'dashboard',
-    data: { breadcrumb: 'Dashboard', title: 'Dashboard' },
-    loadComponent: () => import('./pages/dashboard-page.component').then(component => component.DashboardPageComponent)
+    loadChildren: () => import('./features/dashboard/dashboard.routes').then(routes => routes.dashboardRoutes)
   },
   {
     path: 'customers',
-    data: { breadcrumb: 'Customers', title: 'Customers' },
-    loadComponent: () => import('./pages/customers-page.component').then(component => component.CustomersPageComponent)
+    loadChildren: () => import('./features/customers/customers.routes').then(routes => routes.customersRoutes)
   },
   {
     path: 'categories',
-    data: { breadcrumb: 'Categories', title: 'Categories' },
-    loadComponent: () => import('./pages/categories-page.component').then(component => component.CategoriesPageComponent)
+    loadChildren: () => import('./features/categories/categories.routes').then(routes => routes.categoriesRoutes)
   },
   {
     path: 'products',
-    data: { breadcrumb: 'Products', title: 'Products' },
-    loadComponent: () => import('./pages/products-page.component').then(component => component.ProductsPageComponent)
+    loadChildren: () => import('./features/products/products.routes').then(routes => routes.productsRoutes)
   },
   {
     path: 'inventory',
-    data: { breadcrumb: 'Stock Overview', title: 'Stock Overview' },
-    loadComponent: () => import('./pages/inventory-page.component').then(component => component.InventoryPageComponent)
+    loadChildren: () => import('./features/inventory/inventory.routes').then(routes => routes.inventoryRoutes)
   },
   {
     path: 'orders',
-    data: { breadcrumb: 'Orders', title: 'Orders' },
-    loadComponent: () => import('./pages/orders-page.component').then(component => component.OrdersPageComponent)
+    loadChildren: () => import('./features/orders/orders.routes').then(routes => routes.ordersRoutes)
   },
   {
-    path: 'reference-data',
-    data: { breadcrumb: 'Reference Data', title: 'Colors and Sizes' },
-    loadComponent: () => import('./pages/reference-data-page.component').then(component => component.ReferenceDataPageComponent)
+    path: 'common',
+    loadChildren: () => import('./features/common/common.routes').then(routes => routes.commonRoutes)
   },
   {
     path: '**',

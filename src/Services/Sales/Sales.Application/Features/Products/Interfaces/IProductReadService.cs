@@ -9,11 +9,21 @@ namespace Sales.Application.Features.Products.Interfaces;
 public interface IProductReadService
 {
     /// <summary>
-    /// Gets a single product by its identifier.
+    /// Gets a single published product by its identifier, for public catalog reads.
+    /// </summary>
+    /// <param name="id">Product identifier.</param>
+    /// <returns>Product, or <see langword="null"/> if none exists or it is not published.</returns>
+    Task<ProductDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a product by its identifier regardless of publication status, for returning the result
+    /// of a write. Command handlers must not read their own result back through
+    /// <see cref="GetAsync"/>: a Draft or Discontinued product it just persisted would come back
+    /// <see langword="null"/> and be reported as missing.
     /// </summary>
     /// <param name="id">Product identifier.</param>
     /// <returns>Product, or <see langword="null"/> if none exists.</returns>
-    Task<ProductDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<ProductDto?> GetForWriteResultAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Searches products by name.

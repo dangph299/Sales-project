@@ -44,7 +44,7 @@ public sealed class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Searches products by name.
+    /// Searches products by catalog and variant filters.
     /// </summary>
     /// <param name="productCode">Optional product code filter.</param>
     /// <param name="name">An optional substring to match against the product's name.</param>
@@ -146,6 +146,21 @@ public sealed class ProductsController : ControllerBase
     public async Task<IActionResult> DeactivateVariant(Guid id, Guid variantId, CancellationToken ct)
     {
         var product = await _sender.Send(new DeactivateProductVariantCommand(id, variantId), ct);
+        return this.ToOkResponse(product);
+    }
+
+    /// <summary>
+    /// Soft-deletes a product variant.
+    /// </summary>
+    /// <param name="id">Product identifier.</param>
+    /// <param name="variantId">Variant identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the updated product.</returns>
+    [HttpDelete("{id:guid}/variants/{variantId:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteVariant(Guid id, Guid variantId, CancellationToken ct)
+    {
+        var product = await _sender.Send(new DeleteProductVariantCommand(id, variantId), ct);
         return this.ToOkResponse(product);
     }
 

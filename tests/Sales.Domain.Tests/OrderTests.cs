@@ -31,6 +31,33 @@ public sealed class OrderTests
     }
 
     [Fact]
+    public void Confirmed_sell_through_discontinued_order_cannot_be_undone()
+    {
+        var product = ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
+        var variant = ProductTestFactory.PrimaryVariant(product);
+        var snapshot = ProductSnapshot.Create(
+            product.Id,
+            variant.Id,
+            product.ProductCode,
+            product.Name,
+            variant.Sku,
+            "BLK",
+            "Black",
+            "M",
+            variant.Price,
+            isActive: true,
+            isSellThroughDiscontinued: true);
+        var order = Order.Create(
+            CustomerSnapshot.Create(Guid.NewGuid(), "A", "0901234567"),
+            [new(snapshot, 1, 0)]);
+        order.RequestConfirmation();
+        order.MarkReserved();
+
+        Assert.Throws<DomainException>(order.UndoConfirmed);
+        Assert.Equal(OrderStatus.Confirmed, order.Status);
+    }
+
+    [Fact]
     public void Expired_pending_inventory_order_is_cancelled_and_raises_release_event()
     {
         var order = CreateOrder();

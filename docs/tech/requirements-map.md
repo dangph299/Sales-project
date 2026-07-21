@@ -67,7 +67,6 @@ Code chính:
 - Domain aggregate: `src/Services/Sales/Sales.Domain/Aggregates/Customer.cs`
 - Command tạo/sửa/xóa: `src/Services/Sales/Sales.Application/Features/Customers/Commands/`
 - Query search/get: `src/Services/Sales/Sales.Application/Features/Customers/Queries/`
-- Enum phone match: `src/Services/Sales/Sales.Application/Features/Customers/Enums/PhoneMatch.cs`
 - Read service: `src/Services/Sales/Sales.Infrastructure/Persistence/ReadServices/CustomerReadService.cs`
 - API controller: `src/Services/Sales/Sales.Api/Controllers/CustomersController.cs`
 - EF mapping: `src/Services/Sales/Sales.Infrastructure/Persistence/Configurations/CustomerConfiguration.cs`
@@ -688,7 +687,7 @@ Trạng thái: đã đáp ứng phần chính; demo monitoring được mô tả
 
 - **Kibana dashboard export**: implemented — `docker/kibana/exports/sales-management-reliability.ndjson` (3 data view, 8 visualization, dashboard `Sales Management Reliability`).
 - **Dashboard import script**: implemented — `docker/kibana/import-dashboards.sh` (idempotent, retry) + service one-shot `kibana-init` trong `docker/docker-compose.yml`. NDJSON soạn theo schema Kibana 9.1, cần xác nhận lại bằng một lần import thật.
-- **Screenshot**: chưa thể tạo trong môi trường hiện tại (không chạy được Docker/Kibana). Vị trí + checklist ở `docs/images/monitoring/README.md`.
+- **Screenshot**: chưa thể tạo trong môi trường hiện tại (không chạy được Docker/Kibana). Vị trí dự kiến: `docs/images/monitoring/` (chưa tồn tại).
 - **Trace demo guide**: implemented — hướng dẫn tìm trace xuyên service, log Seq, retry/dead-letter trong [monitoring-demo.md](monitoring-demo.md).
 
 Code chính:

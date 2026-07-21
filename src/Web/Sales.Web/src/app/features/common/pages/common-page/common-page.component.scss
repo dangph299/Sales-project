@@ -1,0 +1,17 @@
+.notice {
+  margin-bottom: 18px;
+}
+
+.content-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+.color-swatch {
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  display: inline-block;
+  height: 18px;
+  width: 28px;
+}

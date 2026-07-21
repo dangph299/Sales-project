@@ -11,6 +11,7 @@ using Hangfire.PostgreSql;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging;
 using Sales.Api.Middleware;
+using Sales.Api.Realtime;
 using Sales.Application;
 using Sales.Application.Common.Exceptions;
 using Sales.Infrastructure;
@@ -51,16 +52,17 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSalesInfrastructure(builder.Configuration);
         builder.Services.AddSalesBackgroundJobs(builder.Configuration);
         builder.Services.AddSalesIdentity();
+        builder.Services.AddSalesRealtime(builder.Configuration);
 
         return builder;
     }
 
     internal static void ConfigureSalesExceptions(ApiExceptionHandlingOptions options)
     {
-        options.Map<DomainException>((_, errorCatalog) =>
+        options.Map<DomainException>((exception, errorCatalog) =>
         {
             var error = errorCatalog.Get(ErrorCodes.InvalidOperation);
-            return new ApiExceptionMapping(400, error.Code, error.Description, LogLevel: LogLevel.Information);
+            return new ApiExceptionMapping(400, error.Code, exception.Message, LogLevel: LogLevel.Information);
         });
 
         options.Map<NotFoundException>((_, errorCatalog) =>

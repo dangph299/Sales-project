@@ -16,6 +16,6 @@ public sealed class SearchCustomersHandler(ICustomerReadService readService) : I
     /// <returns>A page of matching customers.</returns>
     public async Task<PagedResult<CustomerDto>> Handle(SearchCustomers request, CancellationToken ct)
     {
-        return await readService.SearchAsync(request.Name, request.Phone, request.PhoneMatch, request.Page, request.PageSize, ct);
+        return await readService.SearchAsync(request.Name, request.Phone, request.Page, request.PageSize, ct);
     }
 }

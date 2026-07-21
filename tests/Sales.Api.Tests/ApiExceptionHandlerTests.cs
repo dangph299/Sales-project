@@ -75,6 +75,7 @@ public sealed class ApiExceptionHandlerTests
         Assert.True(handled);
         Assert.Equal(400, context.Response.StatusCode);
         Assert.Equal(ErrorCodes.InvalidOperation, response.ErrorCode);
+        Assert.Equal("Only a draft order can be edited.", response.Message);
     }
 
     [Fact]

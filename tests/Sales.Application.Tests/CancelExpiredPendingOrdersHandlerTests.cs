@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Sales.Application.Features.Orders.Commands;
+using Sales.Application.Features.Orders.Realtime;
 using Sales.Domain;
 
 namespace Sales.Application.Tests;
@@ -26,6 +27,10 @@ public sealed class CancelExpiredPendingOrdersHandlerTests
         Assert.Equal(1, result.CancelledOrderCount);
         Assert.Equal(OrderStatus.Cancelled, order.Status);
         Assert.Equal(1, unitOfWork.SaveCount);
+        var notification = Assert.Single(unitOfWork.Notifier.Notifications);
+        Assert.Equal(order.Id, notification.OrderId);
+        Assert.Equal(OrderStatus.Draft, notification.PreviousStatus);
+        Assert.Equal(OrderStatus.Cancelled, notification.CurrentStatus);
     }
 
     [Fact]
@@ -53,6 +58,7 @@ public sealed class CancelExpiredPendingOrdersHandlerTests
         Assert.Equal(0, result.CancelledOrderCount);
         Assert.Equal(1, result.SkippedOrderCount);
         Assert.Equal(0, unitOfWork.SaveCount);
+        Assert.Empty(unitOfWork.Notifier.Notifications);
     }
 
     [Fact]
@@ -108,6 +114,7 @@ public sealed class CancelExpiredPendingOrdersHandlerTests
         var services = new ServiceCollection();
         services.AddSingleton<IOrderRepository>(repository);
         services.AddSingleton<IUnitOfWork>(unitOfWork);
+        services.AddSingleton<IOrderRealtimeNotifier>(unitOfWork.Notifier);
         var provider = services.BuildServiceProvider();
         return new CancelExpiredPendingOrdersHandler(
             repository,
@@ -187,6 +194,7 @@ public sealed class CancelExpiredPendingOrdersHandlerTests
 
     private sealed class FakeUnitOfWork : IUnitOfWork
     {
+        public RecordingOrderRealtimeNotifier Notifier { get; } = new();
         public int SaveCount { get; private set; }
         public int? ThrowOnSaveNumber { get; init; }
         public CancellationToken LastCancellationToken { get; private set; }
@@ -201,6 +209,19 @@ public sealed class CancelExpiredPendingOrdersHandlerTests
             }
 
             return Task.FromResult(1);
+        }
+    }
+
+    private sealed class RecordingOrderRealtimeNotifier : IOrderRealtimeNotifier
+    {
+        public List<OrderStatusChangedNotification> Notifications { get; } = [];
+
+        public Task NotifyOrderStatusChangedAsync(
+            OrderStatusChangedNotification notification,
+            CancellationToken cancellationToken)
+        {
+            Notifications.Add(notification);
+            return Task.CompletedTask;
         }
     }
 }

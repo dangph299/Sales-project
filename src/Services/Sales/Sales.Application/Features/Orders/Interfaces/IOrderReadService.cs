@@ -1,4 +1,5 @@
 using Sales.Application.Features.Orders.DTOs;
+using Sales.Domain;
 
 namespace Sales.Application.Features.Orders.Interfaces;
 
@@ -16,13 +17,14 @@ public interface IOrderReadService
     Task<OrderDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Searches orders by creation date range and/or customer name/phone.
+    /// Searches orders by creation date range, customer name/phone, and/or status.
     /// </summary>
     /// <param name="from">An optional inclusive lower bound on <c>CreatedAt</c>.</param>
     /// <param name="to">An optional inclusive upper bound on <c>CreatedAt</c>.</param>
     /// <param name="customer">An optional substring to match against the order's customer name or phone.</param>
+    /// <param name="status">An optional status the order must currently be in.</param>
     /// <param name="page">1-based page number.</param>
     /// <param name="pageSize">Maximum page size.</param>
     /// <returns>A page of matching orders.</returns>
-    Task<PagedResult<OrderDto>> SearchAsync(DateTimeOffset? from, DateTimeOffset? to, string? customer, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<PagedResult<OrderDto>> SearchAsync(DateTimeOffset? from, DateTimeOffset? to, string? customer, OrderStatus? status, int page, int pageSize, CancellationToken cancellationToken = default);
 }

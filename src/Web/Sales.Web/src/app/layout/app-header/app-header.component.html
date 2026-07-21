@@ -1,0 +1,44 @@
+<button
+  nz-button
+  nzType="text"
+  type="button"
+  class="trigger"
+  [attr.aria-label]="collapsed ? 'Expand navigation' : 'Collapse navigation'"
+  (click)="toggleSidebar()">
+  <span nz-icon [nzType]="collapsed ? 'menu-unfold' : 'menu-fold'"></span>
+</button>
+
+<div class="header-title">
+  <strong>{{ pageTitle }}</strong>
+  <span>Development</span>
+</div>
+
+<form nz-form nzLayout="inline" class="login-panel" (ngSubmit)="login()">
+  <nz-form-item>
+    <nz-form-control>
+      <input
+        nz-input
+        aria-label="User name"
+        name="userName"
+        [ngModel]="userName()"
+        (ngModelChange)="userName.set($event)"
+        placeholder="User name">
+    </nz-form-control>
+  </nz-form-item>
+  <nz-form-item>
+    <nz-form-control>
+      <input
+        nz-input
+        aria-label="Password"
+        name="password"
+        type="password"
+        [ngModel]="password()"
+        (ngModelChange)="password.set($event)"
+        placeholder="Password">
+    </nz-form-control>
+  </nz-form-item>
+  <button nz-button nzType="primary" type="submit" [nzLoading]="authenticating()">
+    {{ isAuthenticated() ? 'Refresh Token' : 'Login' }}
+  </button>
+  <button nz-button type="button" (click)="logout()" [disabled]="!isAuthenticated()">Logout</button>
+</form>

@@ -1,0 +1,59 @@
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Catalog</p>
+    <h1>Attribute</h1>
+    <p>Attribute lookup data is read-only and loaded from the Sales API. Codes are the stable business identifiers.</p>
+  </div>
+</section>
+
+<app-page-state
+  [loading]="loading()"
+  [errorMessage]="errorMessage()"
+  [empty]="colors().length === 0 && sizes().length === 0"
+  emptyTitle="No Attribute data"
+  emptyText="The Sales API returned no colors or sizes."
+  (retry)="reload()"></app-page-state>
+
+<section class="content-grid" *ngIf="!loading() && !errorMessage()">
+  <nz-card nzTitle="Color List" [nzExtra]="colorCount">
+    <ng-template #colorCount>{{ colors().length }} colors</ng-template>
+
+    <nz-table #colorTable [nzData]="colors()" [nzShowPagination]="false" nzSize="small">
+      <thead>
+        <tr>
+          <th>Preview</th>
+          <th>Code</th>
+          <th>Name</th>
+          <th>Hex</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let color of colorTable.data">
+          <td><span class="color-swatch" [style.background]="color.hexCode || '#ffffff'"></span></td>
+          <td>{{ color.code }}</td>
+          <td>{{ color.name }}</td>
+          <td>{{ color.hexCode || '-' }}</td>
+        </tr>
+      </tbody>
+    </nz-table>
+  </nz-card>
+
+  <nz-card nzTitle="Size List" [nzExtra]="sizeNote">
+    <ng-template #sizeNote>Sorted by SortOrder</ng-template>
+
+    <nz-table #sizeTable [nzData]="sizes()" [nzShowPagination]="false" nzSize="small">
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let size of sizeTable.data">
+          <td>{{ size.code }}</td>
+          <td>{{ size.name }}</td>
+        </tr>
+      </tbody>
+    </nz-table>
+  </nz-card>
+</section>

@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sales.Application.Common.Interfaces;
+using Sales.Application.Features.Orders.Realtime;
 using Sales.Domain;
 using Xunit;
 
@@ -104,6 +105,7 @@ public sealed class InboxRedrivePostgresTests
         services.AddSingleton<IExecutionContext, TestExecutionContext>();
         services.AddSingleton<IClock, SystemClock>();
         services.AddSingleton<IOutboxSignal, OutboxSignal>();
+        services.AddSingleton<IOrderRealtimeNotifier, NoopOrderRealtimeNotifier>();
         services.AddScoped<IIntegrationEventProcessor, SalesInventoryEventProcessor>();
         services.AddScoped<IInboxFailureRecorder, SalesInboxFailureRecorder>();
         services.AddSingleton<IOptions<InboxConsumerOptions>>(Options.Create(new InboxConsumerOptions()));
@@ -125,5 +127,15 @@ public sealed class InboxRedrivePostgresTests
         public string Actor => "integration-test";
 
         public Guid CorrelationId => Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+    }
+
+    private sealed class NoopOrderRealtimeNotifier : IOrderRealtimeNotifier
+    {
+        public Task NotifyOrderStatusChangedAsync(
+            OrderStatusChangedNotification notification,
+            CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 }

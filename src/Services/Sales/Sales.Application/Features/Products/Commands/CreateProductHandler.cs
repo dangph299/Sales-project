@@ -13,17 +13,12 @@ public sealed class CreateProductHandler(
     IProductRepository productRepository,
     IRepository<Category> categoryRepository,
     IUnitOfWork unitOfWork,
+    IProductCodeGenerator productCodeGenerator,
     IProductReadService productReadService) : IRequestHandler<CreateProductCommand, ProductDto>
 {
     /// <inheritdoc/>
     public async Task<ProductDto> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
-        var normalizedProductCode = ProductCodeRules.Normalize(request.ProductCode, "Product code");
-        if (await productRepository.GetByProductCodeAsync(normalizedProductCode, cancellationToken) is not null)
-        {
-            throw new DomainException("Product code already exists.");
-        }
-
         var category = await categoryRepository.GetByIdAsync(request.CategoryId, cancellationToken) ??
             throw new NotFoundException(nameof(Category), request.CategoryId);
         if (category.Status != ECategoryStatus.Published)
@@ -31,7 +26,9 @@ public sealed class CreateProductHandler(
             throw new DomainException("Only published categories can be assigned to products.");
         }
 
-        var product = Product.Create(request.ProductCode, request.Name, request.Description, request.CategoryId);
+        // Allocated after the category check so a rejected request does not consume a number.
+        var productCode = await productCodeGenerator.NextCodeAsync(cancellationToken);
+        var product = Product.Create(productCode, request.Name, request.Description, request.CategoryId);
         foreach (var productVariantInput in request.Variants ?? [])
         {
             var productVariantStatus = ParseVariantStatus(productVariantInput.Status);
@@ -40,14 +37,18 @@ public sealed class CreateProductHandler(
             var size = await productRepository.GetSizeAsync(productVariantInput.SizeId, cancellationToken) ??
                 throw new NotFoundException(nameof(Size), productVariantInput.SizeId);
 
-            product.Publish();
+            if (productVariantStatus == EProductVariantStatus.Published)
+            {
+                product.Publish();
+            }
+
             product.AddVariant(color, size, productVariantInput.Price, productVariantStatus);
         }
 
         await productRepository.AddAsync(product, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return await productReadService.GetAsync(product.Id, cancellationToken) ??
+        return await productReadService.GetForWriteResultAsync(product.Id, cancellationToken) ??
             throw new NotFoundException(nameof(Product), product.Id);
     }
 

@@ -6,6 +6,7 @@ using Sales.Api.Extensions;
 using Sales.Application.Features.Orders.Commands;
 using Sales.Application.Features.Orders.DTOs;
 using Sales.Application.Features.Orders.Queries;
+using Sales.Domain;
 
 namespace Sales.Api.Controllers;
 
@@ -45,11 +46,13 @@ public sealed class OrdersController : ControllerBase
     }
 
     /// <summary>
-    /// Searches orders by creation date range and/or customer name/phone.
+    /// Searches orders by creation date range, customer name/phone, and/or status.
     /// </summary>
     /// <param name="from">An optional inclusive lower bound on the order's creation time.</param>
     /// <param name="to">An optional inclusive upper bound on the order's creation time.</param>
     /// <param name="customer">An optional substring to match against the order's customer name or phone.</param>
+    /// <param name="status">An optional status the order must currently be in. Bound by name, so an
+    /// unrecognised value is rejected with <c>400 Bad Request</c> rather than silently ignored.</param>
     /// <param name="page">1-based page number. Defaults to 1.</param>
     /// <param name="pageSize">Maximum page size. Defaults to 20.</param>
     /// <param name="ct">Cancellation token.</param>
@@ -59,11 +62,12 @@ public sealed class OrdersController : ControllerBase
         [FromQuery] DateTimeOffset? from,
         [FromQuery] DateTimeOffset? to,
         [FromQuery] string? customer,
+        [FromQuery] OrderStatus? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var orders = await _sender.Send(new SearchOrders(from, to, customer, page, pageSize), ct);
+        var orders = await _sender.Send(new SearchOrders(from, to, customer, status, page, pageSize), ct);
         return this.ToOkResponse(orders);
     }
 

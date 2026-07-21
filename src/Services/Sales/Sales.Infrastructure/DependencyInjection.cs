@@ -41,6 +41,7 @@ public static class DependencyInjection
             .AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
         services.AddSalesRepositories();
         services.AddSalesReadServices();
+        services.AddSalesCodeGeneration();
         services.AddSalesExecutionContext();
         services.AddSalesAuditing();
         services.AddSalesCaching(configuration);
@@ -73,8 +74,26 @@ public static class DependencyInjection
             var cache = sp.GetRequiredService<IProductCache>();
             return new CachedProductReadService(inner, cache);
         });
+        services.AddScoped<IReferenceDataReadService, ReferenceDataReadService>();
+        services.AddScoped<ICategoryReadService, CategoryReadService>();
         services.AddScoped<ICustomerReadService, CustomerReadService>();
         services.AddScoped<IOrderReadService, OrderReadService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the backend-assigned business code generators.
+    /// </summary>
+    /// <remarks>
+    /// Scoped to match <see cref="SalesDbContext"/>, which the shared generator uses to allocate
+    /// from the PostgreSQL sequences.
+    /// </remarks>
+    private static IServiceCollection AddSalesCodeGeneration(this IServiceCollection services)
+    {
+        services.AddScoped<SequentialCodeGenerator>();
+        services.AddScoped<ICustomerCodeGenerator, CustomerCodeGenerator>();
+        services.AddScoped<IProductCodeGenerator, ProductCodeGenerator>();
+        services.AddScoped<ICategoryCodeGenerator, CategoryCodeGenerator>();
         return services;
     }
 

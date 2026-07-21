@@ -23,6 +23,12 @@ namespace Sales.Infrastructure.Persistence.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "pg_trgm");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.HasSequence("category_code_seq");
+
+            modelBuilder.HasSequence("customer_code_seq");
+
+            modelBuilder.HasSequence("product_code_seq");
+
             modelBuilder.Entity("BuildingBlocks.Infrastructure.InboxMessage", b =>
                 {
                     b.Property<Guid>("EventId")
@@ -328,18 +334,20 @@ namespace Sales.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryCode")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDelete\"");
 
                     b.HasIndex("Name")
                         .IsUnique()
-                        .HasFilter("\"ParentCategoryId\" IS NULL");
+                        .HasFilter("\"ParentCategoryId\" IS NULL AND NOT \"IsDelete\"");
 
                     b.HasIndex("ParentCategoryId");
 
                     b.HasIndex("Status");
 
                     b.HasIndex("Name", "ParentCategoryId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDelete\"");
 
                     b.ToTable("categories", (string)null);
 
@@ -506,7 +514,8 @@ namespace Sales.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("CustomerCode")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDelete\"");
 
                     b.HasIndex("Name");
 
@@ -515,7 +524,7 @@ namespace Sales.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("NormalizedPhone")
                         .IsUnique()
-                        .HasFilter("\"NormalizedPhone\" IS NOT NULL");
+                        .HasFilter("\"NormalizedPhone\" IS NOT NULL AND NOT \"IsDelete\"");
 
                     b.HasIndex("Phone");
 
@@ -595,6 +604,9 @@ namespace Sales.Infrastructure.Persistence.Migrations
 
                     b.Property<decimal>("DiscountPercent")
                         .HasColumnType("numeric");
+
+                    b.Property<bool>("IsSellThroughDiscontinued")
+                        .HasColumnType("boolean");
 
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
@@ -709,7 +721,8 @@ namespace Sales.Infrastructure.Persistence.Migrations
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Name"), new[] { "gin_trgm_ops" });
 
                     b.HasIndex("ProductCode")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDelete\"");
 
                     b.HasIndex("Status");
 
@@ -719,7 +732,6 @@ namespace Sales.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Sales.Domain.ProductVariant", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<Guid>("ColorId")
@@ -783,12 +795,14 @@ namespace Sales.Infrastructure.Persistence.Migrations
                     b.HasIndex("SizeId");
 
                     b.HasIndex("Sku")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDelete\"");
 
                     b.HasIndex("Status");
 
                     b.HasIndex("ProductId", "ColorId", "SizeId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("NOT \"IsDelete\"");
 
                     b.ToTable("product_variants", (string)null);
                 });

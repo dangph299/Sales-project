@@ -122,7 +122,7 @@ Inventory serialization conflict/deadlock cũng được map thành `409` ở AP
 
 Screenshot **chưa được chụp trong môi trường này** vì không chạy được Docker/Kibana ở đây. Ảnh cần được chụp từ một lần chạy stack thật; **không commit ảnh giả hoặc placeholder giả dạng ảnh thật**.
 
-- **Vị trí lưu**: `docs/images/monitoring/` (xem `README.md` trong thư mục đó để biết danh sách ảnh cần chụp và cách nhúng).
+- **Vị trí lưu**: `docs/images/monitoring/` (thư mục này chưa tồn tại — tạo khi chụp ảnh đầu tiên).
 - Ảnh tối thiểu cần có:
   1. Dashboard tổng quan `Sales Management Reliability`.
   2. Trace waterfall xuyên service (một `trace.id` đi qua Sales → Kafka → Inventory → Kafka → Sales) trong APM.

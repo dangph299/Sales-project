@@ -1,0 +1,46 @@
+<form nz-form nzLayout="vertical" (ngSubmit)="submit()">
+  <nz-form-item *ngIf="editing">
+    <nz-form-label>Product code</nz-form-label>
+    <nz-form-control>
+      <input nz-input name="productCode" [ngModel]="assignedCode" disabled>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label nzRequired>Name</nz-form-label>
+    <nz-form-control>
+      <input nz-input name="productName" [(ngModel)]="model.name" required>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label>Description</nz-form-label>
+    <nz-form-control>
+      <textarea nz-input name="productDescription" rows="3" [(ngModel)]="model.description"></textarea>
+    </nz-form-control>
+  </nz-form-item>
+
+  <nz-form-item>
+    <nz-form-label nzRequired>Category</nz-form-label>
+    <nz-form-control>
+      <nz-select
+        name="productCategoryId"
+        [(ngModel)]="model.categoryId"
+        nzShowSearch
+        nzPlaceHolder="Select a category"
+        required>
+        <nz-option
+          *ngFor="let category of categoryOptions()"
+          [nzValue]="category.id"
+          [nzLabel]="category.label"></nz-option>
+      </nz-select>
+    </nz-form-control>
+  </nz-form-item>
+
+  <div class="form-actions">
+    <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="saving">
+      {{ editing ? 'Save product' : 'Create product' }}
+    </button>
+    <button nz-button type="button" (click)="cancel.emit()" [disabled]="saving">Cancel</button>
+  </div>
+</form>

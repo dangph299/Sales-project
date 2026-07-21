@@ -17,10 +17,23 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
     }
 
     /// <inheritdoc/>
-    public async Task<ProductDto?> GetAsync(Guid id, CancellationToken ct = default)
+    public Task<ProductDto?> GetAsync(Guid id, CancellationToken ct = default)
+    {
+        return LoadAsync(id, publishedOnly: true, ct);
+    }
+
+    /// <inheritdoc/>
+    public Task<ProductDto?> GetForWriteResultAsync(Guid id, CancellationToken ct = default)
+    {
+        return LoadAsync(id, publishedOnly: false, ct);
+    }
+
+    private async Task<ProductDto?> LoadAsync(Guid id, bool publishedOnly, CancellationToken ct)
     {
         var product = await db.Products.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Id == id && x.Status == EProductStatus.Published && !x.IsDelete, ct);
+            .SingleOrDefaultAsync(
+                x => x.Id == id && !x.IsDelete,
+                ct);
         if (product is null)
         {
             return null;
@@ -28,7 +41,8 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
 
         var category = await db.Categories.AsNoTracking().SingleAsync(x => x.Id == product.CategoryId, ct);
         var variants = await LoadVariants([product.Id], ct);
-        return MapProduct(product, category, variants.GetValueOrDefault(product.Id, []));
+        var dto = MapProduct(product, category, variants.GetValueOrDefault(product.Id, []));
+        return !publishedOnly || dto.IsActive ? dto : null;
     }
 
     /// <inheritdoc/>
@@ -156,7 +170,7 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
             product.Name,
             minPrice,
             maxPrice,
-            product.IsActive,
+            publishedVariantPrices.Length > 0 && !product.IsDelete,
             product.Version,
             product.UpdatedAt,
             product.IsDelete,

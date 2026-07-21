@@ -1,7 +1,6 @@
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Sales.Application.Features.Customers.DTOs;
-using Sales.Application.Features.Customers.Enums;
 using Sales.Application.Features.Customers.Interfaces;
 using Sales.Domain;
 
@@ -23,7 +22,7 @@ public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICu
     }
 
     /// <inheritdoc/>
-    public async Task<PagedResult<CustomerDto>> SearchAsync(string? name, string? phone, PhoneMatch phoneMatch, int page, int pageSize, CancellationToken ct = default)
+    public async Task<PagedResult<CustomerDto>> SearchAsync(string? name, string? phone, int page, int pageSize, CancellationToken ct = default)
     {
         (page, pageSize) = Paging.Normalize(page, pageSize);
         var activeCustomer = new ActiveCustomerSpecification();
@@ -31,10 +30,11 @@ public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICu
         if (!string.IsNullOrWhiteSpace(name)) query = query.Where(x => EF.Functions.ILike(x.Name, $"%{name.Trim()}%"));
         if (!string.IsNullOrWhiteSpace(phone))
         {
+            // A phone keyword matches customers whose number starts with it (NormalizedPhone prefix)
+            // or ends with it (ReversedPhone prefix), so both indexed prefix scans stay usable.
             var normalized = new string(phone.Where(char.IsDigit).ToArray());
-            query = phoneMatch == PhoneMatch.Suffix
-                ? query.Where(x => x.ReversedPhone.StartsWith(new string(normalized.Reverse().ToArray())))
-                : query.Where(x => x.NormalizedPhone.StartsWith(normalized));
+            var reversed = new string(normalized.Reverse().ToArray());
+            query = query.Where(x => x.NormalizedPhone.StartsWith(normalized) || x.ReversedPhone.StartsWith(reversed));
         }
         var total = await query.LongCountAsync(ct);
         var customers = await query.OrderBy(x => x.Name).Skip((page - 1) * pageSize).Take(pageSize).ToListAsync(ct);

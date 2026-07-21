@@ -1,5 +1,16 @@
 # Repository Guidelines
 
+## Documentation
+
+Before generating code, read the rule files in [docs/project/](docs/project/README.md):
+
+- [docs/project/backend/](docs/project/backend/) — layering, DDD, CQRS, naming, events, Kafka, database, validation, logging, security, testing, plus the [definition-of-done checklist](docs/project/backend/checklist.md).
+- [docs/project/frontend/](docs/project/frontend/) — Angular architecture, components, signals, API access, styling, plus its [checklist](docs/project/frontend/checklist.md).
+
+For facts (endpoints, topics, schemas, DI registrations, configuration keys, business rules) see [docs/tech/](docs/tech/README.md). For conceptual explanations see [docs/guides/](docs/guides/README.md). Known documentation-vs-code gaps are recorded in [docs/tech/discrepancies.md](docs/tech/discrepancies.md).
+
+`docs/superpowers/` is read-only design history and may describe intentions that were never implemented. Trust the code and `docs/tech/` over it.
+
 ## Project Structure & Module Organization
 
 This repository is a .NET 10 sales management system organized by bounded context.

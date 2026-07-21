@@ -67,11 +67,30 @@ public sealed class ConfirmOrderHandlerTests
     }
 
     [Fact]
-    public async Task Confirm_rejects_when_an_order_line_product_was_deactivated_after_draft_creation()
+    public async Task Confirm_accepts_when_an_order_line_variant_was_discontinued_after_draft_creation()
     {
         var product = ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
         var order = CreateOrder(product);
-        product.Discontinue();
+        product.DiscontinueVariant(ProductTestFactory.PrimaryVariant(product).Id);
+        var logger = new RecordingLogger<ConfirmOrderHandler>();
+        var handler = new ConfirmOrderHandler(
+            new FakeOrderRepository(order),
+            new FakeProductRepository(product),
+            new FakeUnitOfWork(),
+            logger,
+            SalesMapperFactory.Create());
+
+        var dto = await handler.Handle(new ConfirmOrder(order.Id, order.Version), CancellationToken.None);
+
+        Assert.Equal("PendingInventory", dto.Status);
+    }
+
+    [Fact]
+    public async Task Confirm_rejects_when_an_order_line_variant_is_draft()
+    {
+        var product = Product.Create("sku", "Product", null, Guid.NewGuid());
+        product.AddVariant(Color.Create(Guid.NewGuid(), "BLK", "Black", "#000000"), Size.Create(Guid.NewGuid(), "M", "Medium", 40), 100);
+        var order = CreateOrder(product);
         var logger = new RecordingLogger<ConfirmOrderHandler>();
         var handler = new ConfirmOrderHandler(
             new FakeOrderRepository(order),
@@ -89,9 +108,22 @@ public sealed class ConfirmOrderHandlerTests
     private static Order CreateOrder(Product? product = null)
     {
         product ??= ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
+        var variant = ProductTestFactory.PrimaryVariant(product);
         return Order.Create(
             CustomerSnapshot.Create(Guid.NewGuid(), "A", "0901234567"),
-            [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, true), 1, 0)]);
+            [
+                new(ProductSnapshot.Create(
+                    product.Id,
+                    variant.Id,
+                    product.ProductCode,
+                    product.Name,
+                    variant.Sku,
+                    "BLK",
+                    "Black",
+                    "M",
+                    variant.Price,
+                    true), 1, 0)
+            ]);
     }
 
     private sealed class FakeOrderRepository(Order? order) : IOrderRepository
@@ -135,6 +167,13 @@ public sealed class ConfirmOrderHandlerTests
         {
             var idSet = ids.ToHashSet();
             return Task.FromResult<IReadOnlyList<Product>>(_products.Where(x => idSet.Contains(x.Id)).ToArray());
+        }
+
+        public Task<IReadOnlyList<ProductVariant>> GetVariantsByIdsAsync(IEnumerable<Guid> variantIds, CancellationToken cancellationToken = default)
+        {
+            var idSet = variantIds.ToHashSet();
+            return Task.FromResult<IReadOnlyList<ProductVariant>>(
+                _products.SelectMany(x => x.Variants).Where(x => idSet.Contains(x.Id)).ToArray());
         }
 
         public Task AddAsync(Product aggregate, CancellationToken cancellationToken = default) => Task.CompletedTask;

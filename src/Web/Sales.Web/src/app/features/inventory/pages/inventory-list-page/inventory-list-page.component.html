@@ -1,0 +1,105 @@
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Inventory</p>
+    <h1>Stock Overview</h1>
+    <p>Inventory is managed by ProductVariantId and SKU, not by the shared ProductId.</p>
+  </div>
+  <button nz-button type="button" (click)="loadStockRows()">Refresh stock</button>
+</section>
+
+<section class="toolbar">
+  <label>
+    SKU
+    <input nz-input name="inventorySku" [(ngModel)]="skuFilter" (keyup.enter)="loadStockRows()">
+  </label>
+  <label>
+    Product name
+    <input nz-input name="inventoryProductName" [(ngModel)]="nameFilter" (keyup.enter)="loadStockRows()">
+  </label>
+  <div class="filter-field">
+    <span>Stock state</span>
+    <nz-select name="stockState" [(ngModel)]="stockStateFilter" style="width: 150px" (ngModelChange)="loadStockRows()">
+      <nz-option nzValue="" nzLabel="All"></nz-option>
+      <nz-option nzValue="available" nzLabel="Available"></nz-option>
+      <nz-option nzValue="low" nzLabel="Low stock"></nz-option>
+      <nz-option nzValue="out" nzLabel="Out of stock"></nz-option>
+    </nz-select>
+  </div>
+  <button nz-button nzType="primary" type="button" (click)="loadStockRows()">Search</button>
+</section>
+
+<app-page-state
+  [loading]="loading()"
+  [errorMessage]="errorMessage()"
+  [empty]="filteredRows().length === 0"
+  emptyTitle="No variants found"
+  emptyText="Find Published products with variants to review inventory."
+  (retry)="loadStockRows()"></app-page-state>
+
+<nz-card *ngIf="!loading() && filteredRows().length > 0" class="wide" nzTitle="Stock Overview" [nzExtra]="thresholdNote">
+  <ng-template #thresholdNote>Low threshold: {{ lowStockThreshold }}</ng-template>
+
+  <nz-table
+    #stockTable
+    [nzData]="filteredRows()"
+    [nzShowPagination]="false"
+    nzSize="small"
+    [nzScroll]="{ x: '1080px' }">
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Product</th>
+        <th>Color</th>
+        <th>Size</th>
+        <th>Variant Status</th>
+        <th>Available</th>
+        <th>Reserved</th>
+        <th>Total</th>
+        <th>State</th>
+        <th class="actions-column">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr
+        *ngFor="let row of stockTable.data"
+        class="selectable"
+        [class.ant-table-row-selected]="selectedRow()?.variant?.id === row.variant.id"
+        (click)="selectRow(row)">
+        <td>{{ row.variant.sku }}</td>
+        <td>{{ row.product.name }}</td>
+        <td>{{ row.variant.color?.code || '-' }}</td>
+        <td>{{ row.variant.size?.code || '-' }}</td>
+        <td>
+          <app-status-tag [display]="statusDisplay(row.variant.status)"></app-status-tag>
+        </td>
+        <td>{{ row.inventory?.available ?? 0 }}</td>
+        <td>{{ row.inventory?.reserved ?? 0 }}</td>
+        <td>{{ totalQuantity(row) }}</td>
+        <td><span class="stock-chip" [class]="stockState(row)">{{ stockStateText(row) }}</span></td>
+        <td class="actions-column">
+          <button nz-button nzSize="small" type="button" (click)="$event.stopPropagation(); openAdjustment(row)">
+            Adjust
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </nz-table>
+</nz-card>
+
+<nz-modal
+  [nzVisible]="adjustmentModalOpen()"
+  nzTitle="Receive / Adjust Stock"
+  [nzFooter]="null"
+  [nzWidth]="560"
+  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (nzOnCancel)="closeAdjustment()">
+  <ng-container *nzModalContent>
+    <app-stock-adjustment-form
+      *ngIf="selectedRow() as row"
+      [row]="row"
+      [model]="adjustmentForm"
+      [saving]="saving()"
+      [errorMessage]="mutationErrorMessage()"
+      (apply)="adjustInventory()"></app-stock-adjustment-form>
+  </ng-container>
+</nz-modal>

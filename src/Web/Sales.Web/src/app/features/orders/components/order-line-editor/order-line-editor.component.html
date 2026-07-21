@@ -1,0 +1,72 @@
+<app-page-state
+  [empty]="lines.length === 0"
+  emptyTitle="The cart is empty"
+  emptyText="Select a Normal customer and orderable product variants to create an order."></app-page-state>
+
+<nz-table
+  #lineTable
+  *ngIf="lines.length > 0"
+  class="order-lines-table"
+  [nzData]="lines"
+  [nzShowPagination]="false"
+  nzSize="small"
+  [nzScroll]="{ x: '860px' }">
+  <thead>
+    <tr>
+      <th>Product</th>
+      <th>SKU</th>
+      <th>Color</th>
+      <th>Size</th>
+      <th class="number-column">Unit price</th>
+      <th class="number-column">Quantity</th>
+      <th class="number-column">Discount %</th>
+      <th class="number-column">Line total</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr *ngFor="let line of lineTable.data">
+      <td>{{ line.product.name }}</td>
+      <td>{{ line.variant.sku }}</td>
+      <td>{{ line.variant.color?.name || '-' }}</td>
+      <td>{{ line.variant.size?.code || '-' }}</td>
+      <td class="number-column">{{ line.variant.price | money }}</td>
+      <td class="number-column">
+        <nz-input-number
+          class="line-number-input"
+          [ngModel]="line.quantity"
+          (ngModelChange)="changeQuantity(line.variant.id, $event)"
+          [nzMin]="1"
+          nzSize="small"></nz-input-number>
+      </td>
+      <td class="number-column">
+        <nz-input-number
+          class="line-number-input"
+          [ngModel]="line.discountPercent"
+          (ngModelChange)="changeDiscount(line.variant.id, $event)"
+          [nzMin]="0"
+          [nzMax]="100"
+          nzSize="small"></nz-input-number>
+      </td>
+      <td class="number-column line-total">{{ lineTotal(line) | money }}</td>
+      <td class="line-action-column">
+        <button nz-button nzDanger nzSize="small" type="button" (click)="removeLine(line.variant.id)" [disabled]="saving">Delete</button>
+      </td>
+    </tr>
+  </tbody>
+</nz-table>
+
+<section class="summary-strip" *ngIf="lines.length > 0">
+  <span>Subtotal: {{ subtotal | money }}</span>
+  <strong>Grand total: {{ grandTotal | money }}</strong>
+  <button
+    *ngIf="showFooterAction"
+    nz-button
+    nzType="primary"
+    type="button"
+    (click)="createOrder.emit()"
+    [nzLoading]="saving"
+    [disabled]="saving || !canCreateOrder || lines.length === 0">
+    {{ actionLabel }}
+  </button>
+</section>

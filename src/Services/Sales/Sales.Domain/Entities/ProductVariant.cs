@@ -88,7 +88,8 @@ public sealed class ProductVariant : Entity<Guid>
     {
         EnsureNotDeleted();
         if (Status == EProductVariantStatus.Published) return;
-        if (Status != EProductVariantStatus.Draft) throw new DomainException("Only draft product variants can be published.");
+        if (Status is not (EProductVariantStatus.Draft or EProductVariantStatus.Discontinued))
+            throw new DomainException("Only draft or discontinued product variants can be published.");
 
         Status = EProductVariantStatus.Published;
         Touch();
@@ -98,9 +99,26 @@ public sealed class ProductVariant : Entity<Guid>
     {
         EnsureNotDeleted();
         if (Status == EProductVariantStatus.Discontinued) return;
-        if (Status != EProductVariantStatus.Published) throw new DomainException("Only published product variants can be discontinued.");
+        if (Status != EProductVariantStatus.Published)
+            throw new DomainException("Only published product variants can be discontinued.");
 
         Status = EProductVariantStatus.Discontinued;
+        Touch();
+    }
+
+    public void Delete(string deleteByUser)
+    {
+        if (IsDelete) return;
+        if (Status is not (EProductVariantStatus.Draft or EProductVariantStatus.Discontinued))
+        {
+            throw new DomainException("Only draft or discontinued product variants can be deleted.");
+        }
+
+        var actor = string.IsNullOrWhiteSpace(deleteByUser) ? "system" : deleteByUser.Trim();
+        IsDelete = true;
+        DeleteByUser = actor;
+        DeletedBy = actor;
+        DeletedAt = DateTimeOffset.UtcNow;
         Touch();
     }
 
@@ -120,6 +138,7 @@ public sealed class ProductVariant : Entity<Guid>
         if (status == Status) return;
         if (Status == EProductVariantStatus.Draft && status == EProductVariantStatus.Published) return;
         if (Status == EProductVariantStatus.Published && status == EProductVariantStatus.Discontinued) return;
+        if (Status == EProductVariantStatus.Discontinued && status == EProductVariantStatus.Published) return;
 
         throw new DomainException("Product variant status transition is invalid.");
     }

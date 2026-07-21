@@ -1,0 +1,119 @@
+<section class="page-header">
+  <div>
+    <p class="eyebrow">Overview</p>
+    <h1>Dashboard</h1>
+    <p>Monitor orders, customers, products, and inventory signals from the currently available APIs.</p>
+  </div>
+  <button nz-button type="button" (click)="load()">Refresh</button>
+</section>
+
+<app-page-state [loading]="loading()" [errorMessage]="errorMessage()" (retry)="load()"></app-page-state>
+
+<ng-container *ngIf="!loading() && !errorMessage()">
+  <section class="kpi-grid">
+    <nz-card nzSize="small">
+      <span>Orders</span>
+      <strong>{{ metrics().orderTotal }}</strong>
+      <small>Recent page total</small>
+    </nz-card>
+    <nz-card nzSize="small">
+      <span>Pending</span>
+      <strong>{{ metrics().pendingOrderCount }}</strong>
+      <small>Pending inventory</small>
+    </nz-card>
+    <nz-card nzSize="small">
+      <span>Revenue</span>
+      <strong>{{ metrics().revenue | money }}</strong>
+      <small>Current page</small>
+    </nz-card>
+    <nz-card nzSize="small">
+      <span>Customers</span>
+      <strong>{{ metrics().customerTotal }}</strong>
+      <small>Search API total</small>
+    </nz-card>
+    <nz-card nzSize="small">
+      <span>Published products</span>
+      <strong>{{ metrics().publishedProductCount }}</strong>
+      <small>Current page</small>
+    </nz-card>
+    <nz-card nzSize="small">
+      <span>Published variants</span>
+      <strong>{{ metrics().publishedVariantCount }}</strong>
+      <small>Current page</small>
+    </nz-card>
+  </section>
+
+  <section class="content-grid">
+    <nz-card nzTitle="Recent Orders" [nzExtra]="ordersLink">
+      <ng-template #ordersLink><a routerLink="/orders">View all</a></ng-template>
+
+      <nz-table
+        #orderTable
+        *ngIf="recentOrders().length > 0"
+        [nzData]="recentOrders()"
+        [nzShowPagination]="false"
+        nzSize="small">
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Status</th>
+            <th>Total</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let order of orderTable.data">
+            <td>{{ order.customerName }}</td>
+            <td><app-status-tag [display]="order.status"></app-status-tag></td>
+            <td>{{ order.total | money }}</td>
+            <td>{{ order.createdAt | dateTime }}</td>
+          </tr>
+        </tbody>
+      </nz-table>
+
+      <app-page-state
+        [empty]="recentOrders().length === 0"
+        emptyTitle="No orders found"
+        emptyText="Create the first order from the Orders page."></app-page-state>
+    </nz-card>
+
+    <nz-card nzTitle="Recent Products" [nzExtra]="productsLink">
+      <ng-template #productsLink><a routerLink="/products">View catalog</a></ng-template>
+
+      <nz-table
+        #productTable
+        *ngIf="recentProducts().length > 0"
+        [nzData]="recentProducts()"
+        [nzShowPagination]="false"
+        nzSize="small">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Status</th>
+            <th>Price range</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let product of productTable.data">
+            <td>{{ product.label }}</td>
+            <td><app-status-tag [display]="product.status"></app-status-tag></td>
+            <td>{{ product.minPrice | priceRange: product.maxPrice }}</td>
+          </tr>
+        </tbody>
+      </nz-table>
+
+      <app-page-state
+        [empty]="recentProducts().length === 0"
+        emptyTitle="No products found"
+        emptyText="Create products and variants in Catalog."></app-page-state>
+    </nz-card>
+  </section>
+
+  <nz-card class="alerts" nzTitle="System Alerts">
+    <nz-list nzSize="small" [nzDataSource]="systemAlerts" [nzRenderItem]="alertItem">
+      <ng-template #alertItem let-alert>
+        <li nz-list-item>{{ alert }}</li>
+      </ng-template>
+    </nz-list>
+  </nz-card>
+</ng-container>

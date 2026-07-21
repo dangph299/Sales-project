@@ -1,0 +1,25 @@
+:host {
+  display: block;
+}
+
+.app-layout,
+.app-sider {
+  min-height: 100vh;
+}
+
+.app-header {
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  height: auto;
+  min-height: 64px;
+  padding: 10px 18px;
+}
+
+.app-content {
+  padding: 22px 24px 32px;
+}
+
+.breadcrumb {
+  margin-bottom: 18px;
+}

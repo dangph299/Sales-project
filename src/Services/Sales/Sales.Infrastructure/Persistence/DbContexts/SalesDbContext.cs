@@ -84,6 +84,19 @@ public sealed class SalesDbContext(
     {
         base.OnModelCreating(builder);
         builder.HasPostgresExtension("pg_trgm");
+
+        // Backing sequences for the backend-assigned business codes. Declared on the model so the
+        // migration that creates them is generated rather than hand-written. Skipped on providers
+        // without sequence support: the SQLite-backed tests build the schema from this same model
+        // and would otherwise fail to create it at all.
+        if (Database.IsNpgsql())
+        {
+            foreach (var codeSequence in EntityCodeSequence.All)
+            {
+                builder.HasSequence<long>(codeSequence.SequenceName).StartsAt(1).IncrementsBy(1);
+            }
+        }
+
         builder.ApplyConfigurationsFromAssembly(typeof(SalesDbContext).Assembly);
     }
 }

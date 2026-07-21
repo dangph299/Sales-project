@@ -1,0 +1,36 @@
+.order-lines-table {
+  display: block;
+  margin-top: 12px;
+}
+
+.number-column {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.line-number-input {
+  width: 96px;
+}
+
+.line-total {
+  font-weight: 700;
+}
+
+.line-action-column {
+  text-align: right;
+  width: 92px;
+}
+
+.summary-strip {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: flex-end;
+  margin-top: 16px;
+
+  strong {
+    color: #172033;
+    font-size: 1rem;
+  }
+}

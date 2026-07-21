@@ -1,0 +1,35 @@
+.page-header__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.toolbar {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 160px;
+  }
+}
+
+.selectable {
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions-column {
+  text-align: center;
+  white-space: nowrap;
+  width: 120px;
+}

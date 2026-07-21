@@ -1,4 +1,3 @@
-using Sales.Application.Features.Customers.Enums;
 using Sales.Application.Features.Customers.DTOs;
 
 namespace Sales.Application.Features.Customers.Interfaces;
@@ -20,10 +19,9 @@ public interface ICustomerReadService
     /// Searches customers by name and/or phone number.
     /// </summary>
     /// <param name="name">An optional substring to match against the customer's name.</param>
-    /// <param name="phone">An optional value to match against the customer's phone number.</param>
-    /// <param name="phoneMatch">How <paramref name="phone"/> should be matched (prefix or suffix).</param>
+    /// <param name="phone">An optional value matched against the start or the end of the customer's phone number.</param>
     /// <param name="page">1-based page number.</param>
     /// <param name="pageSize">Maximum page size.</param>
     /// <returns>A page of matching customers.</returns>
-    Task<PagedResult<CustomerDto>> SearchAsync(string? name, string? phone, PhoneMatch phoneMatch, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<PagedResult<CustomerDto>> SearchAsync(string? name, string? phone, int page, int pageSize, CancellationToken cancellationToken = default);
 }
