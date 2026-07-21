@@ -38,7 +38,7 @@ Seq:            http://localhost:8081
 
 ## 3. Bước 1 — Dùng Playwright để bắt flaky (tự động, ưu tiên làm trước)
 
-Test có sẵn: [tests/Playwright/specs/kafka-flow.spec.ts](../tests/Playwright/specs/kafka-flow.spec.ts).
+Test có sẵn: [tests/Playwright/specs/kafka-flow.spec.ts](../../tests/Playwright/specs/kafka-flow.spec.ts).
 Nó tạo product + stock + customer + order, confirm order, rồi `expect.poll` tối đa 30s
 chờ status thành `Confirmed`.
 

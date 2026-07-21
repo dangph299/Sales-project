@@ -93,7 +93,7 @@ Cần lưu ý:
 
 - Đã có dashboard export `docker/kibana/exports/sales-management-reliability.ndjson` + import script `docker/kibana/import-dashboards.sh` + service `kibana-init` tự import khi `docker compose up`.
 - NDJSON soạn thủ công theo schema Kibana 9.1, **cần xác nhận lại bằng một lần import thật** trên stack đang chạy.
-- Screenshot chưa chụp được (không chạy Docker/Kibana trong môi trường hiện tại); vị trí + checklist ở `docs/images/monitoring/README.md`.
+- Screenshot chưa chụp được (không chạy Docker/Kibana trong môi trường hiện tại); vị trí dự kiến: `docs/images/monitoring/` (chưa tồn tại).
 
 ### Inventory đã refactor sang MediatR/CQRS
 
@@ -107,13 +107,13 @@ Trạng thái hiện tại:
 Cần lưu ý:
 
 - Không tạo thêm command/query giả định nếu chưa có use case thật.
-- Chi tiết audit nằm ở [inventory-cqrs-refactor-audit.md](inventory-cqrs-refactor-audit.md).
+- Chi tiết audit nằm ở [docs/superpowers/plans/2026-07-10-inventory-mediatr-refactor.md](../superpowers/plans/2026-07-10-inventory-mediatr-refactor.md).
 
 ### Tổ chức tài liệu và link trong README
 
 Trạng thái hiện tại:
 
-- README trỏ về `docs/tech/README.md` làm điểm vào chính, kèm link `docs/architecture.md`, `docs/CODING_RULES.md`, `docs/ARCHITECTURE_CHECKLIST.md`, `docs/tech/requirements-map.md` và `docs/tech/monitoring-demo.md`. Các link này đều hợp lệ.
+- README trỏ về `docs/tech/README.md` làm điểm vào chính, kèm link `docs/guides/`, `docs/project/`, `docs/tech/`. **Cập nhật 2026-07-21**: `docs/architecture.md` và `docs/CODING_RULES.md` đã được thay bằng `docs/guides/02-solution-structure.md` + `docs/project/backend/`; `docs/ARCHITECTURE_CHECKLIST.md` chuyển thành `docs/tech/architecture-checklist.md`.
 - Bộ tài liệu chia hai nhóm: `docs/tech/` là tài liệu kỹ thuật chính (yêu cầu, pattern, code map, audit, reliability); `docs/guides/` là hướng dẫn sử dụng từng công nghệ (Kafka, Redis, Seq, Elastic, OpenTelemetry, style guide, presentation).
 - Các link kiểu `docs/kafka-usage-guide.md` từng bị hỏng trong README cũ nay đã được giải quyết: file nằm ở `docs/guides/kafka-usage-guide.md`.
 

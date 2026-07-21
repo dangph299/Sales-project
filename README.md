@@ -1,9 +1,12 @@
 # Sales Management DDD practice
 
-Start with [docs/tech/README.md](docs/tech/README.md) if you want a beginner-friendly explanation of the project requirements, patterns, code locations, and review notes.
-See [docs/architecture.md](docs/architecture.md) for dependency rules and folder responsibilities.
-See [docs/CODING_RULES.md](docs/CODING_RULES.md) for coding and placement rules.
-See [docs/ARCHITECTURE_CHECKLIST.md](docs/ARCHITECTURE_CHECKLIST.md) for the current architecture checklist.
+All documentation lives in [docs/](docs/README.md), split by audience:
+
+- [docs/guides/](docs/guides/README.md) — learn the project: overview, request lifecycle, CQRS, DDD, outbox/inbox, observability, testing, deployment.
+- [docs/tech/](docs/tech/README.md) — the knowledge base: business rules, endpoints, Kafka topics and schemas, database schema, DI map, configuration, security.
+- [docs/project/](docs/project/README.md) — rules AI coding assistants must follow, plus the backend and frontend definition-of-done checklists.
+
+New here? Read [docs/guides/01-project-overview.md](docs/guides/01-project-overview.md).
 
 Greenfield .NET 10 sample with a Sales modular monolith, an Inventory service and an Audit worker. Commands use MediatR and aggregate repositories; reads use EF Core projections. Order/inventory integration is delivered at least once through transactional Outbox/Inbox records and KafkaFlow. Audit logging uses a hybrid model: EF Core ChangeTracker creates ordinary data-change audit events, service enrichers add business meaning where needed, and Audit.Worker stores `AuditLogEvent` documents in MongoDB.
 

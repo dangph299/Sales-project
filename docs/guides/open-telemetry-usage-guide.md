@@ -8,7 +8,7 @@ Tài liệu này giải thích riêng phần **code trong solution** dùng OpenT
 - **Log cũng đi qua OTLP rồi**, không chỉ Console/Seq — Serilog dùng chung 1 helper (`BuildingBlocks.Observability.SerilogBootstrap.ConfigureSharedSinks`) có thêm `WriteTo.OpenTelemetry(...)` (mục 6). Đây là điểm nhiều người dễ tưởng nhầm là "log tách biệt hoàn toàn với OTel" — không còn đúng.
 - Kafka publish/consume có tracing thủ công qua `ActivitySource` riêng của từng service, propagate W3C `traceparent`/`tracestate` qua Kafka header thật (mục 5) — nối được span HTTP request ban đầu với span Kafka consumer ở service khác.
 - Custom metric nghiệp vụ (`sales.outbox.*`, `inventory.reservation.*`...) nằm ở `SalesMetrics`/`InventoryMetrics` (mục 4).
-- Muốn xem danh sách panel Kibana cần dựng, xem [observability.md](observability.md). Muốn hiểu APM Server/Elasticsearch/Kibana pipeline, xem [Elastic-usage-guide.md](Elastic-usage-guide.md).
+- Muốn xem danh sách panel Kibana cần dựng, xem [observability.md](13-observability.md). Muốn hiểu APM Server/Elasticsearch/Kibana pipeline, xem [Elastic-usage-guide.md](Elastic-usage-guide.md).
 
 ## 1. OpenTelemetry dùng để làm gì trong project?
 
@@ -141,7 +141,7 @@ internal static class SalesMetrics
 
 Tên `Meter("Sales.Infrastructure")` / `Meter("Inventory.Infrastructure")` phải khớp chính xác chuỗi truyền vào `AddMeter(...)` ở mục 3 — đây là cách 1 `Meter` custom được đưa vào `MeterProvider` để `AddOtlpExporter()` xuất đi. Sai tên (dù chỉ khác hoa/thường) là counter âm thầm biến mất khỏi Kibana, không có exception nào báo.
 
-**Bẫy đặt tên dễ nhầm**: `sales.outbox.deadlettered` (Counter, tăng dần — 1 event "row vừa bị đưa vào DLQ") khác `sales.outbox.deadletters` (ObservableGauge, snapshot — "hiện có bao nhiêu row đang nằm trong DLQ"). Inbox dead-letter counter dùng underscore: `sales.inbox.dead_lettered` / `inventory.inbox.dead_lettered`. Bảng dashboard ở `observability.md` dùng cả outbox gauge (`deadletters`) và inbox counter (`dead_lettered`).
+**Bẫy đặt tên dễ nhầm**: `sales.outbox.deadlettered` (Counter, tăng dần — 1 event "row vừa bị đưa vào DLQ") khác `sales.outbox.deadletters` (ObservableGauge, snapshot — "hiện có bao nhiêu row đang nằm trong DLQ"). Inbox dead-letter counter dùng underscore: `sales.inbox.dead_lettered` / `inventory.inbox.dead_lettered`. Bảng dashboard ở `13-observability.md` dùng cả outbox gauge (`deadletters`) và inbox counter (`dead_lettered`).
 
 ### Nơi tăng counter
 
@@ -327,7 +327,7 @@ environment:
 | Biến | Đọc bởi | Ý nghĩa |
 |---|---|---|
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTel SDK (mặc định chuẩn), `SerilogBootstrap` (đọc tay qua `IConfiguration`) | Địa chỉ OTLP gRPC collector |
-| `OTEL_SERVICE_NAME` | OTel SDK (mặc định chuẩn), `SerilogBootstrap` (đọc tay, fallback về tên service hard-code nếu thiếu) | Field `service.name` — khớp cột "Service" trong dashboard `observability.md`, và khớp property `Service` trong log Seq |
+| `OTEL_SERVICE_NAME` | OTel SDK (mặc định chuẩn), `SerilogBootstrap` (đọc tay, fallback về tên service hard-code nếu thiếu) | Field `service.name` — khớp cột "Service" trong dashboard `13-observability.md`, và khớp property `Service` trong log Seq |
 | `ASPNETCORE_ENVIRONMENT` | `SerilogBootstrap` | Field `Environment` trong log (mục 6) |
 
 Cổng `4317` là gRPC — .NET OTLP exporter mặc định dùng gRPC khi không set `OTEL_EXPORTER_OTLP_PROTOCOL`. Chi tiết pipeline phía sau (`otel-collector` → APM Server → Elasticsearch → Kibana, thứ tự start container...) xem [Elastic-usage-guide.md](Elastic-usage-guide.md) mục 2, 5–7.

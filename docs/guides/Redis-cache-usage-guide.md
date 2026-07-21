@@ -270,7 +270,7 @@ protected override void AddOrUpdate()
 
 **Vì sao cần Redis lock nếu Hangfire tự quản lý recurring job?** Hangfire không đảm bảo chỉ 1 instance chạy 1 recurring job nếu bạn scale `sales-api` ra nhiều container cùng trỏ vào 1 Hangfire storage — nhiều instance có thể fire job gần như đồng thời khi tick trùng giờ. Redis lock đảm bảo chỉ 1 instance thực sự dọn dữ liệu.
 
-**Vì sao không dùng Redis lock cho Order concurrency?** Xem `project-presentation.md` mục 18 — correctness của `Order` dựa vào `Version` + optimistic concurrency + DB transaction, không phải Redis lock. Redis lock ở đây chỉ dùng cho *scheduled job coordination*, không phải business invariant.
+**Vì sao không dùng Redis lock cho Order concurrency?** Xem [15-concurrency-and-idempotency.md](15-concurrency-and-idempotency.md) — correctness của `Order` dựa vào `Version` + optimistic concurrency + DB transaction, không phải Redis lock. Redis lock ở đây chỉ dùng cho *scheduled job coordination*, không phải business invariant.
 
 ## 7. Lệnh kiểm tra nhanh Redis local
 

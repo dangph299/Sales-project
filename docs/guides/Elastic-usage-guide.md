@@ -1,6 +1,6 @@
 # Elastic APM usage guide trong Sales Management
 
-Tài liệu này giải thích riêng phần hạ tầng **phía sau** OpenTelemetry: OTel Collector → Elastic APM Server → Elasticsearch → Kibana — pipeline cấu hình ra sao, service nào start trước, và giới hạn thật của setup hiện tại. Phần **code trong app** dùng OpenTelemetry SDK (khởi tạo tracing/metrics, custom metric, ActivitySource cho Kafka, log OTLP...) đã tách sang [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) — đọc tài liệu đó trước nếu bạn cần biết "app gọi API OTel như thế nào", đọc tài liệu này nếu bạn cần biết "dữ liệu đó đi đâu và Kibana dựng ra sao". Danh sách panel Kibana cần dựng nằm ở [observability.md](observability.md). Cùng phong cách với [kafka-usage-guide.md](kafka-usage-guide.md).
+Tài liệu này giải thích riêng phần hạ tầng **phía sau** OpenTelemetry: OTel Collector → Elastic APM Server → Elasticsearch → Kibana — pipeline cấu hình ra sao, service nào start trước, và giới hạn thật của setup hiện tại. Phần **code trong app** dùng OpenTelemetry SDK (khởi tạo tracing/metrics, custom metric, ActivitySource cho Kafka, log OTLP...) đã tách sang [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) — đọc tài liệu đó trước nếu bạn cần biết "app gọi API OTel như thế nào", đọc tài liệu này nếu bạn cần biết "dữ liệu đó đi đâu và Kibana dựng ra sao". Danh sách panel Kibana cần dựng nằm ở [observability.md](13-observability.md). Cùng phong cách với [kafka-usage-guide.md](kafka-usage-guide.md).
 
 ## Tóm tắt nhanh
 
@@ -41,11 +41,11 @@ environment:
   OTEL_SERVICE_NAME: sales-api   # inventory-api / audit-worker tương ứng
 ```
 
-`OTEL_SERVICE_NAME` chính là field `service.name` xuất hiện trong Kibana/APM (khớp cột "Service" trong bảng dashboard ở `observability.md`), và cũng là property `Service` xuất hiện trong log Seq (cùng 1 biến môi trường, dùng chung cho cả 2 kênh — xem [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 8). Cổng `4317` là gRPC — .NET OTLP exporter mặc định dùng gRPC khi không set `OTEL_EXPORTER_OTLP_PROTOCOL`.
+`OTEL_SERVICE_NAME` chính là field `service.name` xuất hiện trong Kibana/APM (khớp cột "Service" trong bảng dashboard ở `13-observability.md`), và cũng là property `Service` xuất hiện trong log Seq (cùng 1 biến môi trường, dùng chung cho cả 2 kênh — xem [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 8). Cổng `4317` là gRPC — .NET OTLP exporter mặc định dùng gRPC khi không set `OTEL_EXPORTER_OTLP_PROTOCOL`.
 
 ## 4. Custom metric — SalesMetrics / InventoryMetrics
 
-Đã tách sang [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 4 (định nghĩa `Meter`/`Counter`/`ObservableGauge`, bảng nơi tăng counter). Danh sách tên metric hiện có, dùng để dựng panel Kibana, xem [observability.md](observability.md).
+Đã tách sang [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 4 (định nghĩa `Meter`/`Counter`/`ObservableGauge`, bảng nơi tăng counter). Danh sách tên metric hiện có, dùng để dựng panel Kibana, xem [observability.md](13-observability.md).
 
 ## 5. OTel Collector pipeline
 
@@ -147,7 +147,7 @@ Thứ tự start (`depends_on` chỉ đảm bảo container order, không chờ 
 
 ## 8. Trace field hữu ích khi tra cứu Kibana
 
-Xem thêm bảng panel đầy đủ ở [observability.md](observability.md). Field trace hay dùng:
+Xem thêm bảng panel đầy đủ ở [observability.md](13-observability.md). Field trace hay dùng:
 
 ```text
 service.name
@@ -176,6 +176,6 @@ Còn lại, chưa fix:
 
 - Bật `auth` cho APM Server (bỏ `anonymous.enabled: true`) và bật `xpack.security` cho Elasticsearch khi lên production.
 - Thêm custom metric cho Redis cache hit/miss (hiện chưa có — xem [open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 9 cho hướng dẫn thêm, [Redis-cache-usage-guide.md](Redis-cache-usage-guide.md) mục 9).
-- Dựng dashboard Kibana theo đúng danh sách panel ở [observability.md](observability.md) nếu chưa dựng thủ công.
+- Dựng dashboard Kibana theo đúng danh sách panel ở [observability.md](13-observability.md) nếu chưa dựng thủ công.
 - Propagate `traceparent` từ HTTP request gốc xuyên outbox row tới lúc publish thật ([open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 5.4) — cần đổi schema outbox, ngoài phạm vi hiện tại.
 - Sampling cho traces/logs khi tải cao ([open-telemetry-usage-guide.md](open-telemetry-usage-guide.md) mục 10).
