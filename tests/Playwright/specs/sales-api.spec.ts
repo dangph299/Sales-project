@@ -62,7 +62,7 @@ test.describe.serial('Sales API smoke and concurrency', () => {
     expect((await searched.json()).items.some((x: { id: string }) => x.id === productId)).toBeTruthy();
   });
 
-  test('create customer and search phone by prefix and suffix', async ({ request }) => {
+  test('create customer and find it by a leading or trailing phone fragment', async ({ request }) => {
     const created = await request.post('/api/customers/', {
       headers: auth(),
       data: { name: customerName, phone: `+${phone}` }
@@ -71,10 +71,10 @@ test.describe.serial('Sales API smoke and concurrency', () => {
     const customer = await created.json();
     customerId = customer.id;
 
-    for (const [phoneMatch, value] of [['prefix', phone.slice(0, 4)], ['suffix', phone.slice(-4)]]) {
+    for (const value of [phone.slice(0, 4), phone.slice(-4)]) {
       const searched = await request.get('/api/customers/', {
         headers: auth(),
-        params: { phone: value, phoneMatch, page: 1, pageSize: 20 }
+        params: { phone: value, page: 1, pageSize: 20 }
       });
       expect(searched.ok(), await searched.text()).toBeTruthy();
       expect((await searched.json()).items.some((x: { id: string }) => x.id === customerId)).toBeTruthy();

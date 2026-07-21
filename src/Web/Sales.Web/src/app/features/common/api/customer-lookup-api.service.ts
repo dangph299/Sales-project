@@ -27,7 +27,6 @@ export class CustomerLookupApiService {
       {
         name: filters.name,
         phone: filters.phone,
-        phoneMatch: 'prefix',
         page: filters.page ?? 1,
         pageSize: filters.pageSize ?? 20
       });

@@ -47,7 +47,7 @@ Two persisted forms support search without a full scan:
 - prefix search → `NormalizedPhone.StartsWith(digits)`
 - suffix search → `ReversedPhone.StartsWith(reverse(digits))`
 
-`GET /api/customers?phone=…&phoneMatch=Prefix|Suffix` selects between them (`CustomerReadService.SearchAsync`). Name search uses `EF.Functions.ILike` against a `gin_trgm_ops` index.
+`GET /api/customers?phone=…` applies both at once — a customer matches when its number starts with **or** ends with the digits entered (`CustomerReadService.SearchAsync`), so the caller never picks a match mode. Name search uses `EF.Functions.ILike` against a `gin_trgm_ops` index.
 
 `ReversedPhone` is excluded from audit output as a technical field.
 

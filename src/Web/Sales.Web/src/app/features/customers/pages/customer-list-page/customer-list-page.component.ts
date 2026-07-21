@@ -9,7 +9,6 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzNotificationService } from 'ng-zorro-antd/notification';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { ApiClientError, ApiResponseReader } from '../../../../core/api/api-client-result';
 import { ValidationError } from '../../../../core/api/api-error.model';
@@ -23,7 +22,6 @@ import { CustomerApiService } from '../../api/customer-api.service';
 import { CustomerResponse } from '../../api/responses/customer.response';
 import { CustomerFormComponent } from '../../components/customer-form/customer-form.component';
 import { CustomerStatus, customerStatusDisplay } from '../../constants/customer-status';
-import { PhoneMatch } from '../../enums/phone-match.enum';
 import { CustomerFormModel, emptyCustomerForm } from '../../models/customer-form.model';
 
 type CustomerSortKey = 'customerCode' | 'name' | 'phone' | 'status' | 'address' | 'updatedAt';
@@ -47,7 +45,6 @@ type SortDirection = 'ascend' | 'descend' | null;
     NzInputModule,
     NzMenuModule,
     NzModalModule,
-    NzSelectModule,
     NzTableModule
   ],
   templateUrl: './customer-list-page.component.html',
@@ -57,9 +54,6 @@ export class CustomerListPageComponent implements OnInit {
   private readonly customerApi = inject(CustomerApiService);
   private readonly modal = inject(NzModalService);
   private readonly notification = inject(NzNotificationService);
-
-  readonly phoneMatchPrefix = PhoneMatch.Prefix;
-  readonly phoneMatchSuffix = PhoneMatch.Suffix;
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -75,7 +69,6 @@ export class CustomerListPageComponent implements OnInit {
 
   searchName = '';
   searchPhone = '';
-  phoneMatch = PhoneMatch.Prefix;
   pageIndex = 1;
   pageSize = 20;
   readonly pageSizeOptions = [10, 20, 50];
@@ -96,7 +89,6 @@ export class CustomerListPageComponent implements OnInit {
       const page = await this.customerApi.search({
         name: this.searchName,
         phone: this.searchPhone,
-        phoneMatch: this.phoneMatch,
         page: this.pageIndex,
         pageSize: this.pageSize
       });
@@ -150,7 +142,6 @@ export class CustomerListPageComponent implements OnInit {
   resetFilters(): void {
     this.searchName = '';
     this.searchPhone = '';
-    this.phoneMatch = PhoneMatch.Prefix;
     this.pageIndex = 1;
     void this.loadCustomers();
   }

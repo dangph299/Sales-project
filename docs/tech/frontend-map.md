@@ -58,7 +58,7 @@ All lazy-loaded from `app.routes.ts`; `''` and `**` redirect to `dashboard`.
 | Feature | API service | Backend endpoints | Notable pieces |
 |---|---|---|---|
 | `dashboard` | `DashboardApiService` | aggregates several reads | `dashboard.mapper.ts` |
-| `customers` | `CustomerApiService` | `/api/customers*` | `customer-form`, status/detail/toolbar/action-menu components, `PhoneMatch` enum |
+| `customers` | `CustomerApiService` | `/api/customers*` | `customer-form`, status/detail/toolbar/action-menu components |
 | `categories` | `CategoryApiService` | `/api/categories*` | `category-tree.mapper`, `category-parent-options.mapper`, parent selector |
 | `products` | `ProductApiService` | `/api/products*` | `product-form`, `product-variant-form` |
 | `inventory` | `InventoryApiService` | `/api/inventory*` | `stock-adjustment-form`, `stock-row.model` |

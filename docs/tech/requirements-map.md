@@ -67,7 +67,6 @@ Code chính:
 - Domain aggregate: `src/Services/Sales/Sales.Domain/Aggregates/Customer.cs`
 - Command tạo/sửa/xóa: `src/Services/Sales/Sales.Application/Features/Customers/Commands/`
 - Query search/get: `src/Services/Sales/Sales.Application/Features/Customers/Queries/`
-- Enum phone match: `src/Services/Sales/Sales.Application/Features/Customers/Enums/PhoneMatch.cs`
 - Read service: `src/Services/Sales/Sales.Infrastructure/Persistence/ReadServices/CustomerReadService.cs`
 - API controller: `src/Services/Sales/Sales.Api/Controllers/CustomersController.cs`
 - EF mapping: `src/Services/Sales/Sales.Infrastructure/Persistence/Configurations/CustomerConfiguration.cs`

@@ -18,7 +18,7 @@ Every endpoint that exists today. Roles are the `[Authorize]` requirement. "Auth
 | Verb | Path | Notes |
 |---|---|---|
 | POST | `/api/customers` | `CreateCustomerRequestDto { name, phone, email?, address? }` → `201` `CustomerDto`. Code allocated from `customer_code_seq`. |
-| GET | `/api/customers` | `name`, `phone`, `phoneMatch=Prefix\|Suffix`, `page`, `pageSize` → `PagedResult<CustomerDto>` |
+| GET | `/api/customers` | `name`, `phone` (matches the start **or** the end of the number), `page`, `pageSize` → `PagedResult<CustomerDto>` |
 | GET | `/api/customers/{id:guid}` | `200` + `ETag` |
 | PUT | `/api/customers/{id:guid}` | `UpdateCustomerRequest { name, phone, email?, address? }` |
 | PUT | `/api/customers/{id:guid}/status` | **Admin only.** `{ status }` → `Normal` / `Suspended` / `Blocked` |

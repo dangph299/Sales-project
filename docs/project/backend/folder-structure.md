@@ -42,7 +42,7 @@ Features/<Aggregate>/
   Interfaces/  feature-scoped ports (read service, cache, code generator)
   Mapping/     Mapster IRegister
   Validators/
-  Enums/       feature-scoped enums (e.g. PhoneMatch)
+  Enums/       feature-scoped enums (only when a feature needs one)
   Realtime/    realtime notification ports + payloads (Orders only)
 DependencyInjection.cs
 GlobalUsings.cs

@@ -31,14 +31,6 @@
       placeholder="Search by phone">
   </label>
 
-  <div class="filter-field">
-    <span>Phone match</span>
-    <nz-select name="phoneMatch" [(ngModel)]="phoneMatch">
-      <nz-option [nzValue]="phoneMatchPrefix" nzLabel="Prefix"></nz-option>
-      <nz-option [nzValue]="phoneMatchSuffix" nzLabel="Suffix"></nz-option>
-    </nz-select>
-  </div>
-
   <div class="actions">
     <button nz-button nzType="primary" type="button" (click)="searchCustomers()">Search</button>
     <button nz-button type="button" (click)="resetFilters()">Reset</button>

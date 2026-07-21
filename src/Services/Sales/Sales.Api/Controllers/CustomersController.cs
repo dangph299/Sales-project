@@ -5,7 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Sales.Api.Extensions;
 using Sales.Api.Models.Requests;
 using Sales.Application.Features.Customers.Commands;
-using Sales.Application.Features.Customers.Enums;
 using Sales.Application.Features.Customers.Queries;
 
 namespace Sales.Api.Controllers;
@@ -47,8 +46,7 @@ public sealed class CustomersController : ControllerBase
     /// Searches customers by name and/or phone number.
     /// </summary>
     /// <param name="name">An optional substring to match against the customer's name.</param>
-    /// <param name="phone">An optional value to match against the customer's phone number.</param>
-    /// <param name="phoneMatch">How <paramref name="phone"/> should be matched (prefix or suffix). Defaults to prefix.</param>
+    /// <param name="phone">An optional value matched against the start or the end of the customer's phone number.</param>
     /// <param name="page">1-based page number. Defaults to 1.</param>
     /// <param name="pageSize">Maximum page size. Defaults to 20.</param>
     /// <param name="ct">Cancellation token.</param>
@@ -57,12 +55,11 @@ public sealed class CustomersController : ControllerBase
     public async Task<IActionResult> Search(
         [FromQuery] string? name,
         [FromQuery] string? phone,
-        [FromQuery] PhoneMatch phoneMatch = PhoneMatch.Prefix,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var customers = await _sender.Send(new SearchCustomers(name, phone, phoneMatch, page, pageSize), ct);
+        var customers = await _sender.Send(new SearchCustomers(name, phone, page, pageSize), ct);
         return this.ToOkResponse(customers);
     }
 

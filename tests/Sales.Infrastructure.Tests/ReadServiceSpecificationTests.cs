@@ -1,4 +1,3 @@
-using Sales.Application.Features.Customers.Enums;
 using Sales.Domain;
 
 namespace Sales.Infrastructure.Tests;
@@ -169,9 +168,29 @@ public sealed class ReadServiceSpecificationTests
 
         var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
 
-        var result = await service.SearchAsync(null, null, PhoneMatch.Prefix, 1, 20);
+        var result = await service.SearchAsync(null, null, 1, 20);
 
         Assert.Equal([active.Id], result.Items.Select(x => x.Id).ToArray());
+    }
+
+    [Fact]
+    public async Task Customer_phone_search_matches_both_prefix_and_suffix()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var prefixMatch = Customer.Create("Nguyen Van Prefix", "0901234567");
+        var suffixMatch = Customer.Create("Nguyen Van Suffix", "0987654321");
+        var unrelated = Customer.Create("Nguyen Van Other", "0912000111");
+        await fixture.SeedAsync(prefixMatch, suffixMatch, unrelated);
+
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        var result = await service.SearchAsync(null, "4321", 1, 20);
+
+        Assert.Equal([suffixMatch.Id], result.Items.Select(x => x.Id).ToArray());
+
+        var both = await service.SearchAsync(null, "09", 1, 20);
+
+        Assert.Equal(3, both.Items.Count);
     }
 
     // OrderReadService.SearchAsync cannot run on the SQLite fixture: it orders by CreatedAt, and

@@ -4,14 +4,12 @@ import { ApiResult } from '../../../core/api/api-result.model';
 import { PagedResult } from '../../../core/api/paged-result.model';
 import { ApiEndpointConfigurationService } from '../../../core/config/api-endpoint-configuration.service';
 import { CustomerStatus } from '../constants/customer-status';
-import { PhoneMatch, phoneMatchApiValue } from '../enums/phone-match.enum';
 import { SaveCustomerRequest } from './requests/save-customer.request';
 import { CustomerResponse } from './responses/customer.response';
 
 export interface SearchCustomersFilters {
   name?: string;
   phone?: string;
-  phoneMatch?: PhoneMatch;
   page?: number;
   pageSize?: number;
 }
@@ -29,7 +27,6 @@ export class CustomerApiService {
     return this.client.getPage<CustomerResponse>(this.baseUrl, '/api/customers/', {
       name: filters.name,
       phone: filters.phone,
-      phoneMatch: phoneMatchApiValue[filters.phoneMatch ?? PhoneMatch.Prefix],
       page: filters.page ?? 1,
       pageSize: filters.pageSize ?? 20
     });
