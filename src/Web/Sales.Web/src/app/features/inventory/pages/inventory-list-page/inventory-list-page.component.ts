@@ -77,13 +77,17 @@ export class InventoryListPageComponent implements OnInit {
         pageSize: 20
       });
 
-      const rows: StockRow[] = [];
-      for (const product of page.items) {
-        for (const variant of product.variants ?? []) {
-          const inventory = await this.inventoryApi.getByVariant(variant.id);
-          rows.push({ product, variant, inventory });
-        }
-      }
+      // One inventory read per variant, issued together: awaiting them in the loop serialised the
+      // whole grid behind up to (products x variants) sequential round trips.
+      const pairs = page.items.flatMap(product =>
+        (product.variants ?? []).map(variant => ({ product, variant })));
+      const inventories = await Promise.all(
+        pairs.map(pair => this.inventoryApi.getByVariant(pair.variant.id)));
+      const rows: StockRow[] = pairs.map((pair, index) => ({
+        product: pair.product,
+        variant: pair.variant,
+        inventory: inventories[index]
+      }));
 
       this.stockRows.set(rows);
       this.selectedRow.set(rows[0] ?? null);

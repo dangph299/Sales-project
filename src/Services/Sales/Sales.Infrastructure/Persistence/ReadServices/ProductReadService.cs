@@ -17,10 +17,23 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
     }
 
     /// <inheritdoc/>
-    public async Task<ProductDto?> GetAsync(Guid id, CancellationToken ct = default)
+    public Task<ProductDto?> GetAsync(Guid id, CancellationToken ct = default)
+    {
+        return LoadAsync(id, publishedOnly: true, ct);
+    }
+
+    /// <inheritdoc/>
+    public Task<ProductDto?> GetForWriteResultAsync(Guid id, CancellationToken ct = default)
+    {
+        return LoadAsync(id, publishedOnly: false, ct);
+    }
+
+    private async Task<ProductDto?> LoadAsync(Guid id, bool publishedOnly, CancellationToken ct)
     {
         var product = await db.Products.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.Id == id && x.Status == EProductStatus.Published && !x.IsDelete, ct);
+            .SingleOrDefaultAsync(
+                x => x.Id == id && !x.IsDelete && (!publishedOnly || x.Status == EProductStatus.Published),
+                ct);
         if (product is null)
         {
             return null;

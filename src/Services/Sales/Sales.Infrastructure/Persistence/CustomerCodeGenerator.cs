@@ -13,17 +13,19 @@ public sealed class CustomerCodeGenerator(SalesDbContext db) : ICustomerCodeGene
     /// <inheritdoc />
     public async Task<string> NextCodeAsync(CancellationToken cancellationToken = default)
     {
-        var codes = await db.Customers
+        // Codes are zero-padded to a fixed width, so ordering by length then by the code itself puts
+        // the highest sequence last and lets the database return a single row. Reading every code and
+        // taking the maximum client-side would scan the whole customer table on every insert.
+        var highestCode = await db.Customers
             .IgnoreQueryFilters()
             .AsNoTracking()
             .Where(customer => customer.CustomerCode.StartsWith(Prefix))
+            .OrderByDescending(customer => customer.CustomerCode.Length)
+            .ThenByDescending(customer => customer.CustomerCode)
             .Select(customer => customer.CustomerCode)
-            .ToListAsync(cancellationToken);
+            .FirstOrDefaultAsync(cancellationToken);
 
-        var maxSequence = codes
-            .Select(ParseSequence)
-            .DefaultIfEmpty(0)
-            .Max();
+        var maxSequence = highestCode is null ? 0 : ParseSequence(highestCode);
 
         return $"{Prefix}{maxSequence + 1:D6}";
     }

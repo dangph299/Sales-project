@@ -35,6 +35,16 @@ public sealed class CachedProductReadService(IProductReadService inner, IProduct
     }
 
     /// <inheritdoc/>
+    /// <remarks>
+    /// Deliberately uncached: the cache only holds published products, and this read exists to
+    /// return a product a command just wrote, whatever status it landed in.
+    /// </remarks>
+    public Task<ProductDto?> GetForWriteResultAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return inner.GetForWriteResultAsync(id, cancellationToken);
+    }
+
+    /// <inheritdoc/>
     public Task<PagedResult<ProductDto>> SearchAsync(
         string? name,
         int page,

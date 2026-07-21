@@ -19,7 +19,12 @@
 
   <label class="filter-field">
     Status
-    <nz-select name="orderStatusFilter" [(ngModel)]="statusFilter" nzAllowClear nzPlaceHolder="All statuses">
+    <nz-select
+      name="orderStatusFilter"
+      [(ngModel)]="statusFilter"
+      (ngModelChange)="searchOrders()"
+      nzAllowClear
+      nzPlaceHolder="All statuses">
       <nz-option *ngFor="let status of orderStatuses" [nzValue]="status.value" [nzLabel]="status.label"></nz-option>
     </nz-select>
   </label>

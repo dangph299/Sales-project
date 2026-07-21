@@ -3,6 +3,7 @@ import { ApiClientService } from '../../../core/api/api-client.service';
 import { ApiResult } from '../../../core/api/api-result.model';
 import { PagedResult } from '../../../core/api/paged-result.model';
 import { ApiEndpointConfigurationService } from '../../../core/config/api-endpoint-configuration.service';
+import { OrderStatus } from '../constants/order-status';
 import { OrderLineRequest } from './requests/order-line.request';
 import { OrderReservationResponse } from './responses/order-reservation.response';
 import { OrderResponse } from './responses/order.response';
@@ -11,6 +12,7 @@ export interface SearchOrdersFilters {
   from?: string;
   to?: string;
   customer?: string;
+  status?: OrderStatus | '' | null;
   page?: number;
   pageSize?: number;
 }
@@ -29,6 +31,7 @@ export class OrderApiService {
       from: filters.from,
       to: filters.to,
       customer: filters.customer,
+      status: filters.status,
       page: filters.page ?? 1,
       pageSize: filters.pageSize ?? 20
     });

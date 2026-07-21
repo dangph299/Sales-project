@@ -15,7 +15,8 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         entity.ToTable("products");
         entity.HasKey(x => x.Id);
         entity.HasQueryFilter(x => !x.IsDelete);
-        entity.HasIndex(x => x.ProductCode).IsUnique();
+        // Excludes soft-deleted rows so deleting a product releases its code for reuse.
+        entity.HasIndex(x => x.ProductCode).IsUnique().HasFilter("NOT \"IsDelete\"");
         entity.HasIndex(x => x.Name).HasMethod("gin").HasOperators("gin_trgm_ops");
         entity.HasIndex(x => x.CategoryId);
         entity.HasIndex(x => x.Status);

@@ -12,4 +12,9 @@ public interface ICategoryReadService
     /// Lists categories available for catalog assignment, ordered by sort order then name.
     /// </summary>
     Task<IReadOnlyList<CategoryLookupDto>> ListCategoriesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reports whether any live child category or product still points at this category.
+    /// </summary>
+    Task<bool> HasDependentsAsync(Guid categoryId, CancellationToken cancellationToken = default);
 }

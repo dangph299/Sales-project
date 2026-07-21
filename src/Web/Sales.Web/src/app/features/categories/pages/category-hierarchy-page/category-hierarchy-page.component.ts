@@ -140,22 +140,6 @@ export class CategoryHierarchyPageComponent implements OnInit {
     this.hasProductsFilter.set('');
   }
 
-  categoryPath(categoryId: string): string {
-    return this.visibleRows().find(node => node.id === categoryId)?.path
-      ?? flattenVisibleCategoryTree(
-        buildCategoryTree(this.categories(), new Set(this.categories().map(category => category.id))).roots)
-        .find(node => node.id === categoryId)?.path
-      ?? '-';
-  }
-
-  parentName(parentCategoryId: string | null | undefined): string {
-    if (!parentCategoryId) {
-      return '-';
-    }
-
-    return this.categories().find(category => category.id === parentCategoryId)?.name ?? parentCategoryId;
-  }
-
   openCreateCategory(): void {
     this.selectedCategory.set(null);
     this.categoryForm = emptyCategoryForm();
@@ -188,11 +172,17 @@ export class CategoryHierarchyPageComponent implements OnInit {
   }
 
   async saveCategory(): Promise<void> {
-    if (!this.categoryForm.categoryCode.trim() || !this.categoryForm.name.trim()) {
-      this.validationErrors.set([
-        { field: 'CategoryCode', message: 'Category code is required.' },
-        { field: 'Name', message: 'Name is required.' }
-      ]);
+    const missingFieldErrors: ValidationError[] = [];
+    if (!this.categoryForm.categoryCode.trim()) {
+      missingFieldErrors.push({ field: 'CategoryCode', message: 'Category code is required.' });
+    }
+
+    if (!this.categoryForm.name.trim()) {
+      missingFieldErrors.push({ field: 'Name', message: 'Name is required.' });
+    }
+
+    if (missingFieldErrors.length > 0) {
+      this.validationErrors.set(missingFieldErrors);
       return;
     }
 

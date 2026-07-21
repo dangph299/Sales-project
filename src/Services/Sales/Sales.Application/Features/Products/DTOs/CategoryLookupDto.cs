@@ -11,4 +11,6 @@ public sealed record CategoryLookupDto(
     string? Description,
     Guid? ParentCategoryId,
     int SortOrder,
-    string Status);
+    string Status,
+    int ProductCount,
+    DateTimeOffset UpdatedAt);

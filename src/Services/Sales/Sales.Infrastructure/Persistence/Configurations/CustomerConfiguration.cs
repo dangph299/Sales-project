@@ -15,8 +15,10 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         entity.ToTable("customers");
         entity.HasKey(x => x.Id);
         entity.HasQueryFilter(x => !x.IsDelete);
-        entity.HasIndex(x => x.CustomerCode).IsUnique();
-        entity.HasIndex(x => x.NormalizedPhone).IsUnique().HasFilter("\"NormalizedPhone\" IS NOT NULL");
+        // Exclude soft-deleted rows: a deleted customer must not keep reserving their code or phone
+        // number, since nothing in the app can surface the row that causes the conflict.
+        entity.HasIndex(x => x.CustomerCode).IsUnique().HasFilter("NOT \"IsDelete\"");
+        entity.HasIndex(x => x.NormalizedPhone).IsUnique().HasFilter("\"NormalizedPhone\" IS NOT NULL AND NOT \"IsDelete\"");
         entity.HasIndex(x => x.Name).HasMethod("gin").HasOperators("gin_trgm_ops");
         entity.HasIndex(x => x.Phone);
         entity.HasIndex(x => x.ReversedPhone);

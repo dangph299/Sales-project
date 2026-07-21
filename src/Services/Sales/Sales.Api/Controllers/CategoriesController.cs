@@ -13,7 +13,7 @@ namespace Sales.Api.Controllers;
 /// HTTP API for category administration.
 /// </summary>
 [ApiController]
-[Authorize(Roles = "Admin")]
+[Authorize]
 [Route("api/categories")]
 public sealed class CategoriesController(ISender sender) : ControllerBase
 {
@@ -24,7 +24,6 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns><c>200 OK</c> with the categories ordered by sort order, then name.</returns>
     [HttpGet]
-    [Authorize]
     public async Task<IActionResult> List(CancellationToken ct)
     {
         var categories = await sender.Send(new ListCategoriesQuery(), ct);
@@ -38,6 +37,7 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns><c>201 Created</c> with the created category.</returns>
     [HttpPost]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Create([FromBody] CreateCategoryRequestDto request, CancellationToken ct)
     {
         var category = await sender.Send(
@@ -59,6 +59,7 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns><c>200 OK</c> with the updated category.</returns>
     [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCategoryRequestDto request, CancellationToken ct)
     {
         var category = await sender.Send(
@@ -80,6 +81,7 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns><c>204 No Content</c> after the category has been soft-deleted.</returns>
     [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
     {
         await sender.Send(new DeleteCategoryCommand(id), ct);

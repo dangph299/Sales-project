@@ -25,7 +25,7 @@ public sealed class AddProductVariantHandler(
         await unitOfWork.SaveChangesAsync(cancellationToken);
         await productCache.RemoveAsync(product.Id, cancellationToken);
 
-        return await productReadService.GetAsync(product.Id, cancellationToken) ??
+        return await productReadService.GetForWriteResultAsync(product.Id, cancellationToken) ??
             throw new NotFoundException(nameof(Product), product.Id);
     }
 

@@ -98,7 +98,8 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   customerPhoneSearch = '';
   productSearch = '';
   orderSearch = '';
-  statusFilter = '';
+  /** `null` is what nzAllowClear writes back; the API client drops empty values from the query. */
+  statusFilter: OrderStatus | '' | null = '';
   fromDate = '';
   toDate = '';
   pageIndex = 1;
@@ -118,17 +119,14 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   readonly pageSizeOptions = [10, 20, 50];
   readonly modalTitle = computed(() => this.modalMode() === 'create' ? 'Create Order' : `Edit ${this.currentOrderNumber()}`);
   readonly modalGrandTotal = computed(() => cartGrandTotal(this.cartLines()));
+  // Status is filtered server-side so it applies across every page and agrees with total().
+  // Only the order number stays client-side, because the API has no equivalent filter for it.
   readonly displayedOrders = computed(() => {
-    const normalizedStatus = this.statusFilter;
     const normalizedSearch = this.orderSearch.trim().toLowerCase();
-    const filtered = this.orders().filter(order => {
-      const matchesStatus = !normalizedStatus || order.status === normalizedStatus;
-      const matchesSearch = !normalizedSearch
-        || this.orderNumber(order).toLowerCase().includes(normalizedSearch)
-        || order.customerName.toLowerCase().includes(normalizedSearch)
-        || order.customerPhone.toLowerCase().includes(normalizedSearch);
-      return matchesStatus && matchesSearch;
-    });
+    const filtered = this.orders().filter(order => !normalizedSearch
+      || this.orderNumber(order).toLowerCase().includes(normalizedSearch)
+      || order.customerName.toLowerCase().includes(normalizedSearch)
+      || order.customerPhone.toLowerCase().includes(normalizedSearch));
 
     return [...filtered].sort((left, right) => this.compareOrders(left, right));
   });
@@ -204,9 +202,14 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
 
   async loadProducts(): Promise<void> {
     try {
+      // The API ANDs its filters and matches `sku` exactly, so sending one term as both `name` and
+      // `sku` can only ever match a product whose name contains its own full SKU. Route the term to
+      // whichever filter it looks like instead.
+      const term = this.productSearch.trim();
+      const searchesBySku = term.includes('-');
       const page = await this.productLookup.search({
-        name: this.productSearch,
-        sku: this.productSearch,
+        name: searchesBySku ? '' : term,
+        sku: searchesBySku ? term : '',
         status: 'Published',
         page: 1,
         pageSize: 10
@@ -223,6 +226,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     try {
       const page = await this.orderApi.search({
         customer: this.serverCustomerFilter(),
+        status: this.statusFilter,
         from: this.fromDate || undefined,
         to: this.toDate || undefined,
         page: this.pageIndex,
@@ -486,7 +490,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       this.reservationText.set('');
       this.realtimeMessage.set('');
       await this.subscribeToOrder(orderId);
-      await this.refreshCurrentOrder();
+      this.updateWaitingState(result.body);
     } catch (error) {
       this.errorMessage.set(describeApiError(error));
     }
@@ -653,8 +657,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   private serverCustomerFilter(): string | undefined {
+    // The API matches `customer` against name *or* phone, so phone-shaped terms belong on the server
+    // too. Only the client-side order number stays local, since the API has no equivalent filter.
     const term = this.orderSearch.trim();
-    if (!term || /^ord-/i.test(term) || /^[\d\s()+-]+$/.test(term)) {
+    if (!term || /^ord-/i.test(term)) {
       return undefined;
     }
 

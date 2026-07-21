@@ -218,11 +218,19 @@ public sealed class CachedProductReadServiceTests
     private sealed class RecordingProductReadService(ProductDto? value = null) : IProductReadService
     {
         public int GetCalls { get; private set; }
+        public int GetForWriteResultCalls { get; private set; }
         public CancellationToken LastGetToken { get; private set; }
 
         public Task<ProductDto?> GetAsync(Guid id, CancellationToken cancellationToken = default)
         {
             GetCalls++;
+            LastGetToken = cancellationToken;
+            return Task.FromResult(value is not null && value.Id == id ? value : null);
+        }
+
+        public Task<ProductDto?> GetForWriteResultAsync(Guid id, CancellationToken cancellationToken = default)
+        {
+            GetForWriteResultCalls++;
             LastGetToken = cancellationToken;
             return Task.FromResult(value is not null && value.Id == id ? value : null);
         }

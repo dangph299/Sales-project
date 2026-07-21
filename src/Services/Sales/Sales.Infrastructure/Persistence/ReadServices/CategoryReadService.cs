@@ -12,8 +12,8 @@ public sealed class CategoryReadService(SalesDbContext db) : ICategoryReadServic
     /// <inheritdoc/>
     public async Task<IReadOnlyList<CategoryLookupDto>> ListCategoriesAsync(CancellationToken cancellationToken = default)
     {
+        // Soft-deleted categories are already excluded by the Category query filter.
         return await db.Categories.AsNoTracking()
-            .Where(category => !category.IsDelete)
             .OrderBy(category => category.SortOrder)
             .ThenBy(category => category.Name)
             .Select(category => new CategoryLookupDto(
@@ -23,7 +23,19 @@ public sealed class CategoryReadService(SalesDbContext db) : ICategoryReadServic
                 category.Description,
                 category.ParentCategoryId,
                 category.SortOrder,
-                category.Status.ToString()))
+                category.Status.ToString(),
+                db.Products.Count(product => product.CategoryId == category.Id),
+                category.UpdatedAt))
             .ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public async Task<bool> HasDependentsAsync(Guid categoryId, CancellationToken cancellationToken = default)
+    {
+        // Both query filters exclude soft-deleted rows, so this only counts dependents that are still live.
+        return await db.Categories.AsNoTracking()
+                   .AnyAsync(category => category.ParentCategoryId == categoryId, cancellationToken)
+               || await db.Products.AsNoTracking()
+                   .AnyAsync(product => product.CategoryId == categoryId, cancellationToken);
     }
 }

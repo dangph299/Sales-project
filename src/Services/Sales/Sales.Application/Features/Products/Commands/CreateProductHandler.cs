@@ -47,7 +47,7 @@ public sealed class CreateProductHandler(
         await productRepository.AddAsync(product, cancellationToken);
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
-        return await productReadService.GetAsync(product.Id, cancellationToken) ??
+        return await productReadService.GetForWriteResultAsync(product.Id, cancellationToken) ??
             throw new NotFoundException(nameof(Product), product.Id);
     }
 

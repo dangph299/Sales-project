@@ -23,6 +23,8 @@ export function buildCategoryTree(
       parentCategoryId: category.parentCategoryId,
       status: category.status,
       sortOrder: category.sortOrder,
+      productCount: category.productCount,
+      updatedAt: category.updatedAt,
       level: 0,
       hasChildren: false,
       isExpanded: expandedCategoryIds.has(category.id),
@@ -68,7 +70,7 @@ export function buildCategoryTree(
     node.parentCategoryName = parent.name;
   }
 
-  assignPresentation(roots, [], diagnostics);
+  assignPresentation(roots, []);
   return {
     roots: sortNodes(roots),
     diagnostics
@@ -133,6 +135,9 @@ function filterNode(
     ...node,
     isExpanded: hasActiveFilter && filteredChildren.length > 0 ? true : node.isExpanded,
     isContextOnly: !ownMatch && filteredChildren.length > 0,
+    // Recomputed for the copy: keeping the unfiltered value would render an expand toggle on a row
+    // whose children were all filtered away.
+    hasChildren: filteredChildren.length > 0,
     children: filteredChildren
   };
 }
@@ -170,17 +175,14 @@ function hasAncestor(
   return false;
 }
 
-function assignPresentation(
-  nodes: CategoryTreeNode[],
-  ancestors: string[],
-  diagnostics: string[]): void {
+function assignPresentation(nodes: CategoryTreeNode[], ancestors: string[]): void {
   for (const node of nodes) {
     node.level = Math.min(ancestors.length, 8);
     node.hasChildren = node.children.length > 0;
     node.path = [...ancestors, node.name].join(' / ');
     if (node.children.length > 0) {
       node.children = sortNodes(node.children);
-      assignPresentation(node.children, [...ancestors, node.name], diagnostics);
+      assignPresentation(node.children, [...ancestors, node.name]);
     }
   }
 }

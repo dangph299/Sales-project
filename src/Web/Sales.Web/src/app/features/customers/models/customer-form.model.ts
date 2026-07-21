@@ -5,10 +5,15 @@ export interface CustomerFormModel {
   address: string;
 }
 
+/**
+ * Creates a blank customer form. Name and phone start empty rather than carrying placeholder
+ * values: phone is unique per customer, so a generated default risks colliding with a real record.
+ * `saveCustomer` already refuses to submit either field empty.
+ */
 export function emptyCustomerForm(): CustomerFormModel {
   return {
-    name: 'Jane Smith',
-    phone: `090${Math.floor(1000000 + Math.random() * 8999999)}`,
+    name: '',
+    phone: '',
     email: '',
     address: ''
   };

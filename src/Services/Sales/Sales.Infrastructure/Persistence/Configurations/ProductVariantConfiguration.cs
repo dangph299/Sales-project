@@ -15,8 +15,10 @@ public sealed class ProductVariantConfiguration : IEntityTypeConfiguration<Produ
         entity.HasKey(x => x.Id);
         entity.Property(x => x.Id).ValueGeneratedNever();
         entity.HasQueryFilter(x => !x.IsDelete);
-        entity.HasIndex(x => x.Sku).IsUnique();
-        entity.HasIndex(x => new { x.ProductId, x.ColorId, x.SizeId }).IsUnique();
+        // Exclude soft-deleted rows: without this, removing a variant permanently blocks re-adding
+        // the same colour/size pair to that product, and its SKU can never be issued again.
+        entity.HasIndex(x => x.Sku).IsUnique().HasFilter("NOT \"IsDelete\"");
+        entity.HasIndex(x => new { x.ProductId, x.ColorId, x.SizeId }).IsUnique().HasFilter("NOT \"IsDelete\"");
         entity.HasIndex(x => x.Status);
         entity.Property(x => x.Sku).HasMaxLength(96);
         entity.Property(x => x.Price).HasConversion(money).HasColumnType("numeric(18,0)");
