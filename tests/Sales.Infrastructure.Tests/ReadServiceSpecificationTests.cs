@@ -25,7 +25,7 @@ public sealed class ReadServiceSpecificationTests
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
         var inactive = ProductTestFactory.CreatePublishedProduct("sku-inactive", "Inactive", 100);
-        inactive.Discontinue();
+        inactive.DiscontinueVariant(ProductTestFactory.PrimaryVariant(inactive).Id);
         await fixture.SeedAsync(inactive);
 
         var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
@@ -36,14 +36,13 @@ public sealed class ReadServiceSpecificationTests
     }
 
     [Fact]
-    public async Task Product_write_result_read_returns_products_that_are_not_published()
+    public async Task Product_write_result_read_returns_a_draft_product()
     {
-        // A product created without variants stays Draft. Command handlers read their own result
-        // back through this method, so it must not apply the published-only catalog filter or the
-        // write is reported as a 404 after it has already been committed.
+        // This is the shipped bug: a product created without variants is never published, so the
+        // published-only catalog filter made the create handler report a 404 for a row it had
+        // already committed. Covered with a genuinely Draft product, not a discontinued one.
         await using var fixture = await SqliteSalesFixture.CreateAsync();
-        var draft = ProductTestFactory.CreatePublishedProduct("sku-draft", "Draft", 100);
-        draft.Discontinue();
+        var draft = ProductTestFactory.CreateDraftProduct("sku-draft", "Draft");
         await fixture.SeedAsync(draft);
 
         var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
@@ -52,6 +51,20 @@ public sealed class ReadServiceSpecificationTests
 
         Assert.NotNull(result);
         Assert.Equal(draft.Id, result.Id);
+        Assert.Null(await service.GetAsync(draft.Id));
+    }
+
+    [Fact]
+    public async Task Product_write_result_read_returns_a_discontinued_product()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var discontinued = ProductTestFactory.CreatePublishedProduct("sku-disc", "Discontinued", 100);
+        discontinued.Discontinue();
+        await fixture.SeedAsync(discontinued);
+
+        var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        Assert.NotNull(await service.GetForWriteResultAsync(discontinued.Id));
     }
 
     [Fact]
@@ -88,7 +101,7 @@ public sealed class ReadServiceSpecificationTests
         await using var fixture = await SqliteSalesFixture.CreateAsync();
         var active = ProductTestFactory.CreatePublishedProduct("sku-active", "Keyboard", 100);
         var inactive = ProductTestFactory.CreatePublishedProduct("sku-inactive", "Keyboard Disabled", 100);
-        inactive.Discontinue();
+        inactive.DiscontinueVariant(ProductTestFactory.PrimaryVariant(inactive).Id);
         await fixture.SeedAsync(active, inactive);
 
         var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());

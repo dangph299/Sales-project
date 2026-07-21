@@ -51,7 +51,6 @@
         <th>Product</th>
         <th>Color</th>
         <th>Size</th>
-        <th>Product Status</th>
         <th>Variant Status</th>
         <th>Available</th>
         <th>Reserved</th>
@@ -70,9 +69,6 @@
         <td>{{ row.product.name }}</td>
         <td>{{ row.variant.color?.code || '-' }}</td>
         <td>{{ row.variant.size?.code || '-' }}</td>
-        <td>
-          <app-status-tag [display]="statusDisplay(row.product.status)"></app-status-tag>
-        </td>
         <td>
           <app-status-tag [display]="statusDisplay(row.variant.status)"></app-status-tag>
         </td>

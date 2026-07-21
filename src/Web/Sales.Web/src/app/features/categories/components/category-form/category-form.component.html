@@ -7,10 +7,10 @@
   nzShowIcon></nz-alert>
 
 <form nz-form nzLayout="vertical" (ngSubmit)="save.emit()">
-  <nz-form-item>
-    <nz-form-label nzRequired>Category code</nz-form-label>
-    <nz-form-control [nzErrorTip]="fieldError('CategoryCode')">
-      <input nz-input name="categoryCode" [(ngModel)]="model.categoryCode" [disabled]="editing" required>
+  <nz-form-item *ngIf="editing">
+    <nz-form-label>Category code</nz-form-label>
+    <nz-form-control>
+      <input nz-input name="categoryCode" [ngModel]="assignedCode" disabled>
     </nz-form-control>
   </nz-form-item>
 

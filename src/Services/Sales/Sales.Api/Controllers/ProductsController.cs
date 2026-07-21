@@ -150,6 +150,21 @@ public sealed class ProductsController : ControllerBase
     }
 
     /// <summary>
+    /// Soft-deletes a product variant.
+    /// </summary>
+    /// <param name="id">Product identifier.</param>
+    /// <param name="variantId">Variant identifier.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the updated product.</returns>
+    [HttpDelete("{id:guid}/variants/{variantId:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteVariant(Guid id, Guid variantId, CancellationToken ct)
+    {
+        var product = await _sender.Send(new DeleteProductVariantCommand(id, variantId), ct);
+        return this.ToOkResponse(product);
+    }
+
+    /// <summary>
     /// Soft-deletes an existing product.
     /// </summary>
     /// <param name="id">Product identifier.</param>

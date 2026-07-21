@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { ApiClientError } from '../../../../core/api/api-client-result';
 import { CustomerApiService } from '../../api/customer-api.service';
 import { CustomerResponse } from '../../api/responses/customer.response';
@@ -25,11 +26,15 @@ describe('CustomerListPageComponent modal editor', () => {
   let fixture: ComponentFixture<CustomerListPageComponent>;
   let component: CustomerListPageComponent;
   let customerApi: jasmine.SpyObj<CustomerApiService>;
+  let notification: jasmine.SpyObj<NzNotificationService>;
 
   beforeEach(async () => {
     customerApi = jasmine.createSpyObj<CustomerApiService>(
       'CustomerApiService',
       ['search', 'create', 'update', 'updateStatus']);
+    notification = jasmine.createSpyObj<NzNotificationService>(
+      'NzNotificationService',
+      ['success', 'error', 'warning']);
     customerApi.search.and.resolveTo({
       items: customers,
       page: 1,
@@ -41,7 +46,8 @@ describe('CustomerListPageComponent modal editor', () => {
       imports: [CustomerListPageComponent],
       providers: [
         provideNoopAnimations(),
-        { provide: CustomerApiService, useValue: customerApi }
+        { provide: CustomerApiService, useValue: customerApi },
+        { provide: NzNotificationService, useValue: notification }
       ]
     }).compileComponents();
 
@@ -71,7 +77,7 @@ describe('CustomerListPageComponent modal editor', () => {
     expect(component.modalTitle()).toBe('Edit Customer');
   });
 
-  it('keeps the modal open and shows a generic customer conflict for duplicate unique conflicts', async () => {
+  it('keeps the modal open and notifies a generic customer conflict for duplicate unique conflicts', async () => {
     customerApi.create.and.rejectWith(new ApiClientError({
       isSuccess: false,
       status: 409,
@@ -98,6 +104,9 @@ describe('CustomerListPageComponent modal editor', () => {
 
     expect(component.customerModalOpen()).toBeTrue();
     expect(component.validationErrors()).toEqual([]);
-    expect(component.errorMessage()).toContain('same code or phone');
+    expect(component.errorMessage()).toBe('');
+    expect(notification.error).toHaveBeenCalledOnceWith(
+      'Save Customer Failed',
+      'A customer with the same code or phone already exists. Refresh the list and try again.');
   });
 });

@@ -32,7 +32,7 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
     {
         var product = await db.Products.AsNoTracking()
             .SingleOrDefaultAsync(
-                x => x.Id == id && !x.IsDelete && (!publishedOnly || x.Status == EProductStatus.Published),
+                x => x.Id == id && !x.IsDelete,
                 ct);
         if (product is null)
         {
@@ -41,7 +41,8 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
 
         var category = await db.Categories.AsNoTracking().SingleAsync(x => x.Id == product.CategoryId, ct);
         var variants = await LoadVariants([product.Id], ct);
-        return MapProduct(product, category, variants.GetValueOrDefault(product.Id, []));
+        var dto = MapProduct(product, category, variants.GetValueOrDefault(product.Id, []));
+        return !publishedOnly || dto.IsActive ? dto : null;
     }
 
     /// <inheritdoc/>
@@ -169,7 +170,7 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
             product.Name,
             minPrice,
             maxPrice,
-            product.IsActive,
+            publishedVariantPrices.Length > 0 && !product.IsDelete,
             product.Version,
             product.UpdatedAt,
             product.IsDelete,

@@ -72,4 +72,8 @@ export class ProductApiService {
       this.baseUrl,
       `/api/products/${productId}/variants/${variantId}/deactivate`);
   }
+
+  deleteVariant(productId: string, variantId: string): Promise<void> {
+    return this.client.delete(this.baseUrl, `/api/products/${productId}/variants/${variantId}`);
+  }
 }

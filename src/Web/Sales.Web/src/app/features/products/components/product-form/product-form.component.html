@@ -1,16 +1,8 @@
-<nz-alert *ngIf="errorMessage" class="notice" nzType="error" [nzMessage]="errorMessage" nzShowIcon></nz-alert>
-<nz-alert
-  *ngIf="errorSummary.length > 0"
-  class="notice"
-  nzType="error"
-  [nzMessage]="errorSummary.join(' · ')"
-  nzShowIcon></nz-alert>
-
 <form nz-form nzLayout="vertical" (ngSubmit)="save.emit()">
-  <nz-form-item>
-    <nz-form-label nzRequired>Product code</nz-form-label>
+  <nz-form-item *ngIf="editing">
+    <nz-form-label>Product code</nz-form-label>
     <nz-form-control>
-      <input nz-input name="productCode" [(ngModel)]="model.productCode" [disabled]="editing" required>
+      <input nz-input name="productCode" [ngModel]="assignedCode" disabled>
     </nz-form-control>
   </nz-form-item>
 
@@ -41,17 +33,6 @@
           *ngFor="let category of categoryOptions()"
           [nzValue]="category.id"
           [nzLabel]="category.label"></nz-option>
-      </nz-select>
-    </nz-form-control>
-  </nz-form-item>
-
-  <nz-form-item>
-    <nz-form-label>Status</nz-form-label>
-    <nz-form-control>
-      <nz-select name="productStatus" [(ngModel)]="model.status" [nzDisabled]="!editing">
-        <nz-option nzValue="Draft" nzLabel="Draft"></nz-option>
-        <nz-option nzValue="Published" nzLabel="Published"></nz-option>
-        <nz-option nzValue="Discontinued" nzLabel="Discontinued"></nz-option>
       </nz-select>
     </nz-form-control>
   </nz-form-item>

@@ -73,7 +73,7 @@ internal static class OrderCommandSupport
                     color.Name,
                     size.Code,
                     productVariant.Price,
-                    product.Status != EProductStatus.Draft && productVariant.Status == EProductVariantStatus.Published),
+                    productVariant.Status == EProductVariantStatus.Published),
                 orderLineInput.Quantity,
                 orderLineInput.DiscountPercent ?? throw new DomainException("Discount is required.")));
         }

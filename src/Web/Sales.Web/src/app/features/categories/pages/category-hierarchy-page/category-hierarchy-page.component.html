@@ -162,6 +162,7 @@
       [errorMessage]="errorMessage()"
       [saving]="saving()"
       [editing]="!!selectedCategory()"
+      [assignedCode]="selectedCategory()?.categoryCode || ''"
       (save)="saveCategory()"
       (cancel)="closeCategoryModal()"></app-category-form>
   </ng-container>

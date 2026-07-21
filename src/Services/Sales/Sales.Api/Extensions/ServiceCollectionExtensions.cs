@@ -59,10 +59,10 @@ public static class ServiceCollectionExtensions
 
     internal static void ConfigureSalesExceptions(ApiExceptionHandlingOptions options)
     {
-        options.Map<DomainException>((_, errorCatalog) =>
+        options.Map<DomainException>((exception, errorCatalog) =>
         {
             var error = errorCatalog.Get(ErrorCodes.InvalidOperation);
-            return new ApiExceptionMapping(400, error.Code, error.Description, LogLevel: LogLevel.Information);
+            return new ApiExceptionMapping(400, error.Code, exception.Message, LogLevel: LogLevel.Information);
         });
 
         options.Map<NotFoundException>((_, errorCatalog) =>

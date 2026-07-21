@@ -42,7 +42,7 @@ public sealed class SpecificationTests
         var active = ProductTestFactory.CreatePublishedProduct("sku-1", "Keyboard", 100);
         var disabled = ProductTestFactory.CreatePublishedProduct("sku-2", "Mouse", 50);
         var deleted = ProductTestFactory.CreatePublishedProduct("sku-3", "Monitor", 200);
-        disabled.Discontinue();
+        disabled.DiscontinueVariant(ProductTestFactory.PrimaryVariant(disabled).Id);
         deleted.Delete("admin");
 
         var result = new[] { active, disabled, deleted }.AsQueryable()

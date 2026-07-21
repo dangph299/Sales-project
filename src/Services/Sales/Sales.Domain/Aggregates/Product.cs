@@ -47,7 +47,7 @@ public sealed class Product : AggregateRoot<Guid>
 
     public string Sku => ActiveVariant?.Sku ?? ProductCode;
 
-    public bool IsActive => Status == EProductStatus.Published && !IsDelete;
+    public bool IsActive => !IsDelete && _variants.Any(x => x.Status == EProductVariantStatus.Published && !x.IsDelete);
 
     public static Product Create(string productCode, string name, string? description, Guid categoryId)
     {
@@ -80,7 +80,8 @@ public sealed class Product : AggregateRoot<Guid>
     {
         EnsureNotDeleted();
         if (Status == EProductStatus.Published) return;
-        if (Status != EProductStatus.Draft) throw new DomainException("Only draft products can be published.");
+        if (Status is not (EProductStatus.Draft or EProductStatus.Discontinued))
+            throw new DomainException("Only draft or discontinued products can be published.");
 
         Status = EProductStatus.Published;
         Touch();
@@ -90,7 +91,8 @@ public sealed class Product : AggregateRoot<Guid>
     {
         EnsureNotDeleted();
         if (Status == EProductStatus.Discontinued) return;
-        if (Status != EProductStatus.Published) throw new DomainException("Only published products can be discontinued.");
+        if (Status != EProductStatus.Published)
+            throw new DomainException("Only published products can be discontinued.");
 
         Status = EProductStatus.Discontinued;
         Touch();
@@ -99,9 +101,9 @@ public sealed class Product : AggregateRoot<Guid>
     public ProductVariant AddVariant(Color color, Size size, decimal price, EProductVariantStatus status = EProductVariantStatus.Draft)
     {
         EnsureNotDeleted();
-        EnsureCanCreateVariant();
         ArgumentNullException.ThrowIfNull(color);
         ArgumentNullException.ThrowIfNull(size);
+        EnsureCanCreateVariant(status);
         EnsureVariantDoesNotExist(color.Id, size.Id, variantIdToIgnore: null);
 
         var variant = ProductVariant.Create(Id, ProductCode, color, size, price, status);
@@ -117,11 +119,6 @@ public sealed class Product : AggregateRoot<Guid>
         ArgumentNullException.ThrowIfNull(size);
 
         var variant = FindVariant(variantId);
-        if (status == EProductVariantStatus.Published)
-        {
-            EnsureCanPublishVariant();
-        }
-
         EnsureVariantDoesNotExist(color.Id, size.Id, variantId);
         variant.Update(color, size, price, status);
         Touch();
@@ -130,7 +127,6 @@ public sealed class Product : AggregateRoot<Guid>
     public void PublishVariant(Guid variantId)
     {
         EnsureNotDeleted();
-        EnsureCanPublishVariant();
         FindVariant(variantId).Publish();
         Touch();
     }
@@ -147,6 +143,13 @@ public sealed class Product : AggregateRoot<Guid>
         DiscontinueVariant(variantId);
     }
 
+    public void DeleteVariant(Guid variantId, string deleteByUser)
+    {
+        EnsureNotDeleted();
+        FindVariant(variantId).Delete(deleteByUser);
+        Touch();
+    }
+
     public ProductVariant GetVariant(Guid variantId)
     {
         return FindVariant(variantId);
@@ -160,11 +163,6 @@ public sealed class Product : AggregateRoot<Guid>
         DeleteByUser = actor;
         DeletedBy = actor;
         DeletedAt = DateTimeOffset.UtcNow;
-        if (Status == EProductStatus.Published)
-        {
-            Status = EProductStatus.Discontinued;
-        }
-
         Touch();
     }
 
@@ -202,19 +200,12 @@ public sealed class Product : AggregateRoot<Guid>
         if (IsDelete) throw new DomainException("Deleted products cannot be changed.");
     }
 
-    private void EnsureCanCreateVariant()
+    private void EnsureCanCreateVariant(EProductVariantStatus status)
     {
-        if (Status != EProductStatus.Published)
+        if (status == EProductVariantStatus.Discontinued)
         {
-            throw new DomainException("Only published products can have variants created.");
+            throw new DomainException("New product variants cannot be discontinued.");
         }
-    }
 
-    private void EnsureCanPublishVariant()
-    {
-        if (Status != EProductStatus.Published)
-        {
-            throw new DomainException("Only variants of published products can be published.");
-        }
     }
 }

@@ -27,6 +27,24 @@ public sealed class CachedProductReadServiceTests
     }
 
     [Fact]
+    public async Task Get_for_write_result_bypasses_the_cache_entirely()
+    {
+        // The cache only ever holds published products, so consulting it here would hand a command
+        // a stale published DTO instead of the row it just wrote.
+        var product = ProductDto(Guid.NewGuid(), isActive: true, isDelete: false);
+        var cache = new RecordingProductCache(product);
+        var inner = new RecordingProductReadService(product);
+        var service = new CachedProductReadService(inner, cache);
+
+        var result = await service.GetForWriteResultAsync(product.Id);
+
+        Assert.Same(product, result);
+        Assert.Equal(1, inner.GetForWriteResultCalls);
+        Assert.Equal(0, inner.GetCalls);
+        Assert.Empty(cache.Stored);
+    }
+
+    [Fact]
     public async Task Get_on_cache_miss_calls_inner_service()
     {
         var product = ProductDto(Guid.NewGuid(), isActive: true, isDelete: false);

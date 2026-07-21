@@ -37,6 +37,9 @@ export class CategoryFormComponent {
   @Input() saving = false;
   @Input() editing = false;
 
+  /** Backend-assigned category code, shown read-only while editing. */
+  @Input() assignedCode = '';
+
   @Output() save = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
 

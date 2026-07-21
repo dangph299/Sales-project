@@ -8,6 +8,7 @@ import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
 import { ApiClientError, ApiResponseReader } from '../../../../core/api/api-client-result';
@@ -55,6 +56,7 @@ type SortDirection = 'ascend' | 'descend' | null;
 export class CustomerListPageComponent implements OnInit {
   private readonly customerApi = inject(CustomerApiService);
   private readonly modal = inject(NzModalService);
+  private readonly notification = inject(NzNotificationService);
 
   readonly phoneMatchPrefix = PhoneMatch.Prefix;
   readonly phoneMatchSuffix = PhoneMatch.Suffix;
@@ -101,7 +103,7 @@ export class CustomerListPageComponent implements OnInit {
       this.customers.set(page.items);
       this.total.set(page.total);
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Load Customers Failed', error);
     } finally {
       this.loading.set(false);
     }
@@ -193,6 +195,7 @@ export class CustomerListPageComponent implements OnInit {
         { field: 'Name', message: 'Name is required.' },
         { field: 'Phone', message: 'Phone is required.' }
       ]);
+      this.notification.warning('Check Customer Form', 'Name and phone are required.');
       return;
     }
 
@@ -214,6 +217,7 @@ export class CustomerListPageComponent implements OnInit {
       this.customerModalOpen.set(false);
       this.customerForm = emptyCustomerForm();
       this.validationErrors.set([]);
+      this.notification.success(selected ? 'Customer Updated' : 'Customer Created', `${saved.customerCode || saved.name} - ${saved.name}`);
     } catch (error) {
       this.handleFormError(error);
     } finally {
@@ -248,8 +252,9 @@ export class CustomerListPageComponent implements OnInit {
       const updated = await this.customerApi.updateStatus(customer.id, status);
       this.selectedCustomer.set(updated);
       await this.loadCustomers();
+      this.notification.success('Customer Status Updated', `${updated.customerCode || updated.name} is now ${updated.status}.`);
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Update Customer Status Failed', error);
     } finally {
       this.saving.set(false);
     }
@@ -271,8 +276,9 @@ export class CustomerListPageComponent implements OnInit {
         this.detailModalOpen.set(false);
       }
       await this.loadCustomers();
+      this.notification.success('Customer Deleted', `${customer.customerCode || customer.name} - ${customer.name}`);
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Delete Customer Failed', error);
     } finally {
       this.saving.set(false);
     }
@@ -303,11 +309,11 @@ export class CustomerListPageComponent implements OnInit {
   private handleFormError(error: unknown): void {
     if (error instanceof ApiClientError) {
       this.validationErrors.set(error.result.validationErrors);
-      this.errorMessage.set(this.customerErrorMessage(error));
+      this.notifyError('Save Customer Failed', this.customerErrorMessage(error));
       return;
     }
 
-    this.errorMessage.set(describeApiError(error));
+    this.notifyError('Save Customer Failed', error);
   }
 
   private customerErrorMessage(error: ApiClientError): string {
@@ -319,6 +325,11 @@ export class CustomerListPageComponent implements OnInit {
       return 'A customer with the same code or phone already exists. Refresh the list and try again.';
     }
 
-    return ApiResponseReader.formatFailure(error.result);
+    return ApiResponseReader.failureMessages(error.result).join(' ');
+  }
+
+  private notifyError(title: string, error: unknown): void {
+    const message = typeof error === 'string' ? error : describeApiError(error);
+    this.notification.error(title, message);
   }
 }

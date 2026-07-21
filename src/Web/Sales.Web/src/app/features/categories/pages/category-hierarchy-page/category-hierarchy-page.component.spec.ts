@@ -120,7 +120,6 @@ describe('CategoryHierarchyPageComponent expansion', () => {
 
     component.openCreateCategory();
     component.categoryForm = {
-      categoryCode: 'BLANK',
       name: 'Blank',
       description: '',
       parentCategoryId: '',

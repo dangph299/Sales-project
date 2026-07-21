@@ -1,7 +1,6 @@
 import { CategoryStatus } from '../constants/category-status';
 
 export interface CategoryFormModel {
-  categoryCode: string;
   name: string;
   description: string;
   parentCategoryId: string;
@@ -14,11 +13,11 @@ export interface CategoryFormModel {
  *
  * `name` starts empty on purpose: category names are unique per parent (and globally unique at the
  * root), so defaulting it to a fixed string made every create after the first fail with a 409.
- * `saveCategory` already refuses to submit an empty name.
+ * `saveCategory` already refuses to submit an empty name. The category code is allocated by the
+ * backend on create and is never chosen here.
  */
 export function emptyCategoryForm(): CategoryFormModel {
   return {
-    categoryCode: `CAT${Math.floor(100 + Math.random() * 899)}`,
     name: '',
     description: '',
     parentCategoryId: '',

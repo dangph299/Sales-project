@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -11,7 +10,7 @@ import { CustomerFormModel } from '../../models/customer-form.model';
 @Component({
   selector: 'app-customer-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzAlertModule, NzButtonModule, NzFormModule, NzInputModule],
+  imports: [CommonModule, FormsModule, NzButtonModule, NzFormModule, NzInputModule],
   templateUrl: './customer-form.component.html',
   styleUrl: './customer-form.component.scss'
 })
@@ -27,10 +26,6 @@ export class CustomerFormComponent {
 
   fieldError(field: string): string {
     return this.validationErrors.find(error => error.field.toLowerCase() === field.toLowerCase())?.message ?? '';
-  }
-
-  get errorSummary(): string[] {
-    return this.validationErrors.map(error => `${error.field}: ${error.message}`);
   }
 
   submit(): void {

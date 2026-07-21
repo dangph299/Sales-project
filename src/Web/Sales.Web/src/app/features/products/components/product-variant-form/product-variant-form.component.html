@@ -35,7 +35,7 @@
 
     <nz-form-item>
       <nz-form-label nzRequired>Price</nz-form-label>
-      <nz-form-control nzExtra="Selling price for this variant.">
+      <nz-form-control>
         <nz-input-number
           class="price-input"
           name="variantPrice"
@@ -49,7 +49,7 @@
 
     <nz-form-item>
       <nz-form-label>Status</nz-form-label>
-      <nz-form-control nzExtra="Only published variants can be sold.">
+      <nz-form-control>
         <nz-select name="variantStatus" [(ngModel)]="model.status">
           <nz-option *ngFor="let status of statusOptions" [nzValue]="status" [nzLabel]="status"></nz-option>
         </nz-select>

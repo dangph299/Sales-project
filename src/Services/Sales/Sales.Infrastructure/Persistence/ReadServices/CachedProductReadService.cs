@@ -1,7 +1,5 @@
 using Sales.Application.Features.Products.DTOs;
 using Sales.Application.Features.Products.Interfaces;
-using Sales.Domain;
-
 namespace Sales.Infrastructure;
 
 /// <summary>
@@ -72,6 +70,6 @@ public sealed class CachedProductReadService(IProductReadService inner, IProduct
 
     private static bool IsActive(ProductDto product)
     {
-        return (product.Status == EProductStatus.Published.ToString() || product.IsActive) && !product.IsDelete;
+        return product.IsActive && !product.IsDelete;
     }
 }

@@ -119,14 +119,15 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   readonly pageSizeOptions = [10, 20, 50];
   readonly modalTitle = computed(() => this.modalMode() === 'create' ? 'Create Order' : `Edit ${this.currentOrderNumber()}`);
   readonly modalGrandTotal = computed(() => cartGrandTotal(this.cartLines()));
-  // Status is filtered server-side so it applies across every page and agrees with total().
-  // Only the order number stays client-side, because the API has no equivalent filter for it.
+  // Status and customer are filtered server-side, so they apply across every page and agree with
+  // total(). Only an order-number term is matched here, because the API has no filter for it —
+  // re-testing a customer term locally would discard server matches whose formatting differs
+  // (the API strips non-digits from a phone, the stored value keeps none of the user's separators).
   readonly displayedOrders = computed(() => {
-    const normalizedSearch = this.orderSearch.trim().toLowerCase();
-    const filtered = this.orders().filter(order => !normalizedSearch
-      || this.orderNumber(order).toLowerCase().includes(normalizedSearch)
-      || order.customerName.toLowerCase().includes(normalizedSearch)
-      || order.customerPhone.toLowerCase().includes(normalizedSearch));
+    const orderNumberTerm = this.clientOrderNumberFilter();
+    const filtered = orderNumberTerm
+      ? this.orders().filter(order => this.orderNumber(order).toLowerCase().includes(orderNumberTerm))
+      : this.orders();
 
     return [...filtered].sort((left, right) => this.compareOrders(left, right));
   });
@@ -204,9 +205,11 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     try {
       // The API ANDs its filters and matches `sku` exactly, so sending one term as both `name` and
       // `sku` can only ever match a product whose name contains its own full SKU. Route the term to
-      // whichever filter it looks like instead.
+      // whichever filter it looks like instead. A SKU is PRODUCTCODE-COLOR-SIZE, so it needs both
+      // separators and no whitespace — a single hyphen means a name like "T-Shirt", which must not
+      // be sent to the exact-match sku filter.
       const term = this.productSearch.trim();
-      const searchesBySku = term.includes('-');
+      const searchesBySku = /^[^\s-]+-[^\s-]+-[^\s-]+$/.test(term);
       const page = await this.productLookup.search({
         name: searchesBySku ? '' : term,
         sku: searchesBySku ? term : '',
@@ -272,6 +275,16 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   async searchOrders(): Promise<void> {
     this.pageIndex = 1;
     await this.loadOrders();
+  }
+
+  /**
+   * Applies the status filter explicitly rather than through `[(ngModel)]` plus a second
+   * `(ngModelChange)` listener: those fire in template source order, so reordering the attributes
+   * would silently reload using the previously selected status.
+   */
+  async changeStatusFilter(status: OrderStatus | '' | null): Promise<void> {
+    this.statusFilter = status;
+    await this.searchOrders();
   }
 
   async resetFilters(): Promise<void> {
@@ -656,15 +669,21 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** True when the search box holds an order number, which only the client can match. */
+  private isOrderNumberSearch(term: string): boolean {
+    return /^ord-/i.test(term);
+  }
+
   private serverCustomerFilter(): string | undefined {
     // The API matches `customer` against name *or* phone, so phone-shaped terms belong on the server
-    // too. Only the client-side order number stays local, since the API has no equivalent filter.
+    // too. Only the order number stays local, since the API has no equivalent filter.
     const term = this.orderSearch.trim();
-    if (!term || /^ord-/i.test(term)) {
-      return undefined;
-    }
+    return !term || this.isOrderNumberSearch(term) ? undefined : term;
+  }
 
-    return term;
+  private clientOrderNumberFilter(): string {
+    const term = this.orderSearch.trim();
+    return this.isOrderNumberSearch(term) ? term.toLowerCase() : '';
   }
 
   private async subscribeToOrder(orderId: string): Promise<void> {

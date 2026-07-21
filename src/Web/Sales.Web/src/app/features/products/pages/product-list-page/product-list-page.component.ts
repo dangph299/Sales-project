@@ -3,12 +3,15 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
+import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzEmptyModule } from 'ng-zorro-antd/empty';
 import { NzInputModule } from 'ng-zorro-antd/input';
+import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
+import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
-import { ApiClientError, ApiResponseReader } from '../../../../core/api/api-client-result';
+import { ApiClientError } from '../../../../core/api/api-client-result';
 import { ValidationError } from '../../../../core/api/api-error.model';
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../../shared/components/status-tag/status-tag.component';
@@ -17,12 +20,13 @@ import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { PriceRangePipe } from '../../../../shared/pipes/price-range.pipe';
 import { confirmAction } from '../../../../shared/utilities/confirm-action';
 import { describeApiError } from '../../../../shared/utilities/describe-api-error';
+import { InventoryApiService } from '../../../inventory/api/inventory-api.service';
 import { CommonStore } from '../../../common/services/common-store.service';
 import { ProductApiService } from '../../api/product-api.service';
 import { ProductResponse, ProductVariantResponse } from '../../api/responses/product.response';
 import { ProductFormComponent } from '../../components/product-form/product-form.component';
 import { ProductVariantFormComponent } from '../../components/product-variant-form/product-variant-form.component';
-import { ProductStatus, productStatusDisplay } from '../../constants/product-status';
+import { ProductStatus } from '../../constants/product-status';
 import { ProductVariantStatus, productVariantStatusDisplay } from '../../constants/product-variant-status';
 import { ProductFormModel, emptyProductForm } from '../../models/product-form.model';
 import { ProductVariantFormModel, emptyProductVariantForm } from '../../models/product-variant-form.model';
@@ -42,8 +46,10 @@ import { ProductVariantFormModel, emptyProductVariantForm } from '../../models/p
     PriceRangePipe,
     NzButtonModule,
     NzCardModule,
+    NzDropDownModule,
     NzEmptyModule,
     NzInputModule,
+    NzMenuModule,
     NzModalModule,
     NzSelectModule,
     NzTableModule
@@ -53,8 +59,10 @@ import { ProductVariantFormModel, emptyProductVariantForm } from '../../models/p
 })
 export class ProductListPageComponent implements OnInit {
   private readonly productApi = inject(ProductApiService);
+  private readonly inventoryApi = inject(InventoryApiService);
   private readonly common = inject(CommonStore);
   private readonly modal = inject(NzModalService);
+  private readonly notification = inject(NzNotificationService);
 
   readonly colors = this.common.colors;
   readonly sizes = this.common.sizes;
@@ -75,14 +83,12 @@ export class ProductListPageComponent implements OnInit {
   productCodeFilter = '';
   nameFilter = '';
   skuFilter = '';
-  statusFilter = '';
   colorFilter = '';
   sizeFilter = '';
 
   productForm: ProductFormModel = emptyProductForm();
   variantForm: ProductVariantFormModel = emptyProductVariantForm();
 
-  readonly statusDisplay = productStatusDisplay;
   readonly variantStatusDisplay = productVariantStatusDisplay;
   readonly variantStatusOptions = signal<ProductVariantStatus[]>(['Draft', 'Published']);
 
@@ -99,7 +105,7 @@ export class ProductListPageComponent implements OnInit {
         productCode: this.productCodeFilter,
         name: this.nameFilter,
         sku: this.skuFilter,
-        status: this.statusFilter,
+        status: '',
         colorId: this.colorFilter,
         sizeId: this.sizeFilter,
         page: 1,
@@ -109,7 +115,7 @@ export class ProductListPageComponent implements OnInit {
       this.total.set(page.total);
       this.reselectAfterReload();
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Load Products Failed', error);
     } finally {
       this.loading.set(false);
     }
@@ -131,7 +137,6 @@ export class ProductListPageComponent implements OnInit {
   openEditProduct(product: ProductResponse): void {
     this.selectedProduct.set(product);
     this.productForm = {
-      productCode: product.productCode || product.sku,
       name: product.name,
       description: product.description || '',
       categoryId: product.categoryId || product.category?.id || this.common.defaultCategoryId(),
@@ -149,8 +154,8 @@ export class ProductListPageComponent implements OnInit {
 
   openCreateVariant(): void {
     const selected = this.selectedProduct();
-    if (!selected || selected.status !== 'Published') {
-      this.errorMessage.set('Variants can only be added to Published products.');
+    if (!selected) {
+      this.notification.warning('Cannot Add Variant', 'Select a product before adding variants.');
       return;
     }
 
@@ -186,8 +191,9 @@ export class ProductListPageComponent implements OnInit {
   }
 
   async saveProduct(): Promise<void> {
-    if (!this.productForm.productCode.trim() || !this.productForm.name.trim() || !this.productForm.categoryId.trim()) {
-      this.validationErrors.set([{ field: 'Product', message: 'Product code, name and category are required.' }]);
+    if (!this.productForm.name.trim() || !this.productForm.categoryId.trim()) {
+      this.validationErrors.set([{ field: 'Product', message: 'Name and category are required.' }]);
+      this.notification.warning('Check Product Form', 'Name and category are required.');
       return;
     }
 
@@ -201,10 +207,9 @@ export class ProductListPageComponent implements OnInit {
             name: this.productForm.name.trim(),
             description: this.productForm.description.trim() || null,
             categoryId: this.productForm.categoryId,
-            status: this.productForm.status
+            status: (selected.status || 'Draft') as ProductStatus
           })
         : await this.productApi.create({
-            productCode: this.productForm.productCode.trim(),
             name: this.productForm.name.trim(),
             description: this.productForm.description.trim() || null,
             categoryId: this.productForm.categoryId,
@@ -214,44 +219,9 @@ export class ProductListPageComponent implements OnInit {
       this.upsertProduct(saved);
       this.selectedProduct.set(saved);
       this.productModalOpen.set(false);
+      this.notification.success(selected ? 'Product Updated' : 'Product Created', `${saved.productCode || saved.sku} - ${saved.name}`);
     } catch (error) {
       this.handleFormError(error);
-    } finally {
-      this.saving.set(false);
-    }
-  }
-
-  async changeProductStatus(status: ProductStatus): Promise<void> {
-    const selected = this.selectedProduct();
-    if (!selected) {
-      return;
-    }
-
-    if (status === 'Published' && (selected.variants?.length ?? 0) === 0) {
-      this.errorMessage.set('Product can only be published after at least one variant exists.');
-      return;
-    }
-
-    if (status === 'Discontinued' && !await confirmAction(
-      this.modal,
-      'Discontinue Product',
-      'After discontinuation, new variants cannot be created and additional stock cannot be received. Historical data will be retained.')) {
-      return;
-    }
-
-    this.saving.set(true);
-    this.errorMessage.set('');
-    try {
-      const saved = await this.productApi.update(selected.id, {
-        name: selected.name,
-        description: selected.description || null,
-        categoryId: selected.categoryId || selected.category?.id || this.common.defaultCategoryId(),
-        status
-      });
-      this.upsertProduct(saved);
-      this.selectedProduct.set(saved);
-    } catch (error) {
-      this.errorMessage.set(describeApiError(error));
     } finally {
       this.saving.set(false);
     }
@@ -263,13 +233,9 @@ export class ProductListPageComponent implements OnInit {
       return;
     }
 
-    if (selected.status !== 'Published') {
-      this.validationErrors.set([{ field: 'Product', message: 'Variants can only be changed on Published products.' }]);
-      return;
-    }
-
     if (this.variantForm.price < 0) {
       this.validationErrors.set([{ field: 'Price', message: 'Price must be greater than or equal to 0.' }]);
+      this.notification.warning('Check Variant Form', 'Price must be greater than or equal to 0.');
       return;
     }
 
@@ -291,6 +257,7 @@ export class ProductListPageComponent implements OnInit {
       this.upsertProduct(saved);
       this.selectedProduct.set(saved);
       this.closeVariantModal();
+      this.notification.success(selectedVariant ? 'Variant Updated' : 'Variant Added', saved.productCode || saved.sku);
     } catch (error) {
       this.handleFormError(error);
     } finally {
@@ -316,8 +283,117 @@ export class ProductListPageComponent implements OnInit {
       const saved = await this.productApi.discontinueVariant(selected.id, variant.id);
       this.upsertProduct(saved);
       this.selectedProduct.set(saved);
+      this.notification.success('Variant Discontinued', variant.sku);
     } catch (error) {
-      this.errorMessage.set(describeApiError(error));
+      this.notifyError('Discontinue Variant Failed', error);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async changeVariantStatus(variant: ProductVariantResponse, status: ProductVariantStatus): Promise<void> {
+    const selected = this.selectedProduct();
+    if (!selected) {
+      return;
+    }
+
+    if (variant.status === status) {
+      return;
+    }
+
+    if (status === 'Discontinued') {
+      await this.discontinueVariant(variant);
+      return;
+    }
+
+    this.saving.set(true);
+    this.errorMessage.set('');
+    try {
+      const saved = await this.productApi.updateVariant(selected.id, variant.id, {
+        colorId: variant.color?.id || this.common.defaultColorId(),
+        sizeId: variant.size?.id || this.common.defaultSizeId(),
+        price: variant.price,
+        status
+      });
+      this.upsertProduct(saved);
+      this.selectedProduct.set(saved);
+      this.notification.success('Variant Status Updated', `${variant.sku} is now ${status}.`);
+    } catch (error) {
+      this.notifyError('Update Variant Status Failed', error);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async deleteVariant(variant: ProductVariantResponse): Promise<void> {
+    const selected = this.selectedProduct();
+    if (!selected) {
+      return;
+    }
+
+    if (!this.canDeleteVariant(variant)) {
+      this.notification.warning('Cannot Delete Variant', 'Only draft or discontinued variants can be deleted.');
+      return;
+    }
+
+    if (await this.hasVariantStock(variant)) {
+      this.notification.error('Cannot Delete Variant', `${variant.sku} still has inventory. Discontinue it instead.`);
+      return;
+    }
+
+    if (!await confirmAction(
+      this.modal,
+      'Delete Variant',
+      `Delete ${variant.sku}? This removes the variant from active catalog management.`)) {
+      return;
+    }
+
+    this.saving.set(true);
+    this.errorMessage.set('');
+    try {
+      await this.productApi.deleteVariant(selected.id, variant.id);
+      await this.loadProducts();
+      this.notification.success('Variant Deleted', variant.sku);
+    } catch (error) {
+      this.notifyError('Delete Variant Failed', error);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  async deleteProduct(product: ProductResponse): Promise<void> {
+    if (!this.canDeleteProduct(product)) {
+      this.notification.warning(
+        'Cannot Delete Product',
+        `${product.productCode || product.sku} must be draft or discontinued before it can be deleted.`);
+      return;
+    }
+
+    if (await this.hasProductStock(product)) {
+      this.notification.error(
+        'Cannot Delete Product',
+        `${product.productCode || product.sku} still has inventory. Discontinue it instead.`);
+      return;
+    }
+
+    if (!await confirmAction(
+      this.modal,
+      'Delete Product',
+      `Delete ${product.productCode || product.sku} - ${product.name}? This removes the product from active catalog management.`)) {
+      return;
+    }
+
+    this.saving.set(true);
+    this.errorMessage.set('');
+    try {
+      await this.productApi.delete(product.id);
+      if (this.selectedProduct()?.id === product.id) {
+        this.selectedProduct.set(null);
+      }
+      await this.loadProducts();
+      this.notification.success('Product Deleted', `${product.productCode || product.sku} - ${product.name}`);
+    } catch (error) {
+      this.notifyError('Delete Product Failed', error);
     } finally {
       this.saving.set(false);
     }
@@ -349,23 +425,55 @@ export class ProductListPageComponent implements OnInit {
       case 'Published':
         return ['Published', 'Discontinued'];
       case 'Discontinued':
-        return ['Discontinued'];
+        return ['Discontinued', 'Published'];
       default:
         return ['Draft', 'Published'];
     }
+  }
+
+  canDeleteProduct(product: ProductResponse): boolean {
+    return !product.isDelete;
+  }
+
+  canDeleteVariant(variant: ProductVariantResponse): boolean {
+    return variant.status === 'Draft' || variant.status === 'Discontinued';
   }
 
   private coerceVariantStatus(status: ProductVariantStatus, options: ProductVariantStatus[]): ProductVariantStatus {
     return options.includes(status) ? status : options[0];
   }
 
+  private async hasProductStock(product: ProductResponse): Promise<boolean> {
+    for (const variant of product.variants ?? []) {
+      if (await this.hasVariantStock(variant)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  private async hasVariantStock(variant: ProductVariantResponse): Promise<boolean> {
+    try {
+      const inventory = await this.inventoryApi.getByVariant(variant.id);
+      return !!inventory && (inventory.available > 0 || inventory.reserved > 0);
+    } catch (error) {
+      this.notifyError('Inventory Check Failed', error);
+      return true;
+    }
+  }
+
   private handleFormError(error: unknown): void {
     if (error instanceof ApiClientError) {
       this.validationErrors.set(error.result.validationErrors);
-      this.errorMessage.set(ApiResponseReader.formatFailure(error.result));
+      this.notifyError('Save Product Failed', error);
       return;
     }
 
-    this.errorMessage.set(describeApiError(error));
+    this.notifyError('Save Product Failed', error);
+  }
+
+  private notifyError(title: string, error: unknown): void {
+    this.notification.error(title, describeApiError(error));
   }
 }

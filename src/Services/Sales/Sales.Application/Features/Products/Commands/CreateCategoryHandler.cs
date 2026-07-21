@@ -1,13 +1,19 @@
 using MediatR;
 using Sales.Application.Features.Products.DTOs;
+using Sales.Application.Features.Products.Interfaces;
 using Sales.Domain;
 
 namespace Sales.Application.Features.Products.Commands;
 
+/// <summary>
+/// Handles <see cref="CreateCategoryCommand"/>, allocating the category code from the backend.
+/// </summary>
 public sealed class CreateCategoryHandler(
     IRepository<Category> categoryRepository,
+    ICategoryCodeGenerator categoryCodeGenerator,
     IUnitOfWork unitOfWork) : IRequestHandler<CreateCategoryCommand, CategoryDto>
 {
+    /// <inheritdoc/>
     public async Task<CategoryDto> Handle(CreateCategoryCommand request, CancellationToken cancellationToken)
     {
         await CategoryCommandSupport.EnsureParentIsValidAsync(
@@ -16,8 +22,10 @@ public sealed class CreateCategoryHandler(
             request.ParentCategoryId,
             cancellationToken);
 
+        // Allocated after the parent check so a rejected request does not consume a number.
+        var categoryCode = await categoryCodeGenerator.NextCodeAsync(cancellationToken);
         var category = Category.Create(
-            request.CategoryCode,
+            categoryCode,
             request.Name,
             request.Description,
             request.ParentCategoryId,

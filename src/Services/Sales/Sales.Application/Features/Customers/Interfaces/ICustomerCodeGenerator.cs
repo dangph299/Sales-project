@@ -1,12 +1,13 @@
 namespace Sales.Application.Features.Customers.Interfaces;
 
 /// <summary>
-/// Generates customer codes for new customers.
+/// Allocates customer codes. Codes are assigned by the backend on create and are never supplied by
+/// a client.
 /// </summary>
 public interface ICustomerCodeGenerator
 {
     /// <summary>
-    /// Returns the next available customer code.
+    /// Allocates the next customer code.
     /// </summary>
-    Task<string> NextCodeAsync(CancellationToken cancellationToken = default);
+    Task<string> NextCodeAsync(CancellationToken cancellationToken);
 }

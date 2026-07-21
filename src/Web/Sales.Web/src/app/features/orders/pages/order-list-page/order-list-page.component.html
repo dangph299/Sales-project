@@ -21,8 +21,8 @@
     Status
     <nz-select
       name="orderStatusFilter"
-      [(ngModel)]="statusFilter"
-      (ngModelChange)="searchOrders()"
+      [ngModel]="statusFilter"
+      (ngModelChange)="changeStatusFilter($event)"
       nzAllowClear
       nzPlaceHolder="All statuses">
       <nz-option *ngFor="let status of orderStatuses" [nzValue]="status.value" [nzLabel]="status.label"></nz-option>

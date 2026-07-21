@@ -151,7 +151,6 @@ export class CategoryHierarchyPageComponent implements OnInit {
   openEditCategory(category: CategoryResponse): void {
     this.selectedCategory.set(category);
     this.categoryForm = {
-      categoryCode: category.categoryCode,
       name: category.name,
       description: category.description || '',
       parentCategoryId: category.parentCategoryId || '',
@@ -173,10 +172,6 @@ export class CategoryHierarchyPageComponent implements OnInit {
 
   async saveCategory(): Promise<void> {
     const missingFieldErrors: ValidationError[] = [];
-    if (!this.categoryForm.categoryCode.trim()) {
-      missingFieldErrors.push({ field: 'CategoryCode', message: 'Category code is required.' });
-    }
-
     if (!this.categoryForm.name.trim()) {
       missingFieldErrors.push({ field: 'Name', message: 'Name is required.' });
     }
@@ -200,7 +195,6 @@ export class CategoryHierarchyPageComponent implements OnInit {
             status: this.categoryForm.status
           })
         : await this.categoryApi.create({
-            categoryCode: this.categoryForm.categoryCode.trim(),
             name: this.categoryForm.name.trim(),
             description: this.categoryForm.description.trim() || null,
             parentCategoryId: this.categoryForm.parentCategoryId || null,

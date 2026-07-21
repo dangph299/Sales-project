@@ -12,6 +12,14 @@ internal static class ProductTestFactory
         return product;
     }
 
+    /// <summary>
+    /// A product with no variants, which is the state a create leaves behind: never published.
+    /// </summary>
+    public static Product CreateDraftProduct(string productCode, string name)
+    {
+        return Product.Create(productCode, name, null, CategoryReferenceDataIds.Uncategorized);
+    }
+
     public static ProductVariant PrimaryVariant(Product product)
     {
         return product.Variants.Single();

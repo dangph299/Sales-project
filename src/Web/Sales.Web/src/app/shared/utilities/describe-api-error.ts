@@ -3,7 +3,7 @@ import { ApiClientError, ApiResponseReader } from '../../core/api/api-client-res
 /** Turns any thrown value into a message safe to show the user. */
 export function describeApiError(error: unknown): string {
   if (error instanceof ApiClientError) {
-    return ApiResponseReader.formatFailure(error.result);
+    return ApiResponseReader.failureMessages(error.result).join(' ');
   }
 
   return error instanceof Error ? error.message : 'Request failed.';

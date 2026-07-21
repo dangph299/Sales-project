@@ -67,11 +67,11 @@ public sealed class ConfirmOrderHandlerTests
     }
 
     [Fact]
-    public async Task Confirm_rejects_when_an_order_line_product_was_deactivated_after_draft_creation()
+    public async Task Confirm_rejects_when_an_order_line_variant_was_discontinued_after_draft_creation()
     {
         var product = ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
         var order = CreateOrder(product);
-        product.Discontinue();
+        product.DiscontinueVariant(ProductTestFactory.PrimaryVariant(product).Id);
         var logger = new RecordingLogger<ConfirmOrderHandler>();
         var handler = new ConfirmOrderHandler(
             new FakeOrderRepository(order),

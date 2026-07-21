@@ -1,11 +1,3 @@
-<nz-alert *ngIf="errorMessage" class="notice" nzType="error" [nzMessage]="errorMessage" nzShowIcon></nz-alert>
-<nz-alert
-  *ngIf="errorSummary.length > 0"
-  class="notice"
-  nzType="error"
-  [nzMessage]="errorSummary.join(' · ')"
-  nzShowIcon></nz-alert>
-
 <form nz-form nzLayout="vertical" (ngSubmit)="save.emit()">
   <nz-form-item>
     <nz-form-label nzRequired>Name</nz-form-label>

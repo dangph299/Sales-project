@@ -24,15 +24,6 @@
     <input nz-input name="skuFilter" [(ngModel)]="skuFilter" (keyup.enter)="loadProducts()">
   </label>
   <div class="filter-field">
-    <span>Status</span>
-    <nz-select name="productStatusFilter" [(ngModel)]="statusFilter" style="width: 150px" (ngModelChange)="loadProducts()">
-      <nz-option nzValue="" nzLabel="All"></nz-option>
-      <nz-option nzValue="Draft" nzLabel="Draft"></nz-option>
-      <nz-option nzValue="Published" nzLabel="Published"></nz-option>
-      <nz-option nzValue="Discontinued" nzLabel="Discontinued"></nz-option>
-    </nz-select>
-  </div>
-  <div class="filter-field">
     <span>Color</span>
     <nz-select name="colorFilter" [(ngModel)]="colorFilter" style="width: 150px" (ngModelChange)="loadProducts()">
       <nz-option nzValue="" nzLabel="All"></nz-option>
@@ -54,7 +45,7 @@
   [errorMessage]="errorMessage()"
   [empty]="products().length === 0"
   emptyTitle="No products found"
-  emptyText="Create a draft product, add variants, then publish it."
+  emptyText="Create a product, add variants, then publish the variants that can be sold."
   (retry)="loadProducts()"></app-page-state>
 
 <nz-card *ngIf="!loading() && products().length > 0" nzTitle="Product List" [nzExtra]="recordCount">
@@ -66,7 +57,6 @@
         <th>Code</th>
         <th>Name</th>
         <th>Category</th>
-        <th>Status</th>
         <th>Variants</th>
         <th>Price range</th>
         <th>Updated</th>
@@ -82,10 +72,6 @@
         <td>{{ product.productCode || product.sku }}</td>
         <td>{{ product.name }}</td>
         <td>{{ product.category?.name || '-' }}</td>
-        <td>
-          <app-status-tag
-            [display]="statusDisplay(product.status || (product.isActive ? 'Published' : 'Draft'))"></app-status-tag>
-        </td>
         <td>{{ product.variants?.length || 0 }} / {{ publishedVariantCount(product) }} published</td>
         <td>{{ product.minPrice | priceRange: product.maxPrice }}</td>
         <td>{{ product.updatedAt | dateTime }}</td>
@@ -94,20 +80,12 @@
             <button nz-button nzSize="small" type="button" (click)="openEditProduct(product)">Edit</button>
             <button
               nz-button
-              nzSize="small"
-              type="button"
-              (click)="viewProduct(product); changeProductStatus('Published')"
-              [disabled]="product.status === 'Published'">
-              Publish
-            </button>
-            <button
-              nz-button
               nzDanger
               nzSize="small"
               type="button"
-              (click)="viewProduct(product); changeProductStatus('Discontinued')"
-              [disabled]="product.status === 'Discontinued'">
-              Discontinue
+              [disabled]="!canDeleteProduct(product)"
+              (click)="deleteProduct(product)">
+              Delete
             </button>
           </div>
         </td>
@@ -119,7 +97,7 @@
 <nz-card
   *ngIf="selectedProduct() as product"
   class="variants-card"
-  [nzTitle]="'Variants — ' + (product.productCode || product.sku) + ' — ' + product.name"
+  [nzTitle]="'Variants - ' + (product.productCode || product.sku) + ' - ' + product.name"
   [nzExtra]="variantActions">
   <ng-template #variantActions>
     <span class="variants-card__price">{{ product.minPrice | priceRange: product.maxPrice }}</span>
@@ -128,8 +106,7 @@
       nzType="primary"
       nzSize="small"
       type="button"
-      (click)="openCreateVariant()"
-      [disabled]="product.status !== 'Published'">
+      (click)="openCreateVariant()">
       Add variant
     </button>
   </ng-template>
@@ -169,11 +146,35 @@
               nzDanger
               nzSize="small"
               type="button"
-              (click)="discontinueVariant(variant)"
-              [disabled]="variant.status === 'Discontinued'">
-              Discontinue
+              [disabled]="!canDeleteVariant(variant)"
+              (click)="deleteVariant(variant)">
+              Delete
+            </button>
+            <button
+              nz-button
+              nzSize="small"
+              nz-dropdown
+              [nzDropdownMenu]="variantMoreMenu"
+              type="button">
+              More
             </button>
           </div>
+          <nz-dropdown-menu #variantMoreMenu="nzDropdownMenu">
+            <ul nz-menu>
+              <li
+                nz-menu-item
+                (click)="changeVariantStatus(variant, 'Published')"
+                [nzDisabled]="variant.status === 'Published'">
+                Publish
+              </li>
+              <li
+                nz-menu-item
+                (click)="changeVariantStatus(variant, 'Discontinued')"
+                [nzDisabled]="variant.status !== 'Published'">
+                Discontinue
+              </li>
+            </ul>
+          </nz-dropdown-menu>
         </td>
       </tr>
     </tbody>
@@ -198,6 +199,7 @@
       [errorMessage]="errorMessage()"
       [saving]="saving()"
       [editing]="!!selectedProduct()"
+      [assignedCode]="selectedProduct()?.productCode || ''"
       (save)="saveProduct()"
       (cancel)="closeProductModal()"></app-product-form>
   </ng-container>
@@ -215,7 +217,6 @@
       [model]="variantForm"
       [productCode]="(selectedProduct()?.productCode || selectedProduct()?.sku) || ''"
       [saving]="saving()"
-      [disabled]="selectedProduct()?.status !== 'Published'"
       [editing]="!!selectedVariant()"
       [statusOptions]="variantStatusOptions()"
       (save)="saveVariant()"

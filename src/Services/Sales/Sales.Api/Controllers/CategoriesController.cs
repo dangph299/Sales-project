@@ -42,7 +42,6 @@ public sealed class CategoriesController(ISender sender) : ControllerBase
     {
         var category = await sender.Send(
             new CreateCategoryCommand(
-                request.CategoryCode,
                 request.Name,
                 request.Description,
                 request.ParentCategoryId,
