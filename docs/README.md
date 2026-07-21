@@ -5,6 +5,7 @@ Three audiences, three folders. Pick the one that matches what you are doing.
 | Folder | Audience | Answers |
 |---|---|---|
 | [guides/](guides/) | a human learning the project | *why* does this exist and *how* does it work? |
+| [guides-vi/](guides-vi/) | the same guides, in Vietnamese | bản dịch tiếng Việt của `guides/` |
 | [tech/](tech/) | anyone needing facts | *what* exists, *where* is it implemented? |
 | [project/](project/) | AI coding assistants | *what rules* must generated code follow? |
 | [superpowers/](superpowers/) | historical | design specs and plans — **read-only**, may be out of date |
