@@ -157,6 +157,11 @@ public abstract class OutboxPublisherService<TDbContext>(
         row.LastError = null;
         row.LockId = null;
         row.LockedUntil = null;
+
+        // A message that failed before succeeding still carries the retry time that earlier failure
+        // scheduled. The publish loop ignores it once ProcessedAt is set, but anything reading these
+        // columns to see what is due would keep counting a message that is already delivered.
+        row.NextAttemptAt = null;
     }
 
     private async Task UpdateMetrics(TDbContext db, CancellationToken ct)

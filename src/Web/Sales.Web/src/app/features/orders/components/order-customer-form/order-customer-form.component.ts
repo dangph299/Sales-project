@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NzAutocompleteModule, NzOptionSelectionChange } from 'ng-zorro-antd/auto-complete';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs';
 import { CustomerLookupApiService } from '../../../common/api/customer-lookup-api.service';
 import { CustomerPhoneSuggestionResponse } from '../../../common/contracts/customer-lookup.response';
@@ -26,11 +26,16 @@ export interface OrderCustomerFormErrors {
  * phone number, so an unrecognised number is a new customer rather than an
  * error. On edit these values are the order's own snapshot, and saving them
  * never writes back to the customer record.
+ *
+ * The phone box is therefore a plain text input with an autocomplete overlay,
+ * not a picker. A picker would only accept phone numbers that already exist,
+ * which is exactly the case this form has to support, and it would hold a
+ * customer id as its value while the field is supposed to hold a phone number.
  */
 @Component({
   selector: 'app-order-customer-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzInputModule, NzSelectModule],
+  imports: [CommonModule, FormsModule, NzAutocompleteModule, NzInputModule],
   templateUrl: './order-customer-form.component.html',
   styleUrl: './order-customer-form.component.scss'
 })
@@ -112,12 +117,13 @@ export class OrderCustomerFormComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Fills the form from a suggestion. Every field stays editable afterwards —
-   * picking a customer is a shortcut, not a commitment to their current details.
+   * Fills the form from a suggestion the user picked. Every field stays editable
+   * afterwards — picking a customer is a shortcut, not a commitment to their
+   * current details.
    */
-  selectSuggestion(customerId: string): void {
-    const suggestion = this.suggestions().find(x => x.customerId === customerId);
-    if (!suggestion) {
+  selectSuggestion(suggestion: CustomerPhoneSuggestionResponse, selection: NzOptionSelectionChange): void {
+    // Options also report themselves when they are merely highlighted or reset.
+    if (!selection.isUserInput) {
       return;
     }
 

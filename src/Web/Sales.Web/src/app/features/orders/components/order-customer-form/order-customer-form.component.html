@@ -1,24 +1,25 @@
 <div class="form-grid">
   <label class="filter-field">
     Phone <span class="required-marker" aria-hidden="true">*</span>
-    <nz-select
-      class="customer-phone-select"
-      nzShowSearch
-      nzServerSearch
-      nzAllowClear
-      [nzDisabled]="disabled"
-      [nzLoading]="searching()"
-      [ngModel]="customer.phone"
+    <input
+      nz-input
+      class="customer-phone-input"
       name="orderCustomerPhone"
-      nzPlaceHolder="Type a phone number"
-      [nzNotFoundContent]="notFoundContent"
-      (nzOnSearch)="changePhone($event)"
-      (ngModelChange)="selectSuggestion($event)">
-      <nz-option
+      [ngModel]="customer.phone"
+      [disabled]="disabled"
+      (ngModelChange)="changePhone($event)"
+      [nzAutocomplete]="phoneSuggestions"
+      placeholder="Type a phone number">
+    <nz-autocomplete #phoneSuggestions>
+      <nz-auto-option
         *ngFor="let suggestion of suggestions()"
-        [nzValue]="suggestion.customerId"
-        [nzLabel]="suggestion.phone + ' — ' + suggestion.name"></nz-option>
-    </nz-select>
+        [nzValue]="suggestion.phone"
+        [nzLabel]="suggestion.phone"
+        (selectionChange)="selectSuggestion(suggestion, $event)">
+        {{ suggestion.phone }} — {{ suggestion.name }}
+      </nz-auto-option>
+    </nz-autocomplete>
+    <span class="field-hint" *ngIf="searching()">Searching…</span>
     <span class="field-hint" *ngIf="isNewCustomer()">Khách hàng mới</span>
     <span class="field-hint" *ngIf="suggestionErrorMessage()">{{ suggestionErrorMessage() }}</span>
     <span class="field-error" *ngIf="errors.phone">{{ errors.phone }}</span>
@@ -58,7 +59,3 @@
       placeholder="Optional">
   </label>
 </div>
-
-<ng-template #notFoundContent>
-  <span class="suggestion-empty">{{ searching() ? 'Searching…' : 'No matching customer' }}</span>
-</ng-template>

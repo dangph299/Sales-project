@@ -25,11 +25,15 @@ public sealed class EntityCodeConstraintPostgresTests
     [SkippableFact]
     public async Task Duplicate_product_code_is_rejected_by_the_database()
     {
+        // A real category id, because products carry a foreign key to one. A random uuid here would
+        // fail on that constraint and never reach the unique code constraint under test.
         await AssertDuplicateIsRejectedAsync(
             "products",
-            """
+            "ProductCode",
+            "PRD777",
+            $"""
             INSERT INTO products ("Id","ProductCode","Name","CategoryId","Status","CreatedAt","UpdatedAt","IsDelete","Version")
-            VALUES (gen_random_uuid(),'PRD777','duplicate probe',gen_random_uuid(),'Draft',now(),now(),false,1)
+            VALUES (gen_random_uuid(),'PRD777','duplicate probe','{CategoryReferenceDataIds.Uncategorized}','Draft',now(),now(),false,1)
             """);
     }
 
@@ -38,6 +42,8 @@ public sealed class EntityCodeConstraintPostgresTests
     {
         await AssertDuplicateIsRejectedAsync(
             "categories",
+            "CategoryCode",
+            "CAT777",
             """
             INSERT INTO categories ("Id","CategoryCode","Name","SortOrder","Status","CreatedAt","UpdatedAt","IsDelete","Version")
             VALUES (gen_random_uuid(),'CAT777',concat('duplicate probe ', gen_random_uuid()),1,'Draft',now(),now(),false,1)
@@ -49,6 +55,8 @@ public sealed class EntityCodeConstraintPostgresTests
     {
         await AssertDuplicateIsRejectedAsync(
             "customers",
+            "CustomerCode",
+            "CUS777",
             """
             INSERT INTO customers ("Id","CustomerCode","Name","Phone","NormalizedPhone","ReversedPhone","Status","CreatedAt","UpdatedAt","IsDelete","Version")
             VALUES (gen_random_uuid(),'CUS777','duplicate probe',concat('090', substr(gen_random_uuid()::text, 1, 7)),
@@ -56,7 +64,11 @@ public sealed class EntityCodeConstraintPostgresTests
             """);
     }
 
-    private async Task AssertDuplicateIsRejectedAsync(string tableName, string insertSql)
+    private async Task AssertDuplicateIsRejectedAsync(
+        string tableName,
+        string codeColumnName,
+        string probeCode,
+        string insertSql)
     {
         Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
 
@@ -64,7 +76,11 @@ public sealed class EntityCodeConstraintPostgresTests
         await using var scope = provider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<SalesDbContext>();
         await db.Database.MigrateAsync();
-        await db.Database.ExecuteSqlRawAsync($"DELETE FROM {tableName}");
+
+        // Only this test's own probe row is cleared. Emptying the table would take the seeded
+        // reference category with it, which the rest of the suite inserts products against.
+        await db.Database.ExecuteSqlRawAsync(
+            $"DELETE FROM {tableName} WHERE \"{codeColumnName}\" = '{probeCode}'");
 
         // The first insert establishes the code; only the second one must be refused, and by the
         // database rather than by any application-level check.

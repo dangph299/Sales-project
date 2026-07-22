@@ -102,11 +102,11 @@ public sealed class SequentialCodeGeneratorPostgresTests
         // irrelevant to it. Inserting them proves allocation does not consult them.
         await ExecuteAsync(
             provider,
-            """
+            $"""
             INSERT INTO products ("Id","ProductCode","Name","CategoryId","Status","CreatedAt","UpdatedAt","IsDelete","Version")
-            VALUES (gen_random_uuid(),'PRDABC','malformed',gen_random_uuid(),'Draft',now(),now(),false,1),
-                   (gen_random_uuid(),'PRD999999999999999','overflowing',gen_random_uuid(),'Draft',now(),now(),false,1),
-                   (gen_random_uuid(),'XYZ777','foreign prefix',gen_random_uuid(),'Draft',now(),now(),false,1)
+            VALUES (gen_random_uuid(),'PRDABC','malformed','{CategoryReferenceDataIds.Uncategorized}','Draft',now(),now(),false,1),
+                   (gen_random_uuid(),'PRD999999999999999','overflowing','{CategoryReferenceDataIds.Uncategorized}','Draft',now(),now(),false,1),
+                   (gen_random_uuid(),'XYZ777','foreign prefix','{CategoryReferenceDataIds.Uncategorized}','Draft',now(),now(),false,1)
             """);
 
         var code = await AllocateAsync(provider, EntityCodeSequence.Product);
