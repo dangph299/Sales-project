@@ -209,11 +209,11 @@ public sealed class OrderTests
             "12 Le Loi");
 
         var order = Order.Create(
-            "ORD000123",
+            "ORD-0000123",
             orderCustomerSnapshot,
             [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, true), 1, 0)]);
 
-        Assert.Equal("ORD000123", order.OrderCode);
+        Assert.Equal("ORD-0000123", order.OrderCode);
         Assert.Equal(customerId, order.CustomerId);
         Assert.Equal("Nguyen Van B", order.CustomerName);
         Assert.Equal("0912-345-678", order.CustomerPhone);

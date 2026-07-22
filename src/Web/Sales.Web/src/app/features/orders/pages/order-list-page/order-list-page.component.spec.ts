@@ -159,7 +159,7 @@ class FakeOrderApiService {
 
   readonly order: OrderResponse = {
     id: '22222222-2222-2222-2222-222222222222',
-    orderCode: 'ORD001',
+    orderCode: 'ORD-0000001',
     customerId: '33333333-3333-3333-3333-333333333333',
     customerName: 'Customer',
     customerPhone: '0901234567',

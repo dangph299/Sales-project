@@ -579,8 +579,8 @@ namespace Sales.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("OrderCode")
                         .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
 
                     b.Property<string>("RejectionReason")
                         .HasColumnType("text");
@@ -619,6 +619,8 @@ namespace Sales.Infrastructure.Persistence.Migrations
                     b.HasIndex("OrderCode")
                         .IsUnique()
                         .HasDatabaseName("IX_orders_OrderCode");
+
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("OrderCode"), new[] { "varchar_pattern_ops" });
 
                     b.HasIndex("ReversedCustomerPhone")
                         .HasDatabaseName("IX_orders_ReversedCustomerPhone");

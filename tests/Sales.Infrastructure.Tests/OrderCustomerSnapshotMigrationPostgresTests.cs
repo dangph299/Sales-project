@@ -61,17 +61,54 @@ public sealed class OrderCustomerSnapshotMigrationPostgresTests
         var orderCodes = await context.Database
             .SqlQuery<string>($"SELECT \"OrderCode\" AS \"Value\" FROM orders ORDER BY \"CreatedAt\"")
             .ToListAsync();
-        Assert.Equal(["ORD001", "ORD002"], orderCodes);
+        Assert.Equal(["ORD-0000001", "ORD-0000002"], orderCodes);
 
-        // The next generated code must not collide with a backfilled one.
-        var nextSequenceNumber = await context.Database
-            .SqlQuery<long>($"SELECT nextval('order_code_seq') AS \"Value\"")
-            .SingleAsync();
-        Assert.Equal(3, nextSequenceNumber);
+        // The next generated code must not collide with a backfilled one: two legacy orders leave
+        // the next order at ORD-0000003, the same way 532 would leave it at ORD-0000533.
+        Assert.Equal("ORD-0000003", await NextGeneratedOrderCodeAsync(context));
     }
 
+    [SkippableFact]
+    public async Task First_order_code_on_an_empty_database_is_ORD_0000001()
+    {
+        await using var context = await MigrateToPreviousAsync();
+
+        await Migrator(context).MigrateAsync(SnapshotMigration);
+
+        // Nothing to backfill, so the sequence must be left untouched at its start rather than
+        // seeded past a count of zero.
+        Assert.Equal("ORD-0000001", await NextGeneratedOrderCodeAsync(context));
+    }
+
+    [SkippableFact]
+    public async Task Orders_created_in_the_same_instant_are_numbered_by_id()
+    {
+        await using var context = await MigrateToPreviousAsync();
+        var sharedCreatedAt = DateTimeOffset.UtcNow.AddDays(-1);
+        var laterId = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
+        var earlierId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+        await InsertLegacyOrderAsync(context, "0901234567", createdAt: sharedCreatedAt, id: laterId);
+        await InsertLegacyOrderAsync(context, "0912345678", createdAt: sharedCreatedAt, id: earlierId);
+
+        await Migrator(context).MigrateAsync(SnapshotMigration);
+
+        // CreatedAt alone leaves the order of these two up to the storage layer, which would make
+        // the codes differ between a rehearsal run and the real one. Id breaks the tie.
+        var orderCodesById = await context.Database
+            .SqlQuery<string>($"SELECT \"OrderCode\" AS \"Value\" FROM orders ORDER BY \"Id\"")
+            .ToListAsync();
+        Assert.Equal(["ORD-0000001", "ORD-0000002"], orderCodesById);
+    }
+
+    private static async Task<string> NextGeneratedOrderCodeAsync(SalesDbContext context)
+    {
+        var generator = new OrderCodeGenerator(new SequentialCodeGenerator(context));
+        return await generator.NextCodeAsync(CancellationToken.None);
+    }
+
+    // NULL is not among these: the pre-migration schema already declares orders.CustomerPhone NOT
+    // NULL, so a null phone is a row the database would refuse long before this migration ran.
     [SkippableTheory]
-    [InlineData(null)]
     [InlineData("")]
     [InlineData("12345678")]
     [InlineData("1234567890123456")]
@@ -112,7 +149,7 @@ public sealed class OrderCustomerSnapshotMigrationPostgresTests
     {
         Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
 
-        var options = new DbContextOptionsBuilder<SalesDbContext>().UseNpgsql(_fixture.ConnectionString).Options;
+        var options = new DbContextOptionsBuilder<SalesDbContext>().UseNpgsql(MigrationDatabase()).Options;
         var context = new SalesDbContext(options, new MigrationTestExecutionContext());
 
         // Start from an empty database so the migration under test runs for real rather than being
@@ -122,15 +159,34 @@ public sealed class OrderCustomerSnapshotMigrationPostgresTests
         return context;
     }
 
+    /// <summary>
+    /// Builds a connection string for this class's own database.
+    /// </summary>
+    /// <remarks>
+    /// Half of these tests deliberately leave the schema one migration behind, holding a row the
+    /// next migration refuses to touch. Sharing the suite's database would hand every other test a
+    /// schema that can no longer be migrated forward, so the migration tests get a database of
+    /// their own. Each test drops and recreates it, so nothing carries over between them either.
+    /// </remarks>
+    private string MigrationDatabase()
+    {
+        var suiteConnectionString = new NpgsqlConnectionStringBuilder(_fixture.ConnectionString);
+        return new NpgsqlConnectionStringBuilder(_fixture.ConnectionString)
+        {
+            Database = suiteConnectionString.Database + "_migration"
+        }.ConnectionString;
+    }
+
     private static async Task InsertLegacyOrderAsync(
         SalesDbContext context,
         string? legacyCustomerPhone,
-        DateTimeOffset? createdAt = null)
+        DateTimeOffset? createdAt = null,
+        Guid? id = null)
     {
         await context.Database.ExecuteSqlAsync(
             $"""
             INSERT INTO orders ("Id","CustomerId","CustomerName","CustomerPhone","CreatedAt","UpdatedAt","Status","Version")
-            VALUES (gen_random_uuid(), gen_random_uuid(), 'Legacy Customer', {legacyCustomerPhone},
+            VALUES ({id ?? Guid.NewGuid()}, gen_random_uuid(), 'Legacy Customer', {legacyCustomerPhone},
                     {createdAt ?? DateTimeOffset.UtcNow}, now(), 'Draft', 1)
             """);
     }

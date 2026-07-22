@@ -77,8 +77,8 @@ namespace Sales.Infrastructure.Persistence.Migrations
             migrationBuilder.AddColumn<string>(
                 name: "OrderCode",
                 table: "orders",
-                type: "character varying(32)",
-                maxLength: 32,
+                type: "character varying(11)",
+                maxLength: 11,
                 nullable: true);
 
             // Refuse to touch business data the new model could not have produced. Every order
@@ -92,6 +92,7 @@ namespace Sales.Infrastructure.Persistence.Migrations
                 DO $migration$
                 DECLARE
                     invalid_order_count integer;
+                    total_order_count bigint;
                 BEGIN
                     SELECT count(*) INTO invalid_order_count
                     FROM orders
@@ -101,6 +102,16 @@ namespace Sales.Infrastructure.Persistence.Migrations
                         RAISE EXCEPTION
                             'Cannot backfill order customer phone search columns: % order(s) hold a CustomerPhone that does not normalize to 9-15 digits. Resolve that business data first; this migration will not truncate or blank it.',
                             invalid_order_count;
+                    END IF;
+
+                    -- Order codes are ORD- plus seven digits, so ORD-9999999 is the last one that
+                    -- exists. More orders than that cannot all be numbered under this format.
+                    SELECT count(*) INTO total_order_count FROM orders;
+
+                    IF total_order_count > 9999999 THEN
+                        RAISE EXCEPTION
+                            'Cannot backfill order codes: % order(s) exceed the ORD-9999999 ceiling of the seven-digit order code format.',
+                            total_order_count;
                     END IF;
                 END
                 $migration$;
@@ -130,8 +141,9 @@ namespace Sales.Infrastructure.Persistence.Migrations
                 WHERE customers."Id" = orders."CustomerId";
                 """);
 
-            // Numbered by creation time so the codes read in the order the orders were placed, and
-            // formatted like every other backend-assigned code (ORD001, matching CUS001/PRD001).
+            // Numbered by creation time so the codes read in the order the orders were placed. Id
+            // breaks ties, so two orders created in the same instant are still numbered the same way
+            // on every run — which matters because this backfill is what the codes will be forever.
             migrationBuilder.Sql(
                 """
                 WITH numbered_orders AS (
@@ -139,13 +151,15 @@ namespace Sales.Infrastructure.Persistence.Migrations
                     FROM orders
                 )
                 UPDATE orders
-                SET "OrderCode" = 'ORD' || lpad(numbered_orders.sequence_number::text, 3, '0')
+                SET "OrderCode" = 'ORD-' || lpad(numbered_orders.sequence_number::text, 7, '0')
                 FROM numbered_orders
                 WHERE numbered_orders."Id" = orders."Id";
                 """);
 
             // Seed the sequence past the codes just assigned, so a generated code cannot collide
-            // with a backfilled one.
+            // with a backfilled one: 532 backfilled orders leave the next generated code at
+            // ORD-0000533. The false flag means the value is handed out rather than skipped, so an
+            // empty table leaves the first order at ORD-0000001.
             migrationBuilder.Sql(
                 """
                 SELECT setval('order_code_seq', (SELECT count(*) FROM orders) + 1, false);
@@ -176,12 +190,12 @@ namespace Sales.Infrastructure.Persistence.Migrations
             migrationBuilder.AlterColumn<string>(
                 name: "OrderCode",
                 table: "orders",
-                type: "character varying(32)",
-                maxLength: 32,
+                type: "character varying(11)",
+                maxLength: 11,
                 nullable: false,
                 oldClrType: typeof(string),
-                oldType: "character varying(32)",
-                oldMaxLength: 32,
+                oldType: "character varying(11)",
+                oldMaxLength: 11,
                 oldNullable: true);
 
             migrationBuilder.CreateIndex(
@@ -194,7 +208,8 @@ namespace Sales.Infrastructure.Persistence.Migrations
                 name: "IX_orders_OrderCode",
                 table: "orders",
                 column: "OrderCode",
-                unique: true);
+                unique: true)
+                .Annotation("Npgsql:IndexOperators", new[] { "varchar_pattern_ops" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_orders_ReversedCustomerPhone",

@@ -13,11 +13,9 @@ namespace Sales.Application.Features.Customers.DTOs;
 /// <param name="Name">Customer's name.</param>
 /// <param name="Email">Customer's email, or <see langword="null"/>.</param>
 /// <param name="Address">Customer's address, or <see langword="null"/>.</param>
-/// <param name="Status">Customer's lifecycle status.</param>
 public sealed record CustomerLookupDto(
     Guid CustomerId,
     string Phone,
     string Name,
     string? Email,
-    string? Address,
-    string Status);
+    string? Address);

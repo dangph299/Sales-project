@@ -10,6 +10,6 @@ internal static class OrderTestFactory
 
     public static string NextOrderCode()
     {
-        return $"ORD{Interlocked.Increment(ref orderCodeSequence):D6}";
+        return $"ORD-{Interlocked.Increment(ref orderCodeSequence):D7}";
     }
 }

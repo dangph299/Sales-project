@@ -43,7 +43,7 @@ public sealed class OrderPhoneIndexPlanPostgresTests
         var plan = await ExplainAsync(
             context,
             """
-            SELECT "Id" FROM orders WHERE "NormalizedCustomerPhone" LIKE '09014%'
+            SELECT "Id" FROM orders WHERE "NormalizedCustomerPhone" LIKE '09000014%'
             """);
 
         AssertIndexScan(plan, "IX_orders_NormalizedCustomerPhone");
@@ -57,10 +57,24 @@ public sealed class OrderPhoneIndexPlanPostgresTests
         var plan = await ExplainAsync(
             context,
             """
-            SELECT "Id" FROM orders WHERE "ReversedCustomerPhone" LIKE '87654%'
+            SELECT "Id" FROM orders WHERE "ReversedCustomerPhone" LIKE '0041%'
             """);
 
         AssertIndexScan(plan, "IX_orders_ReversedCustomerPhone");
+    }
+
+    [SkippableFact]
+    public async Task Order_code_search_can_use_the_order_code_index()
+    {
+        await using var context = await SeedAsync();
+
+        var plan = await ExplainAsync(
+            context,
+            """
+            SELECT "Id" FROM orders WHERE "OrderCode" LIKE 'ORD-00014%'
+            """);
+
+        AssertIndexScan(plan, "IX_orders_OrderCode");
     }
 
     [SkippableFact]
@@ -74,7 +88,7 @@ public sealed class OrderPhoneIndexPlanPostgresTests
             context,
             """
             SELECT "Id" FROM customers
-            WHERE "NormalizedPhone" LIKE '09014%' AND NOT "IsDelete"
+            WHERE "NormalizedPhone" LIKE '09000014%' AND NOT "IsDelete"
             """);
 
         AssertIndexScan(plan, "IX_customers_NormalizedPhone");
@@ -89,7 +103,7 @@ public sealed class OrderPhoneIndexPlanPostgresTests
             context,
             """
             SELECT "Id" FROM customers
-            WHERE "ReversedPhone" LIKE '87654%' AND NOT "IsDelete"
+            WHERE "ReversedPhone" LIKE '0041%' AND NOT "IsDelete"
             """);
 
         AssertIndexScan(plan, "IX_customers_ReversedPhone");
@@ -109,8 +123,11 @@ public sealed class OrderPhoneIndexPlanPostgresTests
 
     private static async Task<string> ExplainAsync(SalesDbContext context, string sql)
     {
+        // Concatenated rather than interpolated: EXPLAIN cannot take the statement as a parameter,
+        // and every caller below passes a literal written in this file.
+        var explainStatement = "EXPLAIN (ANALYZE, BUFFERS) " + sql;
         var planLines = await context.Database
-            .SqlQueryRaw<string>($"EXPLAIN (ANALYZE, BUFFERS) {sql}")
+            .SqlQueryRaw<string>(explainStatement)
             .ToListAsync();
         return string.Join(Environment.NewLine, planLines);
     }
@@ -145,7 +162,7 @@ public sealed class OrderPhoneIndexPlanPostgresTests
             $"""
             INSERT INTO orders ("Id","OrderCode","CustomerId","CustomerName","CustomerPhone","NormalizedCustomerPhone","ReversedCustomerPhone","CreatedAt","UpdatedAt","Status","Version")
             SELECT gen_random_uuid(),
-                   'ORD' || lpad(sequence_number::text, 7, '0'),
+                   'ORD-' || lpad(sequence_number::text, 7, '0'),
                    gen_random_uuid(),
                    'Customer ' || sequence_number,
                    '09' || lpad(sequence_number::text, 8, '0'),

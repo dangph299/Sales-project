@@ -32,36 +32,36 @@ public sealed class OrderCustomerSearchPostgresTests
     public async Task Customer_name_search_reads_the_order_snapshot()
     {
         await using var context = await PrepareAsync();
-        await SeedOrderAsync(context, "ORD901", "Nguyen Van A", "0901234567");
-        await SeedOrderAsync(context, "ORD902", "Tran Thi B", "0912345678");
+        await SeedOrderAsync(context, "ORD-0000901", "Nguyen Van A", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000902", "Tran Thi B", "0912345678");
 
         var results = await SearchAsync(context, customerName: "nguyen");
 
-        Assert.Equal(["ORD901"], results.Items.Select(x => x.OrderCode));
+        Assert.Equal(["ORD-0000901"], results.Items.Select(x => x.OrderCode));
     }
 
     [SkippableFact]
     public async Task Phone_prefix_search_matches_from_the_start_of_the_number()
     {
         await using var context = await PrepareAsync();
-        await SeedOrderAsync(context, "ORD901", "A", "0901234567");
-        await SeedOrderAsync(context, "ORD902", "B", "0912345678");
+        await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000902", "B", "0912345678");
 
         var results = await SearchAsync(context, customerPhone: "0901", customerPhoneMatchMode: OrderCustomerPhoneMatchMode.Prefix);
 
-        Assert.Equal(["ORD901"], results.Items.Select(x => x.OrderCode));
+        Assert.Equal(["ORD-0000901"], results.Items.Select(x => x.OrderCode));
     }
 
     [SkippableFact]
     public async Task Phone_suffix_search_matches_from_the_end_of_the_number()
     {
         await using var context = await PrepareAsync();
-        await SeedOrderAsync(context, "ORD901", "A", "0901234567");
-        await SeedOrderAsync(context, "ORD902", "B", "0912345678");
+        await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000902", "B", "0912345678");
 
         var results = await SearchAsync(context, customerPhone: "4567", customerPhoneMatchMode: OrderCustomerPhoneMatchMode.Suffix);
 
-        Assert.Equal(["ORD901"], results.Items.Select(x => x.OrderCode));
+        Assert.Equal(["ORD-0000901"], results.Items.Select(x => x.OrderCode));
     }
 
     [SkippableTheory]
@@ -72,18 +72,18 @@ public sealed class OrderCustomerSearchPostgresTests
     public async Task Phone_search_ignores_whatever_punctuation_the_user_typed(string customerPhoneSearchTerm)
     {
         await using var context = await PrepareAsync();
-        await SeedOrderAsync(context, "ORD901", "A", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
 
         var results = await SearchAsync(context, customerPhone: customerPhoneSearchTerm);
 
-        Assert.Equal(["ORD901"], results.Items.Select(x => x.OrderCode));
+        Assert.Equal(["ORD-0000901"], results.Items.Select(x => x.OrderCode));
     }
 
     [SkippableFact]
     public async Task Prefix_search_does_not_match_digits_in_the_middle_of_the_number()
     {
         await using var context = await PrepareAsync();
-        await SeedOrderAsync(context, "ORD901", "A", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
 
         // "1234" sits in the middle. A Contains-style match would find it; a prefix must not.
         var results = await SearchAsync(context, customerPhone: "1234", customerPhoneMatchMode: OrderCustomerPhoneMatchMode.Prefix);
@@ -95,7 +95,7 @@ public sealed class OrderCustomerSearchPostgresTests
     public async Task Suffix_search_does_not_match_digits_at_the_start_of_the_number()
     {
         await using var context = await PrepareAsync();
-        await SeedOrderAsync(context, "ORD901", "A", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
 
         var results = await SearchAsync(context, customerPhone: "0901", customerPhoneMatchMode: OrderCustomerPhoneMatchMode.Suffix);
 
@@ -108,14 +108,14 @@ public sealed class OrderCustomerSearchPostgresTests
         await using var context = await PrepareAsync();
         for (var index = 1; index <= 30; index++)
         {
-            await SeedOrderAsync(context, $"ORD{index:D3}", $"Customer {index}", "0901234567");
+            await SeedOrderAsync(context, $"ORD-{index:D7}", $"Customer {index}", "0901234567");
         }
 
         // The old client-side filter only ever matched within the page already loaded, so an order
         // this far down was invisible. Asking for one row proves the database did the filtering.
-        var results = await SearchAsync(context, orderNumber: "ORD027", pageSize: 5);
+        var results = await SearchAsync(context, orderNumber: "ORD-0000027", pageSize: 5);
 
-        Assert.Equal(["ORD027"], results.Items.Select(x => x.OrderCode));
+        Assert.Equal(["ORD-0000027"], results.Items.Select(x => x.OrderCode));
         Assert.Equal(1, results.Total);
     }
 
@@ -124,7 +124,7 @@ public sealed class OrderCustomerSearchPostgresTests
     {
         await using var context = await PrepareAsync();
         var customer = await SeedCustomerAsync(context, "CUS901", "Nguyen Van A", "0901234567");
-        await SeedOrderAsync(context, "ORD901", "Nguyen Van A", "0901234567", customer.Id);
+        await SeedOrderAsync(context, "ORD-0000901", "Nguyen Van A", "0901234567", customer.Id);
 
         customer.Update("Tran Thi B", "0987654321");
         await context.SaveChangesAsync();
@@ -133,8 +133,8 @@ public sealed class OrderCustomerSearchPostgresTests
         var byOldPhone = await SearchAsync(context, customerPhone: "0901");
         var byNewName = await SearchAsync(context, customerName: "Tran Thi B");
 
-        Assert.Equal(["ORD901"], byOldName.Items.Select(x => x.OrderCode));
-        Assert.Equal(["ORD901"], byOldPhone.Items.Select(x => x.OrderCode));
+        Assert.Equal(["ORD-0000901"], byOldName.Items.Select(x => x.OrderCode));
+        Assert.Equal(["ORD-0000901"], byOldPhone.Items.Select(x => x.OrderCode));
         Assert.Empty(byNewName.Items);
         Assert.Equal("Nguyen Van A", byOldName.Items.Single().CustomerName);
     }
@@ -144,7 +144,7 @@ public sealed class OrderCustomerSearchPostgresTests
     {
         await using var context = await PrepareAsync();
         var customer = await SeedCustomerAsync(context, "CUS901", "Nguyen Van A", "0901234567");
-        await SeedOrderAsync(context, "ORD901", "Nguyen Van A", "0901234567", customer.Id);
+        await SeedOrderAsync(context, "ORD-0000901", "Nguyen Van A", "0901234567", customer.Id);
 
         customer.Delete("integration-test");
         await context.SaveChangesAsync();
@@ -176,8 +176,8 @@ public sealed class OrderCustomerSearchPostgresTests
     {
         await using var context = await PrepareAsync();
         var customer = await SeedCustomerAsync(context, "CUS901", "Nguyen Van A", "0901234567");
-        await SeedOrderAsync(context, "ORD901", "Nguyen Van A", "0901234567", customer.Id);
-        await SeedOrderAsync(context, "ORD902", "Nguyen Van A", "0901234567", customer.Id);
+        await SeedOrderAsync(context, "ORD-0000901", "Nguyen Van A", "0901234567", customer.Id);
+        await SeedOrderAsync(context, "ORD-0000902", "Nguyen Van A", "0901234567", customer.Id);
 
         var results = await SearchAsync(context, customerPhone: "0901234567");
 

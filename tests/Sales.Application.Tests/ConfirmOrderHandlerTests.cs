@@ -109,7 +109,9 @@ public sealed class ConfirmOrderHandlerTests
     {
         product ??= ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
         var variant = ProductTestFactory.PrimaryVariant(product);
-        return Order.Create(OrderTestFactory.NextOrderCode(), OrderCustomerSnapshot.Create(Guid.NewGuid(), "A", "0901234567", null, null),
+        return Order.Create(
+            OrderTestFactory.NextOrderCode(),
+            OrderCustomerSnapshot.Create(Guid.NewGuid(), "A", "0901234567", null, null),
             [
                 new(ProductSnapshot.Create(
                     product.Id,

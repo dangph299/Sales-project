@@ -16,7 +16,13 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         entity.HasKey(x => x.Id);
         entity.HasIndex(x => x.CreatedAt);
         entity.HasIndex(x => new { x.Status, x.UpdatedAt, x.Id });
-        entity.HasIndex(x => x.OrderCode).IsUnique().HasDatabaseName("IX_orders_OrderCode");
+        // One index, doing both jobs: it enforces the unique code and answers the LIKE 'ORD-0001%'
+        // prefix search the order list runs. varchar_pattern_ops is what makes the second possible
+        // under this database's non-C collation, and it leaves the uniqueness guarantee intact.
+        entity.HasIndex(x => x.OrderCode)
+            .IsUnique()
+            .HasOperators("varchar_pattern_ops")
+            .HasDatabaseName("IX_orders_OrderCode");
         entity.HasIndex(x => x.CustomerName).HasMethod("gin").HasOperators("gin_trgm_ops");
 
         // varchar_pattern_ops so that LIKE 'digits%' can use these indexes: the database is created
@@ -29,7 +35,10 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .HasOperators("varchar_pattern_ops")
             .HasDatabaseName("IX_orders_ReversedCustomerPhone");
 
-        entity.Property(x => x.OrderCode).HasMaxLength(32);
+        // Exactly wide enough for ORD-9999999 and no wider, so a code that outgrew the agreed format
+        // would be rejected by the database as well as by the generator.
+        entity.Property(x => x.OrderCode)
+            .HasMaxLength(EntityCodeSequence.Order.Prefix.Length + EntityCodeSequence.Order.NumericWidth);
         entity.Property(x => x.CustomerName).HasMaxLength(200);
         entity.Property(x => x.CustomerPhone).HasMaxLength(32);
         entity.Property(x => x.NormalizedCustomerPhone).HasMaxLength(15);

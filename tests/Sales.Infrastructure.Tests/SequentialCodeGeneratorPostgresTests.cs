@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sales.Application.Common.Interfaces;
 using Sales.Application.Features.Customers.Interfaces;
+using Sales.Application.Features.Orders.Interfaces;
 using Sales.Application.Features.Products.Interfaces;
 using Xunit;
 
@@ -159,6 +160,77 @@ public sealed class SequentialCodeGeneratorPostgresTests
         Assert.Equal("PRD019", afterDelete);
     }
 
+    [SkippableFact]
+    public async Task First_order_code_of_a_reset_sequence_is_ORD_0000001()
+    {
+        Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
+
+        await using var provider = BuildProvider();
+        await MigrateAndRestartSequenceAsync(provider, EntityCodeSequence.Order, 1);
+
+        var code = await AllocateAsync(provider, EntityCodeSequence.Order);
+
+        Assert.Equal("ORD-0000001", code);
+    }
+
+    [SkippableFact]
+    public async Task Order_codes_stay_seven_digits_wide_all_the_way_to_the_ceiling()
+    {
+        Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
+
+        await using var provider = BuildProvider();
+        await MigrateAndRestartSequenceAsync(provider, EntityCodeSequence.Order, 9_999_998);
+
+        var secondToLastCode = await AllocateAsync(provider, EntityCodeSequence.Order);
+        var lastCode = await AllocateAsync(provider, EntityCodeSequence.Order);
+
+        Assert.Equal("ORD-9999998", secondToLastCode);
+        Assert.Equal("ORD-9999999", lastCode);
+    }
+
+    [SkippableFact]
+    public async Task Order_sequence_past_the_ceiling_fails_instead_of_handing_out_a_wider_code()
+    {
+        Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
+
+        await using var provider = BuildProvider();
+        await MigrateAndRestartSequenceAsync(provider, EntityCodeSequence.Order, 9_999_999);
+
+        var lastCode = await AllocateAsync(provider, EntityCodeSequence.Order);
+        var failure = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => AllocateAsync(provider, EntityCodeSequence.Order));
+
+        Assert.Equal("ORD-9999999", lastCode);
+        Assert.Contains("order_code_seq", failure.Message, StringComparison.Ordinal);
+    }
+
+    [SkippableFact]
+    public async Task Concurrent_order_creates_never_receive_the_same_order_code()
+    {
+        Skip.IfNot(_fixture.IsAvailable, _fixture.SkipReason);
+
+        const int concurrentRequests = 50;
+        await using var provider = BuildProvider();
+        await MigrateAndRestartSequenceAsync(provider, EntityCodeSequence.Order, 1);
+
+        // orders.OrderCode carries a unique index, so a duplicate here would not merely repeat a
+        // code — it would fail the create outright for whichever request lost the race.
+        var allocations = Enumerable.Range(0, concurrentRequests)
+            .Select(_ => Task.Run(async () =>
+            {
+                await using var scope = provider.CreateAsyncScope();
+                var generator = scope.ServiceProvider.GetRequiredService<IOrderCodeGenerator>();
+                return await generator.NextCodeAsync(CancellationToken.None);
+            }));
+
+        var codes = await Task.WhenAll(allocations);
+
+        Assert.Equal(concurrentRequests, codes.Distinct(StringComparer.Ordinal).Count());
+        Assert.Equal(
+            Enumerable.Range(1, concurrentRequests).Select(number => $"ORD-{number:D7}").OrderBy(code => code, StringComparer.Ordinal),
+            codes.OrderBy(code => code, StringComparer.Ordinal));
+    }
+
     private static EntityCodeSequence SequenceForPrefix(string prefix)
     {
         return EntityCodeSequence.All.Single(codeSequence => codeSequence.Prefix == prefix);
@@ -201,6 +273,7 @@ public sealed class SequentialCodeGeneratorPostgresTests
         services.AddScoped<ICustomerCodeGenerator, CustomerCodeGenerator>();
         services.AddScoped<IProductCodeGenerator, ProductCodeGenerator>();
         services.AddScoped<ICategoryCodeGenerator, CategoryCodeGenerator>();
+        services.AddScoped<IOrderCodeGenerator, OrderCodeGenerator>();
         return services.BuildServiceProvider();
     }
 

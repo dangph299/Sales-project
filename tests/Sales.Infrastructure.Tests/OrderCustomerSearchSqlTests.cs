@@ -50,7 +50,7 @@ public sealed class OrderCustomerSearchSqlTests
     [Fact]
     public void Order_code_search_anchors_the_wildcard_at_the_end()
     {
-        var sql = BuildSql(new OrderCodeStartsWithSpecification("ORD001"));
+        var sql = BuildSql(new OrderCodeStartsWithSpecification("ORD-0000001"));
 
         _output.WriteLine(sql);
         Assert.Contains("\"OrderCode\" LIKE ", sql, StringComparison.Ordinal);

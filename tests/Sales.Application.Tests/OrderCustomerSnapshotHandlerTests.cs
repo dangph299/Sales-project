@@ -219,7 +219,7 @@ public sealed class OrderCustomerSnapshotHandlerTests
             transactionManager ?? new FakeSalesTransactionManager(),
             unitOfWork ?? new FakeSalesUnitOfWork(),
             new FakeCodeGenerator("CUS001"),
-            new FakeCodeGenerator("ORD001"),
+            new FakeCodeGenerator("ORD-0000001"),
             persistenceExceptionClassifier ?? new NeverClassifyingClassifier(),
             new RecordingLogger<CreateOrderHandler>(),
             SalesMapperFactory.Create());
@@ -230,7 +230,7 @@ public sealed class OrderCustomerSnapshotHandlerTests
         var product = ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
         var variant = ProductTestFactory.PrimaryVariant(product);
         return Order.Create(
-            "ORD001",
+            "ORD-0000001",
             OrderCustomerSnapshot.Create(customerId, "Nguyen Van A", "0901234567", null, null),
             [
                 new OrderLineItem(

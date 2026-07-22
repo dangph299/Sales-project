@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 
 namespace Sales.Infrastructure;
@@ -19,12 +18,6 @@ namespace Sales.Infrastructure;
 public sealed class SequentialCodeGenerator(SalesDbContext db)
 {
     /// <summary>
-    /// Minimum digit count. Wider numbers keep all their digits, so the sequence runs past 999
-    /// into CUS1000, PRD1000 and CAT1000 without an artificial ceiling.
-    /// </summary>
-    private const string SequenceNumberFormat = "D3";
-
-    /// <summary>
     /// Allocates the next code for one sequence.
     /// </summary>
     /// <param name="codeSequence">Prefix and backing sequence to allocate from.</param>
@@ -36,6 +29,6 @@ public sealed class SequentialCodeGenerator(SalesDbContext db)
             .SqlQuery<long>($"SELECT nextval({codeSequence.SequenceName}::regclass) AS \"Value\"")
             .SingleAsync(cancellationToken);
 
-        return codeSequence.Prefix + sequenceNumber.ToString(SequenceNumberFormat, CultureInfo.InvariantCulture);
+        return codeSequence.FormatCode(sequenceNumber);
     }
 }

@@ -55,7 +55,7 @@ public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICu
             return [];
         }
 
-        // Projected straight into the DTO so the query reads only the six columns the dropdown
+        // Projected straight into the DTO so the query reads only the five columns the dropdown
         // shows, instead of materializing whole customer aggregates on every keystroke. The
         // active-customer filter keeps soft-deleted rows out and keeps the partial phone index
         // eligible.
@@ -70,8 +70,7 @@ public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICu
                 x.Phone,
                 x.Name,
                 x.Email,
-                x.Address,
-                x.Status.ToString()))
+                x.Address))
             .ToListAsync(ct);
     }
 }

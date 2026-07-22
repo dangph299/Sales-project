@@ -20,5 +20,4 @@ export interface CustomerPhoneSuggestionResponse {
   name: string;
   email?: string | null;
   address?: string | null;
-  status: string;
 }
