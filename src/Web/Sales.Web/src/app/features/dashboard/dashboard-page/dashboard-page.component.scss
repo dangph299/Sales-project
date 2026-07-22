@@ -1,32 +1,104 @@
-.kpi-grid {
+.dashboard-header {
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.refresh-meta {
+  align-items: center;
+  color: #637083;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.dashboard-kpis {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin-bottom: 24px;
+}
+
+.dashboard-grid {
   display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  margin-bottom: 18px;
+  gap: 24px;
+  margin-bottom: 24px;
+}
 
-  span {
-    color: #8c8c8c;
-    display: block;
-    font-size: 13px;
-  }
+.dashboard-grid--two {
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, .75fr);
+}
 
-  strong {
-    display: block;
-    font-size: 22px;
-    line-height: 1.4;
-  }
+.dashboard-grid--tables {
+  grid-template-columns: minmax(0, 1.35fr) minmax(360px, .65fr);
+}
 
-  small {
-    color: #8c8c8c;
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+
+  a {
+    align-items: center;
+    display: inline-flex;
+    gap: 8px;
+    min-height: 38px;
   }
 }
 
-.content-grid {
-  display: grid;
-  gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+.table-wrap {
+  margin: 0 -4px;
 }
 
-.alerts {
-  margin-top: 18px;
+nz-table {
+  color: #344054;
+}
+
+th {
+  color: #637083;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+td {
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+td strong {
+  color: #172033;
+  font-weight: 700;
+}
+
+@media (max-width: 1280px) {
+  .dashboard-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .dashboard-header {
+    align-items: flex-start;
+  }
+
+  .refresh-meta {
+    justify-content: flex-start;
+  }
+
+  .dashboard-grid--two,
+  .dashboard-grid--tables {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-actions a {
+    justify-content: center;
+    width: 100%;
+  }
 }

@@ -36,6 +36,7 @@
           class="line-number-input"
           [ngModel]="line.quantity"
           (ngModelChange)="changeQuantity(line.variant.id, $event)"
+          [nzDisabled]="readonly || saving"
           [nzMin]="1"
           nzSize="small"></nz-input-number>
       </td>
@@ -44,19 +45,29 @@
           class="line-number-input"
           [ngModel]="line.discountPercent"
           (ngModelChange)="changeDiscount(line.variant.id, $event)"
+          [nzDisabled]="readonly || saving"
           [nzMin]="0"
           [nzMax]="100"
           nzSize="small"></nz-input-number>
       </td>
       <td class="number-column line-total">{{ lineTotal(line) | money }}</td>
       <td class="line-action-column">
-        <button nz-button nzDanger nzSize="small" type="button" (click)="removeLine(line.variant.id)" [disabled]="saving">Delete</button>
+        <button
+          *ngIf="!readonly"
+          nz-button
+          nzDanger
+          nzSize="small"
+          type="button"
+          (click)="removeLine(line.variant.id)"
+          [disabled]="saving">
+          Delete
+        </button>
       </td>
     </tr>
   </tbody>
 </nz-table>
 
-<section class="summary-strip" *ngIf="lines.length > 0">
+<section class="summary-strip" *ngIf="showSummary && lines.length > 0">
   <span>Subtotal: {{ subtotal | money }}</span>
   <strong>Grand total: {{ grandTotal | money }}</strong>
   <button
@@ -66,7 +77,7 @@
     type="button"
     (click)="createOrder.emit()"
     [nzLoading]="saving"
-    [disabled]="saving || !canCreateOrder || lines.length === 0">
+    [disabled]="readonly || saving || !canCreateOrder || lines.length === 0">
     {{ actionLabel }}
   </button>
 </section>

@@ -29,10 +29,12 @@ public sealed class ConfirmOrderConcurrencyTests
         await using (var setup = new SalesDbContext(options, executionContext))
             await setup.Database.MigrateAsync();
 
-        var customer = CustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567");
-        var product = ProductTestFactory.CreatePublishedProduct($"sku-{Guid.NewGuid():N}", "Keyboard", 100_000);
+        var customer = OrderCustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567", null, null);
+        // Unique but short: the code is the first segment of every line's SKU, and order lines cap
+        // ProductCode at 32 characters.
+        var product = ProductTestFactory.CreatePublishedProduct($"PRD{Guid.NewGuid():N}"[..16], "Keyboard", 100_000);
         var snapshot = ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, product.IsActive);
-        var order = Order.Create(customer, [new(snapshot, 1, 0m)]);
+        var order = Order.Create(OrderTestFactory.NextOrderCode(), customer, [new(snapshot, 1, 0m)]);
         var orderId = order.Id;
 
         await using (var seed = new SalesDbContext(options, executionContext))
@@ -65,9 +67,14 @@ public sealed class ConfirmOrderConcurrencyTests
         Assert.Equal(OrderStatus.PendingInventory, persisted.Status);
         Assert.Equal(2, persisted.Version);
 
-        var inventoryCalls = await verify.OutboxMessages
-            .Where(x => x.Topic == KafkaTopics.OrderConfirmationRequested && x.Payload.Contains(orderId.ToString()))
+        // The payload column is jsonb, which has no LIKE operator, so the topic is narrowed in the
+        // database and the payload is matched here.
+        var confirmationRequests = await verify.OutboxMessages
+            .Where(x => x.Topic == KafkaTopics.OrderConfirmationRequested)
             .ToListAsync();
+        var inventoryCalls = confirmationRequests
+            .Where(x => x.Payload.Contains(orderId.ToString(), StringComparison.OrdinalIgnoreCase))
+            .ToList();
         Assert.Single(inventoryCalls);
     }
 

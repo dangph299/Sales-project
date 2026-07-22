@@ -6,14 +6,14 @@ namespace Inventory.Domain;
 public interface IInventoryRepository
 {
     /// <summary>
-    /// Loads one inventory item by product id.
+    /// Loads one inventory item by product variant id.
     /// </summary>
-    Task<InventoryItem?> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default);
+    Task<InventoryItem?> GetByProductVariantIdAsync(Guid productVariantId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Loads inventory items for the provided product ids.
+    /// Loads inventory items for the provided product variant ids.
     /// </summary>
-    Task<IReadOnlyCollection<InventoryItem>> GetByProductIdsAsync(IEnumerable<Guid> productIds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<InventoryItem>> GetByProductVariantIdsAsync(IEnumerable<Guid> productVariantIds, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Adds a new inventory item.

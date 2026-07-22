@@ -111,12 +111,11 @@ describe('OrderListPageComponent realtime behavior', () => {
     orderApi.createResult = new Promise<ApiResult<OrderResponse>>(resolve => {
       resolveCreate = resolve;
     });
-    fixture.componentInstance.selectedCustomer.set({
-      id: '33333333-3333-3333-3333-333333333333',
-      customerCode: 'CUST-1',
+    fixture.componentInstance.orderCustomer.set({
       name: 'Customer',
       phone: '0901234567',
-      status: 'Normal'
+      email: '',
+      address: ''
     });
     fixture.componentInstance.cartLines.set([{
       product: {
@@ -151,6 +150,34 @@ describe('OrderListPageComponent realtime behavior', () => {
 
     expect(fixture.componentInstance.saving()).toBeFalse();
   });
+
+  it('opens pending orders read-only and does not expose save', async () => {
+    orderApi.order.status = 'PendingInventory';
+
+    await fixture.componentInstance.openEditOrder(orderApi.order);
+
+    expect(fixture.componentInstance.modalMode()).toBe('view');
+    expect(fixture.componentInstance.orderModalReadonly()).toBeTrue();
+    expect(fixture.componentInstance.canSaveOrder()).toBeFalse();
+  });
+
+  it('opens draft orders editable', async () => {
+    orderApi.order.status = 'Draft';
+
+    await fixture.componentInstance.openEditOrder(orderApi.order);
+
+    expect(fixture.componentInstance.modalMode()).toBe('edit');
+    expect(fixture.componentInstance.orderModalReadonly()).toBeFalse();
+    expect(fixture.componentInstance.canSaveOrder()).toBeTrue();
+  });
+
+  it('only allows cancelling draft or inventory rejected orders', () => {
+    expect(fixture.componentInstance.canCancelOrder({ ...orderApi.order, status: 'Draft' })).toBeTrue();
+    expect(fixture.componentInstance.canCancelOrder({ ...orderApi.order, status: 'InventoryRejected' })).toBeTrue();
+    expect(fixture.componentInstance.canCancelOrder({ ...orderApi.order, status: 'PendingInventory' })).toBeFalse();
+    expect(fixture.componentInstance.canCancelOrder({ ...orderApi.order, status: 'Confirmed' })).toBeFalse();
+    expect(fixture.componentInstance.canCancelOrder({ ...orderApi.order, status: 'Cancelled' })).toBeFalse();
+  });
 });
 
 class FakeOrderApiService {
@@ -160,9 +187,12 @@ class FakeOrderApiService {
 
   readonly order: OrderResponse = {
     id: '22222222-2222-2222-2222-222222222222',
+    orderCode: 'ORD-0000001',
     customerId: '33333333-3333-3333-3333-333333333333',
     customerName: 'Customer',
     customerPhone: '0901234567',
+    customerEmail: null,
+    customerAddress: null,
     createdAt: new Date().toISOString(),
     status: 'PendingInventory',
     totalQuantity: 1,
@@ -195,6 +225,10 @@ class FakeOrderApiService {
 class FakeLookupApiService {
   search(): Promise<PagedResult<never>> {
     return Promise.resolve(emptyPage<never>());
+  }
+
+  suggestByPhone(): Promise<never[]> {
+    return Promise.resolve([]);
   }
 }
 

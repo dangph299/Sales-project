@@ -142,7 +142,8 @@ public sealed class CancelExpiredPendingOrdersHandlerTests
     {
         var product = ProductTestFactory.CreatePublishedProduct("sku", "Product", 100);
         return Order.Create(
-            CustomerSnapshot.Create(Guid.NewGuid(), "A", "0901234567"),
+            OrderTestFactory.NextOrderCode(),
+            OrderCustomerSnapshot.Create(Guid.NewGuid(), "A", "0901234567", null, null),
             [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, true), 1, 0)]);
     }
 

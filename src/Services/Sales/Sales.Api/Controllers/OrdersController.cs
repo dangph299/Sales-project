@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sales.Api.Extensions;
+using Sales.Api.Models.Requests;
 using Sales.Application.Features.Orders.Commands;
 using Sales.Application.Features.Orders.DTOs;
 using Sales.Application.Features.Orders.Queries;
@@ -46,11 +47,14 @@ public sealed class OrdersController : ControllerBase
     }
 
     /// <summary>
-    /// Searches orders by creation date range, customer name/phone, and/or status.
+    /// Searches orders by independent filters. Every filter is applied by the database across the
+    /// whole table, so a match on another page is still found.
     /// </summary>
+    /// <param name="orderNumber">An optional whole or partial order code, matched from the start.</param>
+    /// <param name="customerName">An optional keyword matched anywhere within the order's customer name snapshot.</param>
+    /// <param name="customerPhone">An optional phone fragment, in any format. The backend normalizes it; the caller sends what the user typed.</param>
     /// <param name="from">An optional inclusive lower bound on the order's creation time.</param>
     /// <param name="to">An optional inclusive upper bound on the order's creation time.</param>
-    /// <param name="customer">An optional substring to match against the order's customer name or phone.</param>
     /// <param name="status">An optional status the order must currently be in. Bound by name, so an
     /// unrecognised value is rejected with <c>400 Bad Request</c> rather than silently ignored.</param>
     /// <param name="page">1-based page number. Defaults to 1.</param>
@@ -59,15 +63,19 @@ public sealed class OrdersController : ControllerBase
     /// <returns><c>200 OK</c> with a page of matching orders.</returns>
     [HttpGet]
     public async Task<IActionResult> Search(
-        [FromQuery] DateTimeOffset? from,
-        [FromQuery] DateTimeOffset? to,
-        [FromQuery] string? customer,
-        [FromQuery] OrderStatus? status,
+        [FromQuery] string? orderNumber,
+        [FromQuery] string? customerName,
+        [FromQuery] string? customerPhone,
+        [FromQuery] DateTimeOffset? from = null,
+        [FromQuery] DateTimeOffset? to = null,
+        [FromQuery] OrderStatus? status = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
         CancellationToken ct = default)
     {
-        var orders = await _sender.Send(new SearchOrders(from, to, customer, status, page, pageSize), ct);
+        var orders = await _sender.Send(
+            new SearchOrders(orderNumber, customerName, customerPhone, from, to, status, page, pageSize),
+            ct);
         return this.ToOkResponse(orders);
     }
 
@@ -96,6 +104,26 @@ public sealed class OrdersController : ControllerBase
     public async Task<IActionResult> ReplaceLines(Guid id, [FromBody] IReadOnlyCollection<OrderLineInput> body, CancellationToken ct)
     {
         var order = await _sender.Send(new ReplaceOrderLines(id, Request.RequireVersion(), body), ct);
+        Response.SetEtag(order);
+        return this.ToOkResponse(order);
+    }
+
+    /// <summary>
+    /// Replaces the customer details recorded on a draft order.
+    /// </summary>
+    /// <remarks>
+    /// Edits the order's own snapshot only. The customer record this order was placed for is never
+    /// read or written here, and the order keeps pointing at it.
+    /// </remarks>
+    /// <param name="id">Order to edit, from the route.</param>
+    /// <param name="body">New customer details to record on the order.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the updated order, and an <c>ETag</c> response header set to its new version.</returns>
+    [HttpPut("{id:guid}/customer")]
+    public async Task<IActionResult> UpdateCustomer(Guid id, [FromBody] UpdateOrderCustomerRequest body, CancellationToken ct)
+    {
+        var command = new UpdateOrderCustomer(id, Request.RequireVersion(), body.Name, body.Phone, body.Email, body.Address);
+        var order = await _sender.Send(command, ct);
         Response.SetEtag(order);
         return this.ToOkResponse(order);
     }

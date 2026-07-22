@@ -71,7 +71,7 @@ public sealed class Customer : AggregateRoot<Guid>
     /// Creates a new <see cref="Customer"/> aggregate and raises <see cref="CustomerCreatedDomainEvent"/>.
     /// </summary>
     /// <param name="name">Customer's name.</param>
-    /// <param name="phone">Customer's phone number, in any format containing 9 to 15 digits.</param>
+    /// <param name="phone">Customer's phone number, in any format containing 9 to 15 digits, normalized via <see cref="CustomerPhoneNormalizer"/>.</param>
     /// <returns>Newly created customer.</returns>
     /// <exception cref="DomainException">Thrown when <paramref name="name"/> is empty/whitespace or <paramref name="phone"/> does not contain 9 to 15 digits.</exception>
     public static Customer Create(string customerCode, string name, string phone, string? email = null, string? address = null)
@@ -151,25 +151,12 @@ public sealed class Customer : AggregateRoot<Guid>
         Touch();
     }
 
-    /// <summary>
-    /// Strips non-digit characters from a phone number and validates the resulting length.
-    /// </summary>
-    /// <param name="phone">Raw phone number, in any format.</param>
-    /// <returns>Digits-only phone number.</returns>
-    /// <exception cref="DomainException">Thrown when the resulting digit string is shorter than 9 or longer than 15 characters.</exception>
-    public static string NormalizePhone(string phone)
-    {
-        var normalized = new string((phone ?? string.Empty).Where(char.IsDigit).ToArray());
-        if (normalized.Length is < 9 or > 15) throw new DomainException("Phone must contain 9 to 15 digits.");
-        return normalized;
-    }
-
     private void SetDetails(string name, string phone, string? email, string? address)
     {
         Name = string.IsNullOrWhiteSpace(name) ? throw new DomainException("Customer name is required.") : name.Trim();
         Phone = string.IsNullOrWhiteSpace(phone) ? throw new DomainException("Phone is required.") : phone.Trim();
-        NormalizedPhone = NormalizePhone(phone);
-        ReversedPhone = new string(NormalizedPhone.Reverse().ToArray());
+        NormalizedPhone = CustomerPhoneNormalizer.Normalize(phone);
+        ReversedPhone = CustomerPhoneNormalizer.Reverse(NormalizedPhone);
         Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
         Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
     }

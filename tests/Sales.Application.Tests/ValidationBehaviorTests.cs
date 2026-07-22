@@ -60,7 +60,9 @@ public sealed class ValidationBehaviorTests
         var mediator = services.BuildServiceProvider().GetRequiredService<IMediator>();
 
         var ex = await Assert.ThrowsAsync<ValidationException>(() =>
-            mediator.Send(new CreateOrder(Guid.NewGuid(), [new OrderLineInput(Guid.NewGuid(), 1, null)])));
+            mediator.Send(new CreateOrder(
+                new CreateOrderCustomer("0901234567", "Nguyen Van A"),
+                [new OrderLineInput(Guid.NewGuid(), 1, null)])));
 
         Assert.Contains(ex.Errors, e => e.PropertyName.EndsWith(nameof(OrderLineInput.DiscountPercent), StringComparison.Ordinal));
     }

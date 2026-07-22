@@ -1,25 +1,43 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { NzBadgeModule } from 'ng-zorro-antd/badge';
 import { NzButtonModule } from 'ng-zorro-antd/button';
+import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzLayoutModule } from 'ng-zorro-antd/layout';
+import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { ApiClientError, ApiResponseReader } from '../../core/api/api-client-result';
 import { AuthApiService } from '../../core/auth/auth-api.service';
 import { SessionService } from '../../core/auth/session.service';
+import { HealthApiService } from '../../core/health/health-api.service';
+import { SignalrConnectionService } from '../../core/realtime/signalr-connection.service';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzButtonModule, NzFormModule, NzIconModule, NzInputModule, NzLayoutModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    NzBadgeModule,
+    NzButtonModule,
+    NzDropDownModule,
+    NzFormModule,
+    NzIconModule,
+    NzInputModule,
+    NzLayoutModule,
+    NzMenuModule
+  ],
   templateUrl: './app-header.component.html',
   styleUrl: './app-header.component.scss'
 })
 export class AppHeaderComponent {
   private readonly auth = inject(AuthApiService);
   private readonly session = inject(SessionService);
+  private readonly health = inject(HealthApiService);
+  private readonly realtime = inject(SignalrConnectionService);
 
   @Input() pageTitle = '';
   @Input() collapsed = false;
@@ -30,6 +48,8 @@ export class AppHeaderComponent {
   readonly userName = signal('admin');
   readonly password = signal('Admin123!');
   readonly authenticating = signal(false);
+  readonly checkingHealth = signal(false);
+  readonly apiStatus = signal<'unknown' | 'ready' | 'error'>('unknown');
 
   readonly isAuthenticated = this.session.isAuthenticated;
 
@@ -50,9 +70,75 @@ export class AppHeaderComponent {
     }
   }
 
+  async refreshToken(): Promise<void> {
+    await this.login();
+  }
+
   logout(): void {
     this.auth.logout();
     this.signedOut.emit();
+  }
+
+  async checkHealth(): Promise<void> {
+    this.checkingHealth.set(true);
+    this.errorMessageChange.emit('');
+    try {
+      await this.health.check();
+      this.apiStatus.set('ready');
+    } catch (error) {
+      this.apiStatus.set('error');
+      this.errorMessageChange.emit(this.describeError(error));
+    } finally {
+      this.checkingHealth.set(false);
+    }
+  }
+
+  apiLabel(): string {
+    switch (this.apiStatus()) {
+      case 'ready':
+        return 'API ready';
+      case 'error':
+        return 'API issue';
+      default:
+        return 'API';
+    }
+  }
+
+  apiBadgeStatus(): 'success' | 'error' | 'default' {
+    switch (this.apiStatus()) {
+      case 'ready':
+        return 'success';
+      case 'error':
+        return 'error';
+      default:
+        return 'default';
+    }
+  }
+
+  realtimeLabel(): string {
+    switch (this.realtime.state()) {
+      case 'Connected':
+        return 'Live';
+      case 'Connecting':
+        return 'Connecting';
+      case 'Reconnecting':
+        return 'Reconnecting';
+      default:
+        return 'Offline';
+    }
+  }
+
+  realtimeBadgeStatus(): 'success' | 'processing' | 'warning' | 'default' {
+    switch (this.realtime.state()) {
+      case 'Connected':
+        return 'success';
+      case 'Connecting':
+        return 'processing';
+      case 'Reconnecting':
+        return 'warning';
+      default:
+        return 'default';
+    }
   }
 
   private describeError(error: unknown): string {

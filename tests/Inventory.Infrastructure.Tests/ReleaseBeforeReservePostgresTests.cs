@@ -31,12 +31,12 @@ public sealed class ReleaseBeforeReservePostgresTests
 
         await ResetDatabaseAsync();
 
-        var productId = Guid.NewGuid();
+        var productVariantId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
 
         await using (var db = NewContext())
         {
-            new InventoryRepository(db).Add(InventoryItem.Create(productId, "sku-1", 10));
+            new InventoryRepository(db).Add(InventoryItem.Create(productVariantId, "sku-1", 10));
             await db.SaveChangesAsync();
         }
 
@@ -57,7 +57,7 @@ public sealed class ReleaseBeforeReservePostgresTests
             var reserveHandler = new ReserveStockCommandHandler(
                 new InventoryRepository(db), new ReservationRepository(db), new InventoryEventOutbox(db), new NoopMetrics());
             var reserveResult = await reserveHandler.Handle(
-                new ReserveStockCommand(Guid.NewGuid(), orderId, 1, Guid.NewGuid(), [new OrderLineIntegration(productId, "sku-1", 3)]),
+                new ReserveStockCommand(Guid.NewGuid(), orderId, 1, Guid.NewGuid(), [new OrderLineIntegration(productVariantId, "sku-1", 3)]),
                 CancellationToken.None);
             await db.SaveChangesAsync();
             Assert.Equal(ErrorCodes.StaleReservation, reserveResult);
@@ -65,7 +65,7 @@ public sealed class ReleaseBeforeReservePostgresTests
 
         await using (var verify = NewContext())
         {
-            var item = await verify.Items.AsNoTracking().SingleAsync(x => x.ProductId == productId);
+            var item = await verify.Items.AsNoTracking().SingleAsync(x => x.ProductVariantId == productVariantId);
             Assert.Equal(10, item.Available);
             Assert.Equal(0, item.Reserved);
 

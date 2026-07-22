@@ -5,8 +5,8 @@ using Sales.Application.Features.Orders.Commands;
 namespace Sales.Application.Features.Orders.Validators;
 
 /// <summary>
-/// Validates <see cref="CreateOrder"/>: customer identifier must be present, and lines must be
-/// non-empty, individually valid, and reference each product at most once.
+/// Validates <see cref="CreateOrder"/>: customer details must be present and valid, and lines must
+/// be non-empty, individually valid, and reference each product at most once.
 /// </summary>
 public sealed class CreateOrderValidator : AbstractValidator<CreateOrder>
 {
@@ -15,7 +15,7 @@ public sealed class CreateOrderValidator : AbstractValidator<CreateOrder>
     /// </summary>
     public CreateOrderValidator()
     {
-        RuleFor(x => x.CustomerId).ValidAggregateId();
+        RuleFor(x => x.Customer).NotNull().SetValidator(new CreateOrderCustomerValidator()!);
         RuleFor(x => x.Lines).NotEmpty();
         RuleForEach(x => x.Lines).SetValidator(new OrderLineInputValidator());
         RuleFor(x => x.Lines).HaveUniqueProducts();

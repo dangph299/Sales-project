@@ -10,48 +10,77 @@
 <section class="toolbar">
   <label>
     SKU
-    <input nz-input name="inventorySku" [(ngModel)]="skuFilter" (keyup.enter)="loadStockRows()">
+    <input nz-input name="inventorySku" [(ngModel)]="skuFilter" (keyup.enter)="search()">
   </label>
   <label>
     Product name
-    <input nz-input name="inventoryProductName" [(ngModel)]="nameFilter" (keyup.enter)="loadStockRows()">
+    <input nz-input name="inventoryProductName" [(ngModel)]="nameFilter" (keyup.enter)="search()">
   </label>
   <div class="filter-field">
-    <span>Stock state</span>
-    <nz-select name="stockState" [(ngModel)]="stockStateFilter" style="width: 150px" (ngModelChange)="loadStockRows()">
+    <span>Stock state (this page)</span>
+    <nz-select name="stockState" [(ngModel)]="stockStateFilter" style="width: 150px">
       <nz-option nzValue="" nzLabel="All"></nz-option>
       <nz-option nzValue="available" nzLabel="Available"></nz-option>
       <nz-option nzValue="low" nzLabel="Low stock"></nz-option>
       <nz-option nzValue="out" nzLabel="Out of stock"></nz-option>
     </nz-select>
   </div>
-  <button nz-button nzType="primary" type="button" (click)="loadStockRows()">Search</button>
+  <button nz-button nzType="primary" type="button" (click)="search()">Search</button>
 </section>
 
 <app-page-state
   [loading]="loading()"
   [errorMessage]="errorMessage()"
-  [empty]="filteredRows().length === 0"
+  [empty]="stockRows().length === 0"
   emptyTitle="No variants found"
-  emptyText="Find Published products with variants to review inventory."
+  emptyText="Adjust the filters, or add variants to a product to track their stock."
   (retry)="loadStockRows()"></app-page-state>
 
-<nz-card *ngIf="!loading() && filteredRows().length > 0" class="wide" nzTitle="Stock Overview" [nzExtra]="thresholdNote">
+<nz-card *ngIf="!loading() && stockRows().length > 0" class="wide" nzTitle="Stock Overview" [nzExtra]="thresholdNote">
   <ng-template #thresholdNote>Low threshold: {{ lowStockThreshold }}</ng-template>
 
   <nz-table
     #stockTable
     [nzData]="filteredRows()"
-    [nzShowPagination]="false"
+    [nzFrontPagination]="false"
+    [nzShowPagination]="true"
+    [nzTotal]="total()"
+    [nzPageIndex]="pageIndex"
+    [nzPageSize]="pageSize"
+    [nzPageSizeOptions]="pageSizeOptions"
+    [nzShowSizeChanger]="true"
+    [nzShowTotal]="totalTemplate"
     nzSize="small"
-    [nzScroll]="{ x: '1080px' }">
+    [nzScroll]="{ x: '1080px' }"
+    (nzPageIndexChange)="changePage($event)"
+    (nzPageSizeChange)="changePageSize($event)">
     <thead>
       <tr>
-        <th>SKU</th>
-        <th>Product</th>
-        <th>Color</th>
-        <th>Size</th>
-        <th>Variant Status</th>
+        <th>
+          <button class="sort-header" type="button" (click)="sortBy('sku')">
+            SKU <span>{{ sortIndicator('sku') }}</span>
+          </button>
+        </th>
+        <th>
+          <button class="sort-header" type="button" (click)="sortBy('product')">
+            Product <span>{{ sortIndicator('product') }}</span>
+          </button>
+        </th>
+        <th>
+          <button class="sort-header" type="button" (click)="sortBy('color')">
+            Color <span>{{ sortIndicator('color') }}</span>
+          </button>
+        </th>
+        <th>
+          <button class="sort-header" type="button" (click)="sortBy('size')">
+            Size <span>{{ sortIndicator('size') }}</span>
+          </button>
+        </th>
+        <th>
+          <button class="sort-header" type="button" (click)="sortBy('status')">
+            Variant Status <span>{{ sortIndicator('status') }}</span>
+          </button>
+        </th>
         <th>Available</th>
         <th>Reserved</th>
         <th>Total</th>
@@ -84,6 +113,7 @@
       </tr>
     </tbody>
   </nz-table>
+  <ng-template #totalTemplate let-total>Total {{ total }} products</ng-template>
 </nz-card>
 
 <nz-modal

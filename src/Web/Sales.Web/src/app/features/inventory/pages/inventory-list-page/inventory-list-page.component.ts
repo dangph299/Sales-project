@@ -21,6 +21,9 @@ import { StockState, lowStockThreshold, stockStateLabels, stockStateOf } from '.
 import { StockAdjustmentFormModel, emptyStockAdjustmentForm } from '../../models/stock-adjustment-form.model';
 import { StockRow, totalQuantity } from '../../models/stock-row.model';
 
+type StockSortKey = 'sku' | 'product' | 'color' | 'size' | 'status';
+type SortDirection = 'ascend' | 'descend';
+
 @Component({
   selector: 'app-inventory-list-page',
   standalone: true,
@@ -53,13 +56,21 @@ export class InventoryListPageComponent implements OnInit {
   readonly errorMessage = signal('');
   readonly mutationErrorMessage = signal('');
   readonly stockRows = signal<StockRow[]>([]);
+  /** Number of products matching the filters, which is what the pager walks through. */
+  readonly total = signal(0);
   readonly selectedRow = signal<StockRow | null>(null);
   readonly adjustmentModalOpen = signal(false);
 
   skuFilter = '';
   nameFilter = '';
   stockStateFilter: StockState | '' = '';
+  pageIndex = 1;
+  pageSize = 20;
+  readonly pageSizeOptions = [10, 20, 50];
   adjustmentForm: StockAdjustmentFormModel = emptyStockAdjustmentForm();
+
+  readonly sortKey = signal<StockSortKey>('sku');
+  readonly sortDirection = signal<SortDirection>('ascend');
 
   readonly statusDisplay = productLookupStatusDisplay;
   readonly totalQuantity = totalQuantity;
@@ -72,13 +83,24 @@ export class InventoryListPageComponent implements OnInit {
     this.loading.set(true);
     this.errorMessage.set('');
     try {
+      // Every variant, whatever its product's lifecycle state: stock is physical, and a product is
+      // normally received into the warehouse before it is published. Filtering by product status
+      // left new variants with no row, and so no way to adjust them.
       const page = await this.productLookup.search({
         sku: this.skuFilter,
         name: this.nameFilter,
-        status: 'Published',
-        page: 1,
-        pageSize: 20
+        status: '',
+        page: this.pageIndex,
+        pageSize: this.pageSize
       });
+
+      // Deleting the last products on the final page leaves the pager past the end, which would
+      // otherwise show an empty grid with no way back.
+      if (page.items.length === 0 && page.total > 0 && this.pageIndex > 1) {
+        this.pageIndex = Math.max(1, Math.ceil(page.total / this.pageSize));
+        await this.loadStockRows();
+        return;
+      }
 
       // One inventory read per variant, issued together: awaiting them in the loop serialised the
       // whole grid behind up to (products x variants) sequential round trips.
@@ -93,6 +115,7 @@ export class InventoryListPageComponent implements OnInit {
       }));
 
       this.stockRows.set(rows);
+      this.total.set(page.total);
       this.selectedRow.set(rows[0] ?? null);
     } catch (error) {
       this.errorMessage.set(describeApiError(error));
@@ -101,12 +124,46 @@ export class InventoryListPageComponent implements OnInit {
     }
   }
 
+  search(): void {
+    this.pageIndex = 1;
+    void this.loadStockRows();
+  }
+
+  changePage(pageIndex: number): void {
+    this.pageIndex = pageIndex;
+    void this.loadStockRows();
+  }
+
+  changePageSize(pageSize: number): void {
+    this.pageSize = pageSize;
+    this.pageIndex = 1;
+    void this.loadStockRows();
+  }
+
   filteredRows(): StockRow[] {
-    if (this.stockStateFilter === '') {
-      return this.stockRows();
+    const rows = this.stockStateFilter === ''
+      ? this.stockRows()
+      : this.stockRows().filter(row => this.stockState(row) === this.stockStateFilter);
+
+    return this.sortRows(rows);
+  }
+
+  sortBy(key: StockSortKey): void {
+    if (this.sortKey() !== key) {
+      this.sortKey.set(key);
+      this.sortDirection.set('ascend');
+      return;
     }
 
-    return this.stockRows().filter(row => this.stockState(row) === this.stockStateFilter);
+    this.sortDirection.set(this.sortDirection() === 'ascend' ? 'descend' : 'ascend');
+  }
+
+  sortIndicator(key: StockSortKey): string {
+    if (this.sortKey() !== key) {
+      return '';
+    }
+
+    return this.sortDirection() === 'ascend' ? '\u2191' : '\u2193';
   }
 
   selectRow(row: StockRow): void {
@@ -132,6 +189,35 @@ export class InventoryListPageComponent implements OnInit {
     this.adjustmentModalOpen.set(false);
     this.adjustmentForm = emptyStockAdjustmentForm();
     this.mutationErrorMessage.set('');
+  }
+
+  private sortRows(rows: StockRow[]): StockRow[] {
+    const key = this.sortKey();
+    const direction = this.sortDirection();
+
+    return [...rows].sort((left, right) => {
+      const result = this.sortValue(left, key).localeCompare(this.sortValue(right, key), undefined, {
+        numeric: true,
+        sensitivity: 'base'
+      });
+
+      return direction === 'ascend' ? result : -result;
+    });
+  }
+
+  private sortValue(row: StockRow, key: StockSortKey): string {
+    switch (key) {
+      case 'product':
+        return row.product.name;
+      case 'color':
+        return row.variant.color?.code ?? '';
+      case 'size':
+        return row.variant.size?.code ?? '';
+      case 'status':
+        return row.variant.status;
+      default:
+        return row.variant.sku;
+    }
   }
 
   stockState(row: StockRow): StockState {

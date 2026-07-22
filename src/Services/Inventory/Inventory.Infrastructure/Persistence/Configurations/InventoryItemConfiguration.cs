@@ -12,7 +12,8 @@ public sealed class InventoryItemConfiguration : IEntityTypeConfiguration<Invent
     /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<InventoryItem> entity)
     {
-        entity.ToTable("inventory_items").HasKey(x => x.ProductId);
+        entity.ToTable("inventory_items").HasKey(x => x.ProductVariantId);
+        entity.Property(x => x.ProductVariantId).HasColumnName("ProductId").ValueGeneratedNever();
         entity.Property(x => x.Version).IsConcurrencyToken();
         entity.HasIndex(x => x.Sku).IsUnique();
     }

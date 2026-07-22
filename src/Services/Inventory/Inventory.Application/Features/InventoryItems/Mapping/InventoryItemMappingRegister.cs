@@ -12,6 +12,7 @@ public sealed class InventoryItemMappingRegister : IRegister
     /// <inheritdoc/>
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<InventoryItem, InventorySnapshot>();
+        config.NewConfig<InventoryItem, InventorySnapshot>()
+            .Map(dest => dest.ProductId, src => src.ProductVariantId);
     }
 }

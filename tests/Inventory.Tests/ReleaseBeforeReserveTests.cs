@@ -123,15 +123,15 @@ public sealed class ReleaseBeforeReserveTests
 
     private sealed class FakeInventoryRepository(IReadOnlyCollection<InventoryItem> items) : IInventoryRepository
     {
-        public Task<InventoryItem?> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default)
+        public Task<InventoryItem?> GetByProductVariantIdAsync(Guid productVariantId, CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(items.SingleOrDefault(x => x.ProductId == productId));
+            return Task.FromResult(items.SingleOrDefault(x => x.ProductVariantId == productVariantId));
         }
 
-        public Task<IReadOnlyCollection<InventoryItem>> GetByProductIdsAsync(IEnumerable<Guid> productIds, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyCollection<InventoryItem>> GetByProductVariantIdsAsync(IEnumerable<Guid> productVariantIds, CancellationToken cancellationToken = default)
         {
-            var ids = productIds.ToHashSet();
-            return Task.FromResult((IReadOnlyCollection<InventoryItem>)items.Where(x => ids.Contains(x.ProductId)).ToArray());
+            var ids = productVariantIds.ToHashSet();
+            return Task.FromResult((IReadOnlyCollection<InventoryItem>)items.Where(x => ids.Contains(x.ProductVariantId)).ToArray());
         }
 
         public void Add(InventoryItem item)

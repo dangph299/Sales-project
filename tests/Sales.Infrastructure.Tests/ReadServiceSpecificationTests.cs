@@ -265,7 +265,7 @@ public sealed class ReadServiceSpecificationTests
 
     private static Order CreateOrder()
     {
-        var customer = CustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567");
+        var customer = OrderCustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567", null, null);
         var product = ProductTestFactory.CreatePublishedProduct($"sku-{Guid.NewGuid():N}", "Keyboard", 100_000);
         var snapshot = ProductSnapshot.Create(
             product.Id,
@@ -273,6 +273,6 @@ public sealed class ReadServiceSpecificationTests
             product.Name,
             ProductTestFactory.PrimaryVariant(product).Price,
             product.IsActive);
-        return Order.Create(customer, [new OrderLineItem(snapshot, 1, 0m)]);
+        return Order.Create(OrderTestFactory.NextOrderCode(), customer, [new OrderLineItem(snapshot, 1, 0m)]);
     }
 }

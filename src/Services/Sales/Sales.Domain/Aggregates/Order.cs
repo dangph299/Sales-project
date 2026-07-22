@@ -9,30 +9,63 @@ public sealed class Order : AggregateRoot<Guid>
 {
     private readonly List<OrderLine> _lines = [];
     private Order() { }
-    private Order(Guid id, CustomerSnapshot customer)
+    private Order(Guid id, string orderCode, OrderCustomerSnapshot orderCustomerSnapshot)
     {
         Id = id;
-        CustomerId = customer.Id;
-        CustomerName = customer.Name;
-        CustomerPhone = customer.Phone;
+        OrderCode = ProductCodeRules.Normalize(orderCode, "Order code");
+        ApplyInitialCustomerSnapshot(orderCustomerSnapshot);
         CreatedAt = DateTimeOffset.UtcNow;
         Status = OrderStatus.Draft;
     }
 
     /// <summary>
-    /// Gets the unique identifier of the customer this order was placed for.
+    /// Gets the backend-assigned business code identifying this order to users.
     /// </summary>
+    public string OrderCode { get; private set; } = null!;
+
+    /// <summary>
+    /// Gets the customer this order was originally placed for.
+    /// </summary>
+    /// <remarks>
+    /// Traceability only. It is assigned once, when the order is created, and
+    /// <see cref="UpdateCustomerSnapshot"/> cannot change it — editing the customer details on an
+    /// order does not re-point the order at a different customer.
+    /// </remarks>
     public Guid CustomerId { get; private set; }
 
     /// <summary>
-    /// Gets the customer's name as it was when the order was created.
+    /// Gets the customer's name as recorded on this order.
     /// </summary>
     public string CustomerName { get; private set; } = null!;
 
     /// <summary>
-    /// Gets the customer's phone number as it was when the order was created.
+    /// Gets the customer's phone number as recorded on this order, in the format it was entered in.
+    /// Display only; searches read <see cref="NormalizedCustomerPhone"/> and
+    /// <see cref="ReversedCustomerPhone"/>.
     /// </summary>
     public string CustomerPhone { get; private set; } = null!;
+
+    /// <summary>
+    /// Gets the digits-only form of <see cref="CustomerPhone"/>, which exact and prefix phone
+    /// searches match against.
+    /// </summary>
+    public string NormalizedCustomerPhone { get; private set; } = null!;
+
+    /// <summary>
+    /// Gets <see cref="NormalizedCustomerPhone"/> reversed, which is what a search matches against
+    /// when it matches the end of a phone number.
+    /// </summary>
+    public string ReversedCustomerPhone { get; private set; } = null!;
+
+    /// <summary>
+    /// Gets the customer's email as recorded on this order, or <see langword="null"/> when none was given.
+    /// </summary>
+    public string? CustomerEmail { get; private set; }
+
+    /// <summary>
+    /// Gets the customer's address as recorded on this order, or <see langword="null"/> when none was given.
+    /// </summary>
+    public string? CustomerAddress { get; private set; }
 
     /// <summary>
     /// Gets the UTC instant the order was created.
@@ -69,16 +102,62 @@ public sealed class Order : AggregateRoot<Guid>
     /// Creates a new <see cref="Order"/> aggregate in the <see cref="OrderStatus.Draft"/> status and
     /// raises <see cref="OrderCreatedDomainEvent"/>.
     /// </summary>
-    /// <param name="customer">A snapshot of the customer the order is placed for.</param>
-    /// <param name="lines">Initial lines to add. Must contain at least one line, with no product repeated.</param>
+    /// <param name="orderCode">Backend-assigned business code for the new order.</param>
+    /// <param name="orderCustomerSnapshot">Customer details to record on the order, taken from the create request rather than from the customer row.</param>
+    /// <param name="orderLineItems">Initial lines to add. Must contain at least one line, with no product repeated.</param>
     /// <returns>Newly created draft order.</returns>
-    /// <exception cref="DomainException">Thrown when <paramref name="lines"/> is empty or contains the same product variant more than once.</exception>
-    public static Order Create(CustomerSnapshot customer, IEnumerable<OrderLineItem> lines)
+    /// <exception cref="DomainException">Thrown when <paramref name="orderCode"/> is empty or malformed, or <paramref name="orderLineItems"/> is empty or contains the same product variant more than once.</exception>
+    public static Order Create(
+        string orderCode,
+        OrderCustomerSnapshot orderCustomerSnapshot,
+        IEnumerable<OrderLineItem> orderLineItems)
     {
-        var order = new Order(Guid.NewGuid(), customer);
-        order.SetLines(lines, touch: false);
+        var order = new Order(Guid.NewGuid(), orderCode, orderCustomerSnapshot);
+        order.SetLines(orderLineItems, touch: false);
         order.Raise(new OrderCreatedDomainEvent(order.Id, order.CustomerId));
         return order;
+    }
+
+    /// <summary>
+    /// Replaces the customer details recorded on this order.
+    /// </summary>
+    /// <remarks>
+    /// Changes only this order. The customer row is never read or written here, no customer is
+    /// created, and <see cref="CustomerId"/> keeps pointing at whoever the order was first placed
+    /// for — the private mutator this calls has no access to it. After this runs the order may
+    /// legitimately disagree with the current customer record.
+    /// </remarks>
+    /// <param name="orderCustomerSnapshot">New customer details to record.</param>
+    /// <exception cref="DomainException">Thrown when the order is not in the <see cref="OrderStatus.Draft"/> status.</exception>
+    public void UpdateCustomerSnapshot(OrderCustomerSnapshot orderCustomerSnapshot)
+    {
+        EnsureDraft();
+        ApplyEditableCustomerSnapshot(orderCustomerSnapshot);
+        Touch();
+    }
+
+    private void ApplyInitialCustomerSnapshot(OrderCustomerSnapshot orderCustomerSnapshot)
+    {
+        CustomerId = orderCustomerSnapshot.CustomerId;
+        ApplyEditableCustomerSnapshot(orderCustomerSnapshot);
+    }
+
+    /// <summary>
+    /// Writes every customer field an edit is allowed to touch. Deliberately excludes
+    /// <see cref="CustomerId"/>, which only <see cref="ApplyInitialCustomerSnapshot"/> sets.
+    /// </summary>
+    /// <remarks>
+    /// This is the only writer of the three phone columns, so they cannot drift apart: they always
+    /// come from one <see cref="OrderCustomerPhone"/> built from a single input.
+    /// </remarks>
+    private void ApplyEditableCustomerSnapshot(OrderCustomerSnapshot orderCustomerSnapshot)
+    {
+        CustomerName = orderCustomerSnapshot.Name;
+        CustomerPhone = orderCustomerSnapshot.Phone.DisplayValue;
+        NormalizedCustomerPhone = orderCustomerSnapshot.Phone.NormalizedValue;
+        ReversedCustomerPhone = orderCustomerSnapshot.Phone.ReversedValue;
+        CustomerEmail = orderCustomerSnapshot.Email;
+        CustomerAddress = orderCustomerSnapshot.Address;
     }
 
     /// <summary>

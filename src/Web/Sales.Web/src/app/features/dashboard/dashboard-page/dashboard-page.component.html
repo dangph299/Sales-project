@@ -1,119 +1,188 @@
-<section class="page-header">
+<section class="page-header dashboard-header">
   <div>
-    <p class="eyebrow">Overview</p>
     <h1>Dashboard</h1>
-    <p>Monitor orders, customers, products, and inventory signals from the currently available APIs.</p>
+    <p>Monitor orders, customers, inventory and revenue.</p>
   </div>
-  <button nz-button type="button" (click)="load()">Refresh</button>
+  <div class="refresh-meta">
+    <span>Last updated: {{ lastUpdatedLabel() }}</span>
+    <button nz-button type="button" (click)="load()" [disabled]="loading()">
+      <span nz-icon nzType="reload"></span>
+      Refresh
+    </button>
+  </div>
 </section>
 
-<app-page-state [loading]="loading()" [errorMessage]="errorMessage()" (retry)="load()"></app-page-state>
+<app-page-state [errorMessage]="errorMessage()" (retry)="load()"></app-page-state>
 
-<ng-container *ngIf="!loading() && !errorMessage()">
-  <section class="kpi-grid">
-    <nz-card nzSize="small">
-      <span>Orders</span>
-      <strong>{{ metrics().orderTotal }}</strong>
-      <small>Recent page total</small>
-    </nz-card>
-    <nz-card nzSize="small">
-      <span>Pending</span>
-      <strong>{{ metrics().pendingOrderCount }}</strong>
-      <small>Pending inventory</small>
-    </nz-card>
-    <nz-card nzSize="small">
-      <span>Revenue</span>
-      <strong>{{ metrics().revenue | money }}</strong>
-      <small>Current page</small>
-    </nz-card>
-    <nz-card nzSize="small">
-      <span>Customers</span>
-      <strong>{{ metrics().customerTotal }}</strong>
-      <small>Search API total</small>
-    </nz-card>
-    <nz-card nzSize="small">
-      <span>Published products</span>
-      <strong>{{ metrics().publishedProductCount }}</strong>
-      <small>Current page</small>
-    </nz-card>
-    <nz-card nzSize="small">
-      <span>Published variants</span>
-      <strong>{{ metrics().publishedVariantCount }}</strong>
-      <small>Current page</small>
+<ng-container *ngIf="loading()">
+  <section class="kpi-grid dashboard-kpis">
+    <nz-card *ngFor="let card of [1, 2, 3, 4, 5, 6]">
+      <nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 2 }"></nz-skeleton>
     </nz-card>
   </section>
 
-  <section class="content-grid">
-    <nz-card nzTitle="Recent Orders" [nzExtra]="ordersLink">
-      <ng-template #ordersLink><a routerLink="/orders">View all</a></ng-template>
+  <section class="dashboard-grid dashboard-grid--two">
+    <nz-card *ngFor="let card of [1, 2]">
+      <nz-skeleton [nzActive]="true" [nzParagraph]="{ rows: 7 }"></nz-skeleton>
+    </nz-card>
+  </section>
+</ng-container>
 
-      <nz-table
-        #orderTable
-        *ngIf="recentOrders().length > 0"
-        [nzData]="recentOrders()"
-        [nzShowPagination]="false"
-        nzSize="small">
-        <thead>
-          <tr>
-            <th>Customer</th>
-            <th>Status</th>
-            <th>Total</th>
-            <th>Created</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let order of orderTable.data">
-            <td>{{ order.customerName }}</td>
-            <td><app-status-tag [display]="order.status"></app-status-tag></td>
-            <td>{{ order.total | money }}</td>
-            <td>{{ order.createdAt | dateTime }}</td>
-          </tr>
-        </tbody>
-      </nz-table>
+<ng-container *ngIf="!loading() && !errorMessage()">
+  <section class="kpi-grid dashboard-kpis" aria-label="Dashboard metrics">
+    <app-metric-card
+      icon="shopping-cart"
+      title="Orders"
+      [metric]="metrics().orderTotal"
+      secondary="Total orders"
+      tone="info"></app-metric-card>
+
+    <app-metric-card
+      icon="inbox"
+      title="Pending Inventory"
+      [metric]="metrics().pendingOrderCount"
+      secondary="Needs stock review"
+      tone="warning"></app-metric-card>
+
+    <app-metric-card
+      icon="dollar"
+      title="Revenue Today"
+      [metric]="metrics().revenueToday | money"
+      secondary="Current business day"
+      tone="success"></app-metric-card>
+
+    <app-metric-card
+      icon="team"
+      title="Customers"
+      [metric]="metrics().customerTotal"
+      secondary="Customer records"
+      tone="success"></app-metric-card>
+
+    <app-metric-card
+      icon="appstore"
+      title="Products"
+      [metric]="metrics().productTotal"
+      secondary="Catalog items"
+      tone="info"></app-metric-card>
+
+    <app-metric-card
+      icon="check-circle"
+      title="Published Products"
+      [metric]="metrics().publishedProductCount"
+      secondary="Available to sell"
+      tone="success"></app-metric-card>
+  </section>
+
+  <app-dashboard-section title="Quick Actions">
+    <nav class="quick-actions" aria-label="Quick actions">
+      <a nz-button nzType="primary" routerLink="/orders">
+        <span nz-icon nzType="plus"></span>
+        New Order
+      </a>
+      <a nz-button routerLink="/customers">
+        <span nz-icon nzType="user-add"></span>
+        New Customer
+      </a>
+      <a nz-button routerLink="/products">
+        <span nz-icon nzType="shopping"></span>
+        New Product
+      </a>
+      <a nz-button routerLink="/inventory">
+        <span nz-icon nzType="database"></span>
+        Inventory
+      </a>
+    </nav>
+  </app-dashboard-section>
+
+  <section class="dashboard-grid dashboard-grid--two">
+    <app-dashboard-section title="Revenue Trend" description="Last 7 days">
+      <app-dashboard-chart
+        [points]="revenueTrend()"
+        chartType="columns"
+        emptyTitle="No revenue yet"
+        emptyText="Revenue will appear after orders are created."></app-dashboard-chart>
+    </app-dashboard-section>
+
+    <app-dashboard-section title="Orders by Status" description="Last 7 days">
+      <app-dashboard-chart
+        [points]="ordersByStatus()"
+        chartType="bars"
+        emptyTitle="No order status activity"
+        emptyText="Order status activity will appear here."></app-dashboard-chart>
+    </app-dashboard-section>
+  </section>
+
+  <section class="dashboard-grid dashboard-grid--tables">
+    <app-dashboard-section title="Recent Orders">
+      <a section-extra routerLink="/orders">View all</a>
+
+      <div class="table-wrap" *ngIf="recentOrders().length > 0">
+        <nz-table
+          #orderTable
+          [nzData]="recentOrders()"
+          [nzShowPagination]="false"
+          nzSize="middle">
+          <thead>
+            <tr>
+              <th>Order Number</th>
+              <th>Customer</th>
+              <th>Status</th>
+              <th>Total Qty</th>
+              <th>Total Amount</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let order of orderTable.data">
+              <td><strong>{{ order.orderCode }}</strong></td>
+              <td>{{ order.customerName }}</td>
+              <td><app-status-tag [display]="order.status"></app-status-tag></td>
+              <td>{{ order.totalQuantity }}</td>
+              <td>{{ order.total | money }}</td>
+              <td>{{ order.createdAt | dateTime }}</td>
+            </tr>
+          </tbody>
+        </nz-table>
+      </div>
 
       <app-page-state
         [empty]="recentOrders().length === 0"
-        emptyTitle="No orders found"
-        emptyText="Create the first order from the Orders page."></app-page-state>
-    </nz-card>
+        emptyTitle="No recent orders"
+        emptyText="Create your first order."></app-page-state>
+    </app-dashboard-section>
 
-    <nz-card nzTitle="Recent Products" [nzExtra]="productsLink">
-      <ng-template #productsLink><a routerLink="/products">View catalog</a></ng-template>
+    <app-dashboard-section title="Latest Products">
+      <a section-extra routerLink="/products">View catalog</a>
 
-      <nz-table
-        #productTable
-        *ngIf="recentProducts().length > 0"
-        [nzData]="recentProducts()"
-        [nzShowPagination]="false"
-        nzSize="small">
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Status</th>
-            <th>Price range</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let product of productTable.data">
-            <td>{{ product.label }}</td>
-            <td><app-status-tag [display]="product.status"></app-status-tag></td>
-            <td>{{ product.minPrice | priceRange: product.maxPrice }}</td>
-          </tr>
-        </tbody>
-      </nz-table>
+      <div class="table-wrap" *ngIf="recentProducts().length > 0">
+        <nz-table
+          #productTable
+          [nzData]="recentProducts()"
+          [nzShowPagination]="false"
+          nzSize="middle">
+          <thead>
+            <tr>
+              <th>Product Code</th>
+              <th>Product Name</th>
+              <th>Status</th>
+              <th>Price Range</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let product of productTable.data">
+              <td><strong>{{ product.productCode }}</strong></td>
+              <td>{{ product.productName }}</td>
+              <td><app-status-tag [display]="product.status"></app-status-tag></td>
+              <td>{{ product.minPrice | priceRange: product.maxPrice }}</td>
+            </tr>
+          </tbody>
+        </nz-table>
+      </div>
 
       <app-page-state
         [empty]="recentProducts().length === 0"
-        emptyTitle="No products found"
-        emptyText="Create products and variants in Catalog."></app-page-state>
-    </nz-card>
+        emptyTitle="No product updates"
+        emptyText="Create your first product."></app-page-state>
+    </app-dashboard-section>
   </section>
-
-  <nz-card class="alerts" nzTitle="System Alerts">
-    <nz-list nzSize="small" [nzDataSource]="systemAlerts" [nzRenderItem]="alertItem">
-      <ng-template #alertItem let-alert>
-        <li nz-list-item>{{ alert }}</li>
-      </ng-template>
-    </nz-list>
-  </nz-card>
 </ng-container>

@@ -18,10 +18,19 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         // Exclude soft-deleted rows: a deleted customer must not keep reserving their code or phone
         // number, since nothing in the app can surface the row that causes the conflict.
         entity.HasIndex(x => x.CustomerCode).IsUnique().HasFilter("NOT \"IsDelete\"");
-        entity.HasIndex(x => x.NormalizedPhone).IsUnique().HasFilter("\"NormalizedPhone\" IS NOT NULL AND NOT \"IsDelete\"");
+        // One index per phone column, carrying varchar_pattern_ops so the same index enforces
+        // uniqueness, answers equality lookups, and serves the LIKE 'digits%' prefix scan the
+        // autocomplete relies on. Under this database's non-C collation a default B-tree could not
+        // do the last of those, which is why the phone lookups used to seq-scan.
+        entity.HasIndex(x => x.NormalizedPhone)
+            .IsUnique()
+            .HasFilter("\"NormalizedPhone\" IS NOT NULL AND NOT \"IsDelete\"")
+            .HasOperators("varchar_pattern_ops");
         entity.HasIndex(x => x.Name).HasMethod("gin").HasOperators("gin_trgm_ops");
         entity.HasIndex(x => x.Phone);
-        entity.HasIndex(x => x.ReversedPhone);
+        entity.HasIndex(x => x.ReversedPhone)
+            .HasFilter("\"ReversedPhone\" IS NOT NULL AND NOT \"IsDelete\"")
+            .HasOperators("varchar_pattern_ops");
         entity.HasIndex(x => x.Status);
         entity.Property(x => x.CustomerCode).HasMaxLength(32);
         entity.Property(x => x.Name).HasMaxLength(200);

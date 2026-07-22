@@ -1,17 +1,17 @@
 export interface DashboardMetrics {
   orderTotal: number;
   pendingOrderCount: number;
-  revenue: number;
+  revenueToday: number;
   customerTotal: number;
+  productTotal: number;
   publishedProductCount: number;
-  publishedVariantCount: number;
 }
 
 export const emptyDashboardMetrics: DashboardMetrics = {
   orderTotal: 0,
   pendingOrderCount: 0,
-  revenue: 0,
+  revenueToday: 0,
   customerTotal: 0,
-  publishedProductCount: 0,
-  publishedVariantCount: 0
+  productTotal: 0,
+  publishedProductCount: 0
 };

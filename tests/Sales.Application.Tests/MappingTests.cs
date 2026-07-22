@@ -131,10 +131,10 @@ public sealed class MappingTests
     [Fact]
     public void Order_mapping_projects_every_line()
     {
-        var customer = CustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567");
+        var customer = OrderCustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567", null, null);
         var keyboard = ProductTestFactory.CreatePublishedProduct("SKU-01", "Keyboard", 100m);
         var mouse = ProductTestFactory.CreatePublishedProduct("SKU-02", "Mouse", 50m);
-        var order = Order.Create(customer, [
+        var order = Order.Create(OrderTestFactory.NextOrderCode(), customer, [
             new(Snapshot(keyboard), 2, 0m),
             new(Snapshot(mouse), 3, 0m)
         ]);
@@ -150,9 +150,9 @@ public sealed class MappingTests
 
     private static Order CreateOrder(int quantity, decimal discountPercent, decimal unitPrice)
     {
-        var customer = CustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567");
+        var customer = OrderCustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567", null, null);
         var product = ProductTestFactory.CreatePublishedProduct("SKU-01", "Keyboard", unitPrice);
-        return Order.Create(customer, [new(Snapshot(product), quantity, discountPercent)]);
+        return Order.Create(OrderTestFactory.NextOrderCode(), customer, [new(Snapshot(product), quantity, discountPercent)]);
     }
 
     private static ProductSnapshot Snapshot(Product product)

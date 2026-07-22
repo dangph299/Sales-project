@@ -1,0 +1,31 @@
+<ng-container *ngIf="hasData; else emptyChart">
+  <div class="chart chart--columns" *ngIf="chartType === 'columns'">
+    <div class="chart__column" *ngFor="let point of points">
+      <span
+        class="chart__bar"
+        [ngClass]="'chart__bar--' + (point.tone || 'info')"
+        [style.height.%]="barSize(point)"
+        [attr.aria-label]="point.label + ': ' + point.value"></span>
+      <small>{{ point.label }}</small>
+    </div>
+  </div>
+
+  <div class="chart chart--bars" *ngIf="chartType === 'bars'">
+    <div class="chart__row" *ngFor="let point of points">
+      <span>{{ point.label }}</span>
+      <div class="chart__track">
+        <span
+          class="chart__fill"
+          [ngClass]="'chart__fill--' + (point.tone || 'info')"
+          [style.width.%]="barSize(point)"></span>
+      </div>
+      <strong>{{ point.value }}</strong>
+    </div>
+  </div>
+</ng-container>
+
+<ng-template #emptyChart>
+  <nz-empty [nzNotFoundContent]="emptyTitle">
+    <span>{{ emptyText }}</span>
+  </nz-empty>
+</ng-template>

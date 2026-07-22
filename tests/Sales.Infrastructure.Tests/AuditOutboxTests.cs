@@ -104,7 +104,8 @@ public sealed class AuditOutboxTests
         var product = ProductTestFactory.CreatePublishedProduct("sku-order", "Order Product", 100);
         product.ClearDomainEvents();
         var order = Order.Create(
-            CustomerSnapshot.Create(Guid.NewGuid(), "Customer", "0901234567"),
+            OrderTestFactory.NextOrderCode(),
+            OrderCustomerSnapshot.Create(Guid.NewGuid(), "Customer", "0901234567", null, null),
             [new(ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, true), 1, 0)]);
         order.ClearDomainEvents();
         await fixture.SeedProductAndOrderAsync(product, order);

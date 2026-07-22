@@ -29,12 +29,12 @@ public sealed class ReleaseStockCommandHandler(
         if (reservation.Status == ReservationStatus.Released) return "AlreadyReleased";
         if (reservation.IsStale(request.OrderVersion)) return "StaleRelease";
 
-        var inventoryItems = await inventoryRepository.GetByProductIdsAsync(
+        var inventoryItems = await inventoryRepository.GetByProductVariantIdsAsync(
             reservation.Lines.Select(x => x.ProductId),
             cancellationToken);
         foreach (var line in reservation.Lines)
         {
-            inventoryItems.Single(x => x.ProductId == line.ProductId).Release(line.Quantity);
+            inventoryItems.Single(x => x.ProductVariantId == line.ProductId).Release(line.Quantity);
         }
 
         reservation.Release(request.OrderVersion);

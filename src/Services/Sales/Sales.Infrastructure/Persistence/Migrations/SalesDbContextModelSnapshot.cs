@@ -27,6 +27,8 @@ namespace Sales.Infrastructure.Persistence.Migrations
 
             modelBuilder.HasSequence("customer_code_seq");
 
+            modelBuilder.HasSequence("order_code_seq");
+
             modelBuilder.HasSequence("product_code_seq");
 
             modelBuilder.Entity("BuildingBlocks.Infrastructure.InboxMessage", b =>
@@ -526,9 +528,14 @@ namespace Sales.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("\"NormalizedPhone\" IS NOT NULL AND NOT \"IsDelete\"");
 
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedPhone"), new[] { "varchar_pattern_ops" });
+
                     b.HasIndex("Phone");
 
-                    b.HasIndex("ReversedPhone");
+                    b.HasIndex("ReversedPhone")
+                        .HasFilter("\"ReversedPhone\" IS NOT NULL AND NOT \"IsDelete\"");
+
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("ReversedPhone"), new[] { "varchar_pattern_ops" });
 
                     b.HasIndex("Status");
 
@@ -544,19 +551,44 @@ namespace Sales.Infrastructure.Persistence.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("CustomerAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("CustomerEmail")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)");
+
                     b.Property<Guid>("CustomerId")
                         .HasColumnType("uuid");
 
                     b.Property<string>("CustomerName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("CustomerPhone")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("NormalizedCustomerPhone")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
+
+                    b.Property<string>("OrderCode")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
 
                     b.Property<string>("RejectionReason")
                         .HasColumnType("text");
+
+                    b.Property<string>("ReversedCustomerPhone")
+                        .IsRequired()
+                        .HasMaxLength(15)
+                        .HasColumnType("character varying(15)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -579,7 +611,21 @@ namespace Sales.Infrastructure.Persistence.Migrations
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("CustomerName"), "gin");
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("CustomerName"), new[] { "gin_trgm_ops" });
 
-                    b.HasIndex("CustomerPhone");
+                    b.HasIndex("NormalizedCustomerPhone")
+                        .HasDatabaseName("IX_orders_NormalizedCustomerPhone");
+
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("NormalizedCustomerPhone"), new[] { "varchar_pattern_ops" });
+
+                    b.HasIndex("OrderCode")
+                        .IsUnique()
+                        .HasDatabaseName("IX_orders_OrderCode");
+
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("OrderCode"), new[] { "varchar_pattern_ops" });
+
+                    b.HasIndex("ReversedCustomerPhone")
+                        .HasDatabaseName("IX_orders_ReversedCustomerPhone");
+
+                    NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("ReversedCustomerPhone"), new[] { "varchar_pattern_ops" });
 
                     b.HasIndex("Status", "UpdatedAt", "Id");
 
@@ -589,7 +635,6 @@ namespace Sales.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Sales.Domain.OrderLine", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
                     b.Property<string>("ColorCode")
