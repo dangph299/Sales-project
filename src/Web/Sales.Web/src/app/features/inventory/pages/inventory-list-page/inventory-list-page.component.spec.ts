@@ -40,6 +40,44 @@ describe('InventoryListPageComponent stock rows', () => {
     expect(productLookup.lastFilters?.status).toBe('');
   });
 
+  it('asks the server for the requested page instead of only the first', async () => {
+    // The grid used to be pinned to page 1, so a product sorted past the first page — and every
+    // variant under it — was unreachable.
+    fixture.componentInstance.changePage(3);
+    await fixture.whenStable();
+
+    expect(productLookup.lastFilters?.page).toBe(3);
+  });
+
+  it('returns to the first page when the filters change', async () => {
+    fixture.componentInstance.changePage(3);
+    await fixture.whenStable();
+
+    fixture.componentInstance.search();
+    await fixture.whenStable();
+
+    expect(fixture.componentInstance.pageIndex).toBe(1);
+    expect(productLookup.lastFilters?.page).toBe(1);
+  });
+
+  it('reports the product count the pager walks through', async () => {
+    productLookup.total = 57;
+
+    await fixture.componentInstance.loadStockRows();
+
+    expect(fixture.componentInstance.total()).toBe(57);
+  });
+
+  it('steps back to the last populated page when the current one has gone', async () => {
+    productLookup.products = [];
+    productLookup.total = 20;
+    fixture.componentInstance.pageIndex = 5;
+
+    await fixture.componentInstance.loadStockRows();
+
+    expect(fixture.componentInstance.pageIndex).toBe(1);
+  });
+
   it('lists a variant whose product is still a draft', async () => {
     productLookup.products = [draftProductWithVariant()];
 
@@ -50,12 +88,18 @@ describe('InventoryListPageComponent stock rows', () => {
 });
 
 class FakeProductLookupApiService {
-  lastFilters: { status?: string } | null = null;
+  lastFilters: { status?: string; page?: number; pageSize?: number } | null = null;
   products: ProductLookupResponse[] = [];
+  total: number | null = null;
 
-  search(filters: { status?: string } = {}): Promise<PagedResult<ProductLookupResponse>> {
+  search(filters: { status?: string; page?: number; pageSize?: number } = {}): Promise<PagedResult<ProductLookupResponse>> {
     this.lastFilters = filters;
-    return Promise.resolve({ items: this.products, page: 1, pageSize: 20, total: this.products.length });
+    return Promise.resolve({
+      items: this.products,
+      page: filters.page ?? 1,
+      pageSize: filters.pageSize ?? 20,
+      total: this.total ?? this.products.length
+    });
   }
 }
 

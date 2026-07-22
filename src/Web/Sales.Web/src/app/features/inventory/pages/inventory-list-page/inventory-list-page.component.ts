@@ -53,12 +53,17 @@ export class InventoryListPageComponent implements OnInit {
   readonly errorMessage = signal('');
   readonly mutationErrorMessage = signal('');
   readonly stockRows = signal<StockRow[]>([]);
+  /** Number of products matching the filters, which is what the pager walks through. */
+  readonly total = signal(0);
   readonly selectedRow = signal<StockRow | null>(null);
   readonly adjustmentModalOpen = signal(false);
 
   skuFilter = '';
   nameFilter = '';
   stockStateFilter: StockState | '' = '';
+  pageIndex = 1;
+  pageSize = 20;
+  readonly pageSizeOptions = [10, 20, 50];
   adjustmentForm: StockAdjustmentFormModel = emptyStockAdjustmentForm();
 
   readonly statusDisplay = productLookupStatusDisplay;
@@ -79,9 +84,17 @@ export class InventoryListPageComponent implements OnInit {
         sku: this.skuFilter,
         name: this.nameFilter,
         status: '',
-        page: 1,
-        pageSize: 20
+        page: this.pageIndex,
+        pageSize: this.pageSize
       });
+
+      // Deleting the last products on the final page leaves the pager past the end, which would
+      // otherwise show an empty grid with no way back.
+      if (page.items.length === 0 && page.total > 0 && this.pageIndex > 1) {
+        this.pageIndex = Math.max(1, Math.ceil(page.total / this.pageSize));
+        await this.loadStockRows();
+        return;
+      }
 
       // One inventory read per variant, issued together: awaiting them in the loop serialised the
       // whole grid behind up to (products x variants) sequential round trips.
@@ -96,12 +109,29 @@ export class InventoryListPageComponent implements OnInit {
       }));
 
       this.stockRows.set(rows);
+      this.total.set(page.total);
       this.selectedRow.set(rows[0] ?? null);
     } catch (error) {
       this.errorMessage.set(describeApiError(error));
     } finally {
       this.loading.set(false);
     }
+  }
+
+  search(): void {
+    this.pageIndex = 1;
+    void this.loadStockRows();
+  }
+
+  changePage(pageIndex: number): void {
+    this.pageIndex = pageIndex;
+    void this.loadStockRows();
+  }
+
+  changePageSize(pageSize: number): void {
+    this.pageSize = pageSize;
+    this.pageIndex = 1;
+    void this.loadStockRows();
   }
 
   filteredRows(): StockRow[] {
