@@ -21,6 +21,9 @@ import { StockState, lowStockThreshold, stockStateLabels, stockStateOf } from '.
 import { StockAdjustmentFormModel, emptyStockAdjustmentForm } from '../../models/stock-adjustment-form.model';
 import { StockRow, totalQuantity } from '../../models/stock-row.model';
 
+type StockSortKey = 'sku' | 'product' | 'color' | 'size' | 'status';
+type SortDirection = 'ascend' | 'descend';
+
 @Component({
   selector: 'app-inventory-list-page',
   standalone: true,
@@ -65,6 +68,9 @@ export class InventoryListPageComponent implements OnInit {
   pageSize = 20;
   readonly pageSizeOptions = [10, 20, 50];
   adjustmentForm: StockAdjustmentFormModel = emptyStockAdjustmentForm();
+
+  readonly sortKey = signal<StockSortKey>('sku');
+  readonly sortDirection = signal<SortDirection>('ascend');
 
   readonly statusDisplay = productLookupStatusDisplay;
   readonly totalQuantity = totalQuantity;
@@ -135,11 +141,29 @@ export class InventoryListPageComponent implements OnInit {
   }
 
   filteredRows(): StockRow[] {
-    if (this.stockStateFilter === '') {
-      return this.stockRows();
+    const rows = this.stockStateFilter === ''
+      ? this.stockRows()
+      : this.stockRows().filter(row => this.stockState(row) === this.stockStateFilter);
+
+    return this.sortRows(rows);
+  }
+
+  sortBy(key: StockSortKey): void {
+    if (this.sortKey() !== key) {
+      this.sortKey.set(key);
+      this.sortDirection.set('ascend');
+      return;
     }
 
-    return this.stockRows().filter(row => this.stockState(row) === this.stockStateFilter);
+    this.sortDirection.set(this.sortDirection() === 'ascend' ? 'descend' : 'ascend');
+  }
+
+  sortIndicator(key: StockSortKey): string {
+    if (this.sortKey() !== key) {
+      return '';
+    }
+
+    return this.sortDirection() === 'ascend' ? '\u2191' : '\u2193';
   }
 
   selectRow(row: StockRow): void {
@@ -165,6 +189,35 @@ export class InventoryListPageComponent implements OnInit {
     this.adjustmentModalOpen.set(false);
     this.adjustmentForm = emptyStockAdjustmentForm();
     this.mutationErrorMessage.set('');
+  }
+
+  private sortRows(rows: StockRow[]): StockRow[] {
+    const key = this.sortKey();
+    const direction = this.sortDirection();
+
+    return [...rows].sort((left, right) => {
+      const result = this.sortValue(left, key).localeCompare(this.sortValue(right, key), undefined, {
+        numeric: true,
+        sensitivity: 'base'
+      });
+
+      return direction === 'ascend' ? result : -result;
+    });
+  }
+
+  private sortValue(row: StockRow, key: StockSortKey): string {
+    switch (key) {
+      case 'product':
+        return row.product.name;
+      case 'color':
+        return row.variant.color?.code ?? '';
+      case 'size':
+        return row.variant.size?.code ?? '';
+      case 'status':
+        return row.variant.status;
+      default:
+        return row.variant.sku;
+    }
   }
 
   stockState(row: StockRow): StockState {

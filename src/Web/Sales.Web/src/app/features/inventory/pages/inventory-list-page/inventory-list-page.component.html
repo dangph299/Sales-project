@@ -56,11 +56,31 @@
     (nzPageSizeChange)="changePageSize($event)">
     <thead>
       <tr>
-        <th>SKU</th>
-        <th>Product</th>
-        <th>Color</th>
-        <th>Size</th>
-        <th>Variant Status</th>
+        <th>
+          <button class="sort-header" type="button" (click)="sortBy('sku')">
+            SKU <span>{{ sortIndicator('sku') }}</span>
+          </button>
+        </th>
+        <th>
+          <button class="sort-header" type="button" (click)="sortBy('product')">
+            Product <span>{{ sortIndicator('product') }}</span>
+          </button>
+        </th>
+        <th>
+          <button class="sort-header" type="button" (click)="sortBy('color')">
+            Color <span>{{ sortIndicator('color') }}</span>
+          </button>
+        </th>
+        <th>
+          <button class="sort-header" type="button" (click)="sortBy('size')">
+            Size <span>{{ sortIndicator('size') }}</span>
+          </button>
+        </th>
+        <th>
+          <button class="sort-header" type="button" (click)="sortBy('status')">
+            Variant Status <span>{{ sortIndicator('status') }}</span>
+          </button>
+        </th>
         <th>Available</th>
         <th>Reserved</th>
         <th>Total</th>

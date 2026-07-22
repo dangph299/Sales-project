@@ -78,6 +78,36 @@ describe('InventoryListPageComponent stock rows', () => {
     expect(fixture.componentInstance.pageIndex).toBe(1);
   });
 
+  it('sorts by the chosen column and reverses on a second click', async () => {
+    productLookup.products = [productWithVariants()];
+    await fixture.componentInstance.loadStockRows();
+
+    fixture.componentInstance.sortBy('color');
+    const ascending = fixture.componentInstance.filteredRows().map(row => row.variant.color?.code);
+
+    fixture.componentInstance.sortBy('color');
+    const descending = fixture.componentInstance.filteredRows().map(row => row.variant.color?.code);
+
+    expect(ascending).toEqual(['BLK', 'RED', 'WHT']);
+    expect(descending).toEqual(['WHT', 'RED', 'BLK']);
+  });
+
+  it('marks only the column being sorted', async () => {
+    fixture.componentInstance.sortBy('size');
+
+    expect(fixture.componentInstance.sortIndicator('size')).toBe('↑');
+    expect(fixture.componentInstance.sortIndicator('sku')).toBe('');
+  });
+
+  it('sorts variants missing a colour or size without dropping them', async () => {
+    productLookup.products = [productWithUnsetColour()];
+    await fixture.componentInstance.loadStockRows();
+
+    fixture.componentInstance.sortBy('color');
+
+    expect(fixture.componentInstance.filteredRows().length).toBe(2);
+  });
+
   it('lists a variant whose product is still a draft', async () => {
     productLookup.products = [draftProductWithVariant()];
 
@@ -108,6 +138,39 @@ class FakeInventoryApiService {
   getByVariant(): Promise<null> {
     return Promise.resolve(null);
   }
+}
+
+function productWithVariants(): ProductLookupResponse {
+  return {
+    id: '77777777-7777-7777-7777-777777777777',
+    sku: 'PRD01',
+    productCode: 'PRD01',
+    name: 'Shirt',
+    status: 'Published',
+    variants: [
+      { id: 'v-1', sku: 'PRD01-WHT-M', color: colour('WHT', 'White'), size: null, price: 100, status: 'Published' },
+      { id: 'v-2', sku: 'PRD01-BLK-M', color: colour('BLK', 'Black'), size: null, price: 100, status: 'Published' },
+      { id: 'v-3', sku: 'PRD01-RED-M', color: colour('RED', 'Red'), size: null, price: 100, status: 'Published' }
+    ]
+  };
+}
+
+function productWithUnsetColour(): ProductLookupResponse {
+  return {
+    id: '66666666-6666-6666-6666-666666666666',
+    sku: 'PRD03',
+    productCode: 'PRD03',
+    name: 'Cap',
+    status: 'Published',
+    variants: [
+      { id: 'v-4', sku: 'PRD03-BLK-M', color: colour('BLK', 'Black'), size: null, price: 100, status: 'Published' },
+      { id: 'v-5', sku: 'PRD03-ONE', color: null, size: null, price: 100, status: 'Published' }
+    ]
+  };
+}
+
+function colour(code: string, name: string) {
+  return { id: `colour-${code}`, code, name, hexCode: '#000000' };
 }
 
 function draftProductWithVariant(): ProductLookupResponse {
