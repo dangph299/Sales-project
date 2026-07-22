@@ -59,9 +59,9 @@ public sealed class InboxRedrivePostgresTests
         await using var scope = provider.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<SalesDbContext>();
 
-        var customer = CustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567");
+        var customer = OrderCustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567", null, null);
         var product = ProductSnapshot.Create(Guid.NewGuid(), "sku-1", "Keyboard", Money.Vnd(100_000), true);
-        var order = Order.Create(customer, [new OrderLineItem(product, 1, 0m)]);
+        var order = Order.Create(OrderTestFactory.NextOrderCode(), customer, [new OrderLineItem(product, 1, 0m)]);
         order.RequestConfirmation();
 
         db.Orders.Add(order);

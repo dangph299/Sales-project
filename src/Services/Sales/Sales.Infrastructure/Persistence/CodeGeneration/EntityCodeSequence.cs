@@ -25,6 +25,9 @@ public sealed record EntityCodeSequence
     /// <summary>Gets the sequence that numbers category codes.</summary>
     public static EntityCodeSequence Category { get; } = new("CAT", "category_code_seq");
 
+    /// <summary>Gets the sequence that numbers order codes.</summary>
+    public static EntityCodeSequence Order { get; } = new("ORD", "order_code_seq");
+
     /// <summary>Gets the literal that every code of this kind starts with.</summary>
     public string Prefix { get; }
 
@@ -32,5 +35,5 @@ public sealed record EntityCodeSequence
     public string SequenceName { get; }
 
     /// <summary>Gets every sequence the Sales database owns.</summary>
-    public static IReadOnlyList<EntityCodeSequence> All { get; } = [Customer, Product, Category];
+    public static IReadOnlyList<EntityCodeSequence> All { get; } = [Customer, Product, Category, Order];
 }

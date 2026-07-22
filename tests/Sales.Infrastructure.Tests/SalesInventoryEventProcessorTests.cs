@@ -278,14 +278,14 @@ public sealed class SalesInventoryEventProcessorTests
         private async Task<Order> SeedOrderAsync(bool requestConfirmation)
         {
             var product = ProductTestFactory.CreatePublishedProduct("sku-inventory-event", "Inventory event", 100);
-            var customer = CustomerSnapshot.Create(Guid.NewGuid(), "Consumer", "0912345678");
+            var customer = OrderCustomerSnapshot.Create(Guid.NewGuid(), "Consumer", "0912345678", null, null);
             var productSnapshot = ProductSnapshot.Create(
                 product.Id,
                 product.Sku,
                 product.Name,
                 ProductTestFactory.PrimaryVariant(product).Price,
                 isActive: true);
-            var order = Order.Create(customer, [new OrderLineItem(productSnapshot, 1, 0)]);
+            var order = Order.Create(OrderTestFactory.NextOrderCode(), customer, [new OrderLineItem(productSnapshot, 1, 0)]);
             if (requestConfirmation)
             {
                 order.RequestConfirmation();

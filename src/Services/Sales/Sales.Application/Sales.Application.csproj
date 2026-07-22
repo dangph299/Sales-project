@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Sales.Domain\Sales.Domain.csproj" />
     <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Contracts\BuildingBlocks.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

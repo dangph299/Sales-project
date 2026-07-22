@@ -61,7 +61,10 @@ public static class DependencyInjection
         services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
         services.AddScoped<IProductRepository, ProductRepository>();
         services.AddScoped<IOrderRepository, OrderRepository>();
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<ICustomerRepository, CustomerRepository>();
+        services.AddScoped<ISalesUnitOfWork, UnitOfWork>();
+        services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ISalesUnitOfWork>());
+        services.AddScoped<ISalesTransactionManager, SalesTransactionManager>();
         return services;
     }
 
@@ -94,6 +97,7 @@ public static class DependencyInjection
         services.AddScoped<ICustomerCodeGenerator, CustomerCodeGenerator>();
         services.AddScoped<IProductCodeGenerator, ProductCodeGenerator>();
         services.AddScoped<ICategoryCodeGenerator, CategoryCodeGenerator>();
+        services.AddScoped<IOrderCodeGenerator, OrderCodeGenerator>();
         return services;
     }
 

@@ -29,10 +29,10 @@ public sealed class ConfirmOrderConcurrencyTests
         await using (var setup = new SalesDbContext(options, executionContext))
             await setup.Database.MigrateAsync();
 
-        var customer = CustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567");
+        var customer = OrderCustomerSnapshot.Create(Guid.NewGuid(), "Nguyen Van A", "0901234567", null, null);
         var product = ProductTestFactory.CreatePublishedProduct($"sku-{Guid.NewGuid():N}", "Keyboard", 100_000);
         var snapshot = ProductSnapshot.Create(product.Id, product.Sku, product.Name, ProductTestFactory.PrimaryVariant(product).Price, product.IsActive);
-        var order = Order.Create(customer, [new(snapshot, 1, 0m)]);
+        var order = Order.Create(OrderTestFactory.NextOrderCode(), customer, [new(snapshot, 1, 0m)]);
         var orderId = order.Id;
 
         await using (var seed = new SalesDbContext(options, executionContext))
