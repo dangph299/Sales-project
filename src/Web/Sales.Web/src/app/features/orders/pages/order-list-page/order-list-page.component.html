@@ -201,7 +201,7 @@
   (nzOnCancel)="closeOrderModal()">
   <ng-container *nzModalContent>
     <section class="order-form-layout">
-      <nz-card nzSize="small" nzTitle="Order Information">
+      <nz-card nzSize="small" nzTitle="Order Information" *ngIf="modalMode() === 'edit'">
         <div nz-form nzLayout="vertical" class="form-grid two">
           <nz-form-item>
             <nz-form-label>Order Date</nz-form-label>
@@ -218,13 +218,6 @@
             <nz-form-label>Status</nz-form-label>
             <nz-form-control>
               <app-status-tag [display]="statusDisplay(currentOrder()?.status || 'Draft')"></app-status-tag>
-            </nz-form-control>
-          </nz-form-item>
-
-          <nz-form-item class="wide">
-            <nz-form-label>Note</nz-form-label>
-            <nz-form-control nzExtra="Order notes are not supported by the order API yet.">
-              <textarea nz-input name="orderNote" rows="2" disabled></textarea>
             </nz-form-control>
           </nz-form-item>
         </div>

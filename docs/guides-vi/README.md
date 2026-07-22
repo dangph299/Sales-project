@@ -33,6 +33,7 @@ Tài liệu dài hơn, thiên về thực hành, viết bằng tiếng Việt. C
 
 | Guide | Nội dung |
 |---|---|
+| [configuration-guide.md](configuration-guide.md) | cấu hình khai báo ở đâu, bind vào code thế nào, đổi thì ảnh hưởng gì |
 | [DDD-structure-guide.md](DDD-structure-guide.md) | bố cục DDD chi tiết, bao gồm cả những chỗ lệch chuẩn có chủ đích |
 | [kafka-usage-guide.md](kafka-usage-guide.md) | mọi topic, producer, consumer và flow, kèm lệnh CLI |
 | [kafka-playwright-debug-guide.md](kafka-playwright-debug-guide.md) | tái hiện và chẩn đoán một flow Sales↔Inventory bị kẹt |

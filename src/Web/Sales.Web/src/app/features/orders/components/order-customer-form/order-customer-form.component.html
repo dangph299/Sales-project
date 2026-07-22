@@ -23,7 +23,7 @@
     </nz-form-control>
     <ng-template #phoneHint>
       <ng-container *ngIf="searching()">Searching…</ng-container>
-      <ng-container *ngIf="!searching() && isNewCustomer()">Khách hàng mới</ng-container>
+      <ng-container *ngIf="!searching() && isNewCustomer()">New Customer</ng-container>
       <ng-container *ngIf="suggestionErrorMessage()">{{ suggestionErrorMessage() }}</ng-container>
     </ng-template>
   </nz-form-item>

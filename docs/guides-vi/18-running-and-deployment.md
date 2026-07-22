@@ -177,6 +177,7 @@ Stack này là môi trường phát triển local. Trước khi chạy ở nơi 
 
 ## Liên quan
 
+- [configuration-guide.md](configuration-guide.md)
 - [../tech/configuration-and-environment.md](../tech/configuration-and-environment.md)
 - [../tech/monitoring-demo.md](../tech/monitoring-demo.md)
 - [17-testing-strategy.md](17-testing-strategy.md)
