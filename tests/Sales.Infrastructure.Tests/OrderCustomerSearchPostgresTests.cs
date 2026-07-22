@@ -5,6 +5,8 @@ using Sales.Application.Common.Interfaces;
 using Sales.Domain;
 using Xunit;
 
+namespace Sales.Infrastructure.Tests;
+
 /// <summary>
 /// Exercises order customer search against a real PostgreSQL instance.
 /// </summary>
@@ -15,8 +17,6 @@ using Xunit;
 /// differently. When Docker is unavailable every test here skips visibly rather than passing
 /// silently.
 /// </remarks>
-namespace Sales.Infrastructure.Tests;
-
 [Trait("Category", "Reliability")]
 [Collection("SalesReliabilityPostgres")]
 public sealed class OrderCustomerSearchPostgresTests
