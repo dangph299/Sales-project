@@ -18,7 +18,7 @@
       name="orderNumberFilter"
       [(ngModel)]="orderNumberFilter"
       (keyup.enter)="searchOrders()"
-      placeholder="e.g. ORD001">
+      placeholder="Search by order number">
   </label>
 
   <label>
@@ -28,7 +28,7 @@
       name="customerNameFilter"
       [(ngModel)]="customerNameFilter"
       (keyup.enter)="searchOrders()"
-      placeholder="Customer name">
+      placeholder="Search by customer name">
   </label>
 
   <label>
@@ -38,7 +38,7 @@
       name="customerPhoneFilter"
       [(ngModel)]="customerPhoneFilter"
       (keyup.enter)="searchOrders()"
-      placeholder="Starts or ends with">
+      placeholder="Search by customer phone">
   </label>
 
   <div class="filter-field">
@@ -153,14 +153,16 @@
         <td class="nowrap-cell">{{ order.updatedAt | dateTime }}</td>
         <td class="actions-column">
           <div class="actions">
-            <button nz-button nzSize="small" type="button" (click)="openEditOrder(order)">Edit</button>
+            <button nz-button nzSize="small" type="button" (click)="openEditOrder(order)">
+              {{ canEditOrder(order) ? 'Edit' : 'View' }}
+            </button>
             <button
               nz-button
               nzDanger
               nzSize="small"
               type="button"
               (click)="deleteOrder(order)"
-              [disabled]="order.status === 'Cancelled'">
+              [disabled]="!canCancelOrder(order)">
               Delete
             </button>
             <button nz-button nzSize="small" nz-dropdown [nzDropdownMenu]="orderMoreMenu" type="button">More</button>
@@ -230,12 +232,12 @@
         <app-order-customer-form
           [customer]="orderCustomer()"
           [errors]="customerFormErrors()"
-          [disabled]="saving()"
+          [disabled]="saving() || orderModalReadonly()"
           [showNewCustomerHint]="modalMode() === 'create'"
           (customerChange)="updateOrderCustomer($event)"></app-order-customer-form>
       </nz-card>
 
-      <nz-card nzSize="small" nzTitle="Add Product">
+      <nz-card nzSize="small" nzTitle="Add Product" *ngIf="!orderModalReadonly()">
         <section class="toolbar">
           <label>
             Product or SKU
@@ -268,7 +270,9 @@
             <tr *ngFor="let option of variantTable.data">
               <td>{{ option.variant.sku }}</td>
               <td>{{ option.product.name }}</td>
-              <td>{{ option.variant.status }}</td>
+              <td>
+                <app-status-tag [display]="productStatusDisplay(option.variant.status)"></app-status-tag>
+              </td>
               <td class="number-column">{{ option.variant.price | money }}</td>
               <td class="actions-column">
                 <button
@@ -292,6 +296,7 @@
           [lines]="cartLines()"
           [canCreateOrder]="!!orderCustomer().phone"
           [saving]="saving()"
+          [readonly]="orderModalReadonly()"
           [showFooterAction]="false"
           [showSummary]="false"
           (linesChange)="updateCartLines($event)"></app-order-line-editor>
@@ -310,10 +315,19 @@
 
 <ng-template #modalFooter>
   <div class="form-actions">
-    <button nz-button nzType="primary" type="button" (click)="saveOrder()" [nzLoading]="saving()" [disabled]="saving()">
+    <button
+      *ngIf="canSaveOrder()"
+      nz-button
+      nzType="primary"
+      type="button"
+      (click)="saveOrder()"
+      [nzLoading]="saving()"
+      [disabled]="saving()">
       Save
     </button>
-    <button nz-button type="button" (click)="closeOrderModal()" [disabled]="saving()">Cancel</button>
+    <button nz-button type="button" (click)="closeOrderModal()" [disabled]="saving()">
+      {{ orderModalReadonly() ? 'Close' : 'Cancel' }}
+    </button>
     <ng-container *ngIf="currentOrder() as order">
       <button
         *ngIf="order.status === 'Draft'"
@@ -330,7 +344,7 @@
         type="button"
         (click)="undoConfirmOrder()"
         [nzLoading]="saving()"
-        [disabled]="saving()">
+        [disabled]="saving() || !canUndoConfirmOrder(order)">
         Undo Confirm
       </button>
     </ng-container>

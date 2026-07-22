@@ -37,6 +37,7 @@ import { OrderStatus, describeOrderStatusChange, orderStatusDisplay } from '../.
 import { CartLine, cartGrandTotal, normalizeQuantity } from '../../models/cart-line.model';
 import { OrderStatusChangedNotification } from '../../models/order-status-changed.model';
 import { OrderRealtimeService } from '../../services/order-realtime.service';
+import { productLookupStatusDisplay } from '@features/common/constants/product-lookup-status';
 
 const orderListRefreshDelayMs = 500;
 const orderDetailRefreshDelayMs = 300;
@@ -97,10 +98,11 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   readonly currentEtag = signal<string | null>(null);
   readonly reservationText = signal('');
   readonly orderModalOpen = signal(false);
-  readonly modalMode = signal<'create' | 'edit'>('create');
+  readonly modalMode = signal<'create' | 'edit' | 'view'>('create');
   readonly formDirty = signal(false);
   readonly customerFormErrors = signal<OrderCustomerFormErrors>({});
   readonly formErrors = signal<{ lines?: string }>({});
+  readonly productStatusDisplay = productLookupStatusDisplay;
 
   productSearch = '';
   // Independent filters, all applied server-side. There is no combined term and
@@ -126,8 +128,18 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     { value: 'InventoryRejected', label: 'Inventory Rejected' }
   ];
   readonly pageSizeOptions = [10, 20, 50];
-  readonly modalTitle = computed(() => this.modalMode() === 'create' ? 'Create Order' : `Edit ${this.currentOrderNumber()}`);
+  readonly modalTitle = computed(() => {
+    const mode = this.modalMode();
+    if (mode === 'create') {
+      return 'Create Order';
+    }
+
+    return `${mode === 'view' ? 'View' : 'Edit'} ${this.currentOrderNumber()}`;
+  });
   readonly modalGrandTotal = computed(() => cartGrandTotal(this.cartLines()));
+  readonly orderModalReadonly = computed(() => this.modalMode() === 'view');
+  readonly canSaveOrder = computed(() => this.modalMode() === 'create'
+    || (this.modalMode() === 'edit' && this.currentOrder()?.status === 'Draft'));
   // Every filter is applied by the API, so this only orders the page the server
   // returned. Nothing is filtered out here — doing so would silently disagree
   // with total() and hide matches the server did find.
@@ -255,6 +267,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   addCartLine(product: ProductLookupResponse, variant: ProductVariantLookupResponse): void {
+    if (this.orderModalReadonly()) {
+      return;
+    }
+
     const existing = this.cartLines().find(line => line.variant.id === variant.id);
     if (existing) {
       this.cartLines.set(this.cartLines().map(line =>
@@ -362,7 +378,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.modalMode.set('edit');
+    this.modalMode.set(this.canEditOrder(selected) ? 'edit' : 'view');
     // Straight from the order's own snapshot. The customer record is never
     // re-fetched to overwrite it: the two are allowed to differ.
     this.orderCustomer.set({
@@ -399,6 +415,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   updateCartLines(lines: CartLine[]): void {
+    if (this.orderModalReadonly()) {
+      return;
+    }
+
     this.cartLines.set(lines);
     this.formDirty.set(true);
     this.formErrors.set({ ...this.formErrors(), lines: lines.length === 0 ? 'Add at least one product.' : undefined });
@@ -406,6 +426,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
 
   async saveOrder(): Promise<void> {
     if (this.saving()) {
+      return;
+    }
+
+    if (!this.canSaveOrder()) {
       return;
     }
 
@@ -426,7 +450,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (order.status === 'Cancelled') {
+    if (!this.canCancelOrder(order)) {
       return;
     }
 
@@ -617,6 +641,11 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       return Promise.resolve();
     }
 
+    const order = this.currentOrder();
+    if (!order || order.status !== 'Draft') {
+      return Promise.resolve();
+    }
+
     return this.transitionOrder('confirm');
   }
 
@@ -647,6 +676,16 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     }
 
     await this.transitionOrder('cancel');
+  }
+
+  canEditOrder(order: OrderResponse): boolean {
+    return order.status === 'Draft';
+  }
+
+  canCancelOrder(order: OrderResponse): boolean {
+    return order.status !== 'PendingInventory'
+      && order.status !== 'Confirmed'
+      && order.status !== 'Cancelled';
   }
 
   async loadReservation(orderId: string): Promise<void> {
@@ -776,7 +815,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     return variant.status === 'Published' || variant.status === 'Discontinued';
   }
 
-  private canUndoConfirmOrder(order: OrderResponse): boolean {
+  canUndoConfirmOrder(order: OrderResponse): boolean {
     return order.status === 'Confirmed' && !order.lines.some(line => line.isSellThroughDiscontinued);
   }
 

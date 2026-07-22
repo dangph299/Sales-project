@@ -41,12 +41,12 @@ public sealed class AdjustInventoryCommandHandlerTests
     {
         public bool AddCalled { get; private set; }
 
-        public Task<InventoryItem?> GetByProductIdAsync(Guid productId, CancellationToken cancellationToken = default)
+        public Task<InventoryItem?> GetByProductVariantIdAsync(Guid productVariantId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(existing);
         }
 
-        public Task<IReadOnlyCollection<InventoryItem>> GetByProductIdsAsync(IEnumerable<Guid> productIds, CancellationToken cancellationToken = default)
+        public Task<IReadOnlyCollection<InventoryItem>> GetByProductVariantIdsAsync(IEnumerable<Guid> productVariantIds, CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();
         }

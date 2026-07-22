@@ -150,6 +150,34 @@ describe('OrderListPageComponent realtime behavior', () => {
 
     expect(fixture.componentInstance.saving()).toBeFalse();
   });
+
+  it('opens pending orders read-only and does not expose save', async () => {
+    orderApi.order.status = 'PendingInventory';
+
+    await fixture.componentInstance.openEditOrder(orderApi.order);
+
+    expect(fixture.componentInstance.modalMode()).toBe('view');
+    expect(fixture.componentInstance.orderModalReadonly()).toBeTrue();
+    expect(fixture.componentInstance.canSaveOrder()).toBeFalse();
+  });
+
+  it('opens draft orders editable', async () => {
+    orderApi.order.status = 'Draft';
+
+    await fixture.componentInstance.openEditOrder(orderApi.order);
+
+    expect(fixture.componentInstance.modalMode()).toBe('edit');
+    expect(fixture.componentInstance.orderModalReadonly()).toBeFalse();
+    expect(fixture.componentInstance.canSaveOrder()).toBeTrue();
+  });
+
+  it('only allows cancelling draft or inventory rejected orders', () => {
+    expect(fixture.componentInstance.canCancelOrder({ ...orderApi.order, status: 'Draft' })).toBeTrue();
+    expect(fixture.componentInstance.canCancelOrder({ ...orderApi.order, status: 'InventoryRejected' })).toBeTrue();
+    expect(fixture.componentInstance.canCancelOrder({ ...orderApi.order, status: 'PendingInventory' })).toBeFalse();
+    expect(fixture.componentInstance.canCancelOrder({ ...orderApi.order, status: 'Confirmed' })).toBeFalse();
+    expect(fixture.componentInstance.canCancelOrder({ ...orderApi.order, status: 'Cancelled' })).toBeFalse();
+  });
 });
 
 class FakeOrderApiService {

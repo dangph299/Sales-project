@@ -41,7 +41,7 @@ public sealed class ReserveStockCommandHandler(
 
         foreach (var line in request.Lines)
         {
-            items.Single(x => x.ProductId == line.ProductId).Reserve(line.Quantity);
+            items.Single(x => x.ProductVariantId == line.ProductId).Reserve(line.Quantity);
         }
 
         if (existingReservation is null)
@@ -85,14 +85,14 @@ public sealed class ReserveStockCommandHandler(
         {
             var currentQuantity = existingReservation.Lines.SingleOrDefault(x => x.ProductId == line.ProductId)?.Quantity ?? 0;
             var delta = line.Quantity - currentQuantity;
-            var item = items.Single(x => x.ProductId == line.ProductId);
+            var item = items.Single(x => x.ProductVariantId == line.ProductId);
             if (delta > 0) item.Reserve(delta);
             else if (delta < 0) item.Release(-delta);
         }
 
         foreach (var removed in existingReservation.Lines.Where(existing => requestedLines.All(x => x.ProductId != existing.ProductId)).ToArray())
         {
-            items.Single(x => x.ProductId == removed.ProductId).Release(removed.Quantity);
+            items.Single(x => x.ProductVariantId == removed.ProductId).Release(removed.Quantity);
         }
 
         // Staleness was already ruled out above using the same Reservation.IsStale check ReplaceActive
@@ -106,14 +106,14 @@ public sealed class ReserveStockCommandHandler(
 
     private async Task<IReadOnlyCollection<InventoryItem>> LoadItems(IEnumerable<Guid> productIds, CancellationToken cancellationToken)
     {
-        return await inventoryRepository.GetByProductIdsAsync(productIds, cancellationToken);
+        return await inventoryRepository.GetByProductVariantIdsAsync(productIds, cancellationToken);
     }
 
     private static OrderLineIntegration? FindRejectedLine(IReadOnlyCollection<OrderLineIntegration> requestLines, IReadOnlyCollection<InventoryItem> items)
     {
         return requestLines.FirstOrDefault(line =>
-            items.SingleOrDefault(x => x.ProductId == line.ProductId)?.Available < line.Quantity ||
-            items.All(x => x.ProductId != line.ProductId));
+            items.SingleOrDefault(x => x.ProductVariantId == line.ProductId)?.Available < line.Quantity ||
+            items.All(x => x.ProductVariantId != line.ProductId));
     }
 
     private static ReservationRequestLine? FindRejectedLineAfterReplacing(
@@ -123,7 +123,7 @@ public sealed class ReserveStockCommandHandler(
     {
         return requestedLines.FirstOrDefault(line =>
         {
-            var item = items.SingleOrDefault(x => x.ProductId == line.ProductId);
+            var item = items.SingleOrDefault(x => x.ProductVariantId == line.ProductId);
             if (item is null) return true;
 
             var currentlyReserved = reservation.Lines.SingleOrDefault(x => x.ProductId == line.ProductId)?.Quantity ?? 0;

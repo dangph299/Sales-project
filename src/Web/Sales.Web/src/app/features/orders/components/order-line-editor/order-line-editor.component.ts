@@ -36,6 +36,7 @@ export class OrderLineEditorComponent {
   @Input() canCreateOrder = false;
   @Input() actionLabel = 'Save';
   @Input() saving = false;
+  @Input() readonly = false;
   @Input() showFooterAction = true;
 
   /**
@@ -58,6 +59,10 @@ export class OrderLineEditorComponent {
   }
 
   changeQuantity(productVariantId: string, quantity: number): void {
+    if (this.readonly) {
+      return;
+    }
+
     this.linesChange.emit(this.lines.map(line =>
       line.variant.id === productVariantId
         ? { ...line, quantity: normalizeQuantity(quantity) }
@@ -65,6 +70,10 @@ export class OrderLineEditorComponent {
   }
 
   changeDiscount(productVariantId: string, discountPercent: number): void {
+    if (this.readonly) {
+      return;
+    }
+
     this.linesChange.emit(this.lines.map(line =>
       line.variant.id === productVariantId
         ? { ...line, discountPercent: normalizeDiscountPercent(discountPercent) }
@@ -72,6 +81,10 @@ export class OrderLineEditorComponent {
   }
 
   removeLine(productVariantId: string): void {
+    if (this.readonly) {
+      return;
+    }
+
     this.linesChange.emit(this.lines.filter(line => line.variant.id !== productVariantId));
   }
 }

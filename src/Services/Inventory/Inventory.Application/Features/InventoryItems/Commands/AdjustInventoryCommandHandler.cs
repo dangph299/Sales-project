@@ -20,7 +20,7 @@ public sealed class AdjustInventoryCommandHandler(
     /// <inheritdoc/>
     public async Task<InventorySnapshot> Handle(AdjustInventoryCommand request, CancellationToken cancellationToken)
     {
-        var inventoryItem = await inventoryRepository.GetByProductIdAsync(request.ProductId, cancellationToken);
+        var inventoryItem = await inventoryRepository.GetByProductVariantIdAsync(request.ProductId, cancellationToken);
         if (inventoryItem is null)
         {
             inventoryItem = InventoryItem.Create(request.ProductId, request.Sku, request.QuantityDelta);

@@ -13,6 +13,7 @@ public sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLine>
 
         entity.ToTable("order_lines");
         entity.HasKey(x => x.Id);
+        entity.Property(x => x.Id).ValueGeneratedNever();
         entity.HasIndex(x => new { x.OrderId, x.ProductVariantId }).IsUnique();
         entity.Property(x => x.ProductCode).HasMaxLength(32);
         entity.Property(x => x.Sku).HasMaxLength(96);

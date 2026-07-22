@@ -16,7 +16,7 @@ public sealed class InventoryReadService(InventoryDbContext db, IMapper mapper)
     /// <inheritdoc/>
     public async Task<InventorySnapshot?> GetAsync(Guid productId, CancellationToken cancellationToken = default)
     {
-        var item = await db.Items.AsNoTracking().SingleOrDefaultAsync(x => x.ProductId == productId, cancellationToken);
+        var item = await db.Items.AsNoTracking().SingleOrDefaultAsync(x => x.ProductVariantId == productId, cancellationToken);
         return item is null ? null : mapper.Map<InventorySnapshot>(item);
     }
 
