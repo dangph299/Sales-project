@@ -1,0 +1,38 @@
+.form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.filter-field {
+  display: grid;
+  font-size: .82rem;
+  gap: 4px;
+
+  &--wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.customer-phone-select {
+  width: 100%;
+}
+
+.required-marker {
+  color: #cf1322;
+}
+
+.field-error {
+  color: #cf1322;
+  font-size: .78rem;
+}
+
+.field-hint {
+  color: #8c8c8c;
+  font-size: .78rem;
+}
+
+.suggestion-empty {
+  color: #8c8c8c;
+  font-size: .82rem;
+}

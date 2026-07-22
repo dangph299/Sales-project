@@ -16,11 +16,21 @@ export interface OrderLineResponse {
   lineTotal: number;
 }
 
+/**
+ * An order as the API returns it.
+ *
+ * Every customer field is the order's own snapshot. The normalized and reversed
+ * phone columns are intentionally absent: they exist only so the database can
+ * index phone searches.
+ */
 export interface OrderResponse {
   id: string;
+  orderCode: string;
   customerId: string;
   customerName: string;
   customerPhone: string;
+  customerEmail?: string | null;
+  customerAddress?: string | null;
   createdAt: string;
   status: OrderStatus | string;
   totalQuantity: number;

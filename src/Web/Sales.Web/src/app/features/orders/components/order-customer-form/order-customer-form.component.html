@@ -1,0 +1,64 @@
+<div class="form-grid">
+  <label class="filter-field">
+    Phone <span class="required-marker" aria-hidden="true">*</span>
+    <nz-select
+      class="customer-phone-select"
+      nzShowSearch
+      nzServerSearch
+      nzAllowClear
+      [nzDisabled]="disabled"
+      [nzLoading]="searching()"
+      [ngModel]="customer.phone"
+      name="orderCustomerPhone"
+      nzPlaceHolder="Type a phone number"
+      [nzNotFoundContent]="notFoundContent"
+      (nzOnSearch)="changePhone($event)"
+      (ngModelChange)="selectSuggestion($event)">
+      <nz-option
+        *ngFor="let suggestion of suggestions()"
+        [nzValue]="suggestion.customerId"
+        [nzLabel]="suggestion.phone + ' — ' + suggestion.name"></nz-option>
+    </nz-select>
+    <span class="field-hint" *ngIf="isNewCustomer()">Khách hàng mới</span>
+    <span class="field-hint" *ngIf="suggestionErrorMessage()">{{ suggestionErrorMessage() }}</span>
+    <span class="field-error" *ngIf="errors.phone">{{ errors.phone }}</span>
+  </label>
+
+  <label class="filter-field">
+    Customer Name <span class="required-marker" aria-hidden="true">*</span>
+    <input
+      nz-input
+      name="orderCustomerName"
+      [ngModel]="customer.name"
+      [disabled]="disabled"
+      (ngModelChange)="changeName($event)"
+      placeholder="Customer name">
+    <span class="field-error" *ngIf="errors.name">{{ errors.name }}</span>
+  </label>
+
+  <label class="filter-field">
+    Email
+    <input
+      nz-input
+      name="orderCustomerEmail"
+      [ngModel]="customer.email"
+      [disabled]="disabled"
+      (ngModelChange)="changeEmail($event)"
+      placeholder="Optional">
+  </label>
+
+  <label class="filter-field filter-field--wide">
+    Address
+    <input
+      nz-input
+      name="orderCustomerAddress"
+      [ngModel]="customer.address"
+      [disabled]="disabled"
+      (ngModelChange)="changeAddress($event)"
+      placeholder="Optional">
+  </label>
+</div>
+
+<ng-template #notFoundContent>
+  <span class="suggestion-empty">{{ searching() ? 'Searching…' : 'No matching customer' }}</span>
+</ng-template>

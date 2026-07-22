@@ -7,14 +7,41 @@
 </section>
 
 <section class="order-filter-panel">
-  <label class="filter-field filter-field--wide">
-    Search
+  <label class="filter-field">
+    Order Number
     <input
       nz-input
-      name="orderSearch"
-      [(ngModel)]="orderSearch"
+      name="orderNumberFilter"
+      [(ngModel)]="orderNumberFilter"
       (keyup.enter)="searchOrders()"
-      placeholder="Order number, customer, or phone">
+      placeholder="e.g. ORD001">
+  </label>
+
+  <label class="filter-field">
+    Customer Name
+    <input
+      nz-input
+      name="customerNameFilter"
+      [(ngModel)]="customerNameFilter"
+      (keyup.enter)="searchOrders()"
+      placeholder="Customer name">
+  </label>
+
+  <label class="filter-field">
+    Customer Phone
+    <input
+      nz-input
+      name="customerPhoneFilter"
+      [(ngModel)]="customerPhoneFilter"
+      (keyup.enter)="searchOrders()"
+      placeholder="Any format">
+  </label>
+
+  <label class="filter-field">
+    Phone Match
+    <nz-select name="customerPhoneMatchModeFilter" [(ngModel)]="customerPhoneMatchModeFilter">
+      <nz-option *ngFor="let mode of phoneMatchModes" [nzValue]="mode.value" [nzLabel]="mode.label"></nz-option>
+    </nz-select>
   </label>
 
   <label class="filter-field">
@@ -184,16 +211,6 @@
         </div>
 
         <div class="form-grid">
-          <label class="filter-field filter-field--wide">
-            Customer
-            <input
-              nz-input
-              [value]="selectedCustomer()?.name || ''"
-              readonly
-              placeholder="Select a customer below">
-            <span class="field-error" *ngIf="formErrors().customer">{{ formErrors().customer }}</span>
-          </label>
-
           <label class="filter-field">
             Order Date
             <input nz-input type="text" [value]="currentOrder()?.createdAt ? (currentOrder()?.createdAt | dateTime) : 'Today'" readonly>
@@ -211,30 +228,20 @@
         </div>
       </div>
 
-      <div class="picker-grid">
-        <section class="picker-panel" *ngIf="modalMode() === 'create'">
-          <div class="section-heading">
-            <h2>Customer</h2>
-            <button nz-button nzSize="small" type="button" (click)="loadCustomers()">Search</button>
-          </div>
-          <div class="picker-toolbar">
-            <input nz-input name="modalCustomerName" [(ngModel)]="customerSearch" (keyup.enter)="loadCustomers()" placeholder="Customer name">
-            <input nz-input name="modalCustomerPhone" [(ngModel)]="customerPhoneSearch" (keyup.enter)="loadCustomers()" placeholder="Phone">
-          </div>
-          <div class="picker-list">
-            <button
-              nz-button
-              type="button"
-              *ngFor="let customer of customers()"
-              (click)="selectCustomer(customer)"
-              [class.selected]="selectedCustomer()?.id === customer.id"
-              [disabled]="customer.status !== 'Normal'">
-              <span>{{ customer.customerCode || customer.name }} - {{ customer.name }}</span>
-              <app-status-tag [display]="customerDisplay(customer.status)"></app-status-tag>
-            </button>
-          </div>
-        </section>
+      <div class="order-form-section">
+        <div class="section-heading">
+          <h2>Customer</h2>
+          <span *ngIf="modalMode() === 'edit'">Saved on this order</span>
+        </div>
+        <app-order-customer-form
+          [customer]="orderCustomer()"
+          [errors]="customerFormErrors()"
+          [disabled]="saving()"
+          [showNewCustomerHint]="modalMode() === 'create'"
+          (customerChange)="updateOrderCustomer($event)"></app-order-customer-form>
+      </div>
 
+      <div class="picker-grid">
         <section class="picker-panel">
           <div class="section-heading">
             <h2>Add Product</h2>
@@ -265,7 +272,7 @@
         <span class="field-error" *ngIf="formErrors().lines">{{ formErrors().lines }}</span>
         <app-order-line-editor
           [lines]="cartLines()"
-          [canCreateOrder]="!!selectedCustomer()"
+          [canCreateOrder]="!!orderCustomer().phone"
           [saving]="saving()"
           [showFooterAction]="false"
           (linesChange)="updateCartLines($event)"></app-order-line-editor>

@@ -18,18 +18,24 @@ import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { confirmAction } from '../../../../shared/utilities/confirm-action';
 import { describeApiError } from '../../../../shared/utilities/describe-api-error';
 import { formatDateTime } from '../../../../shared/utilities/display-formatters';
-import { CustomerLookupApiService } from '../../../common/api/customer-lookup-api.service';
 import { ProductLookupApiService } from '../../../common/api/product-lookup-api.service';
-import { CustomerLookupResponse } from '../../../common/contracts/customer-lookup.response';
-import { customerLookupStatusDisplay } from '../../../common/constants/customer-lookup-status';
 import {
   ProductLookupResponse,
   ProductVariantLookupResponse
 } from '../../../common/contracts/product-lookup.response';
 import { OrderApiService } from '../../api/order-api.service';
+import { OrderCustomerRequest } from '../../api/requests/order-customer.request';
 import { OrderLineRequest } from '../../api/requests/order-line.request';
 import { OrderResponse } from '../../api/responses/order.response';
 import { OrderLineEditorComponent } from '../../components/order-line-editor/order-line-editor.component';
+import {
+  OrderCustomerFormComponent,
+  OrderCustomerFormErrors
+} from '../../components/order-customer-form/order-customer-form.component';
+import {
+  OrderCustomerPhoneMatchMode,
+  orderCustomerPhoneMatchModes
+} from '../../constants/order-customer-phone-match-mode';
 import { OrderStatus, describeOrderStatusChange, orderStatusDisplay } from '../../constants/order-status';
 import { CartLine, cartGrandTotal, normalizeQuantity } from '../../models/cart-line.model';
 import { OrderStatusChangedNotification } from '../../models/order-status-changed.model';
@@ -43,6 +49,10 @@ const pendingPollWindowMs = 2 * 60_000;
 type OrderSortKey = 'orderNumber' | 'customer' | 'phone' | 'createdAt' | 'total' | 'status' | 'updatedAt';
 type SortDirection = 'asc' | 'desc';
 
+function emptyOrderCustomer(): OrderCustomerRequest {
+  return { name: '', phone: '', email: '', address: '' };
+}
+
 @Component({
   selector: 'app-order-list-page',
   standalone: true,
@@ -52,6 +62,7 @@ type SortDirection = 'asc' | 'desc';
     PageStateComponent,
     StatusTagComponent,
     OrderLineEditorComponent,
+    OrderCustomerFormComponent,
     DateTimePipe,
     MoneyPipe,
     NzButtonModule,
@@ -69,7 +80,6 @@ type SortDirection = 'asc' | 'desc';
 })
 export class OrderListPageComponent implements OnInit, OnDestroy {
   private readonly orderApi = inject(OrderApiService);
-  private readonly customerLookup = inject(CustomerLookupApiService);
   private readonly productLookup = inject(ProductLookupApiService);
   readonly orderRealtime = inject(OrderRealtimeService);
   private readonly modal = inject(NzModalService);
@@ -80,24 +90,27 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   readonly errorMessage = signal('');
   readonly realtimeMessage = signal('');
   readonly waitingSinceText = signal('');
-  readonly customers = signal<CustomerLookupResponse[]>([]);
   readonly products = signal<ProductLookupResponse[]>([]);
   readonly orders = signal<OrderResponse[]>([]);
   readonly total = signal(0);
   readonly cartLines = signal<CartLine[]>([]);
-  readonly selectedCustomer = signal<CustomerLookupResponse | null>(null);
+  readonly orderCustomer = signal<OrderCustomerRequest>(emptyOrderCustomer());
   readonly currentOrder = signal<OrderResponse | null>(null);
   readonly currentEtag = signal<string | null>(null);
   readonly reservationText = signal('');
   readonly orderModalOpen = signal(false);
   readonly modalMode = signal<'create' | 'edit'>('create');
   readonly formDirty = signal(false);
-  readonly formErrors = signal<{ customer?: string; lines?: string }>({});
+  readonly customerFormErrors = signal<OrderCustomerFormErrors>({});
+  readonly formErrors = signal<{ lines?: string }>({});
 
-  customerSearch = '';
-  customerPhoneSearch = '';
   productSearch = '';
-  orderSearch = '';
+  // Independent filters, all applied server-side. There is no combined term and
+  // nothing is matched on the client, so a hit on another page is still found.
+  orderNumberFilter = '';
+  customerNameFilter = '';
+  customerPhoneFilter = '';
+  customerPhoneMatchModeFilter: OrderCustomerPhoneMatchMode = 'Prefix';
   /** `null` is what nzAllowClear writes back; the API client drops empty values from the query. */
   statusFilter: OrderStatus | '' | null = '';
   fromDate = '';
@@ -108,7 +121,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   readonly sortDirection = signal<SortDirection>('desc');
 
   readonly statusDisplay = orderStatusDisplay;
-  readonly customerDisplay = customerLookupStatusDisplay;
+  readonly phoneMatchModes = orderCustomerPhoneMatchModes;
   readonly orderStatuses: { value: OrderStatus; label: string }[] = [
     { value: 'Draft', label: 'Draft' },
     { value: 'PendingInventory', label: 'Pending Inventory' },
@@ -119,18 +132,11 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   readonly pageSizeOptions = [10, 20, 50];
   readonly modalTitle = computed(() => this.modalMode() === 'create' ? 'Create Order' : `Edit ${this.currentOrderNumber()}`);
   readonly modalGrandTotal = computed(() => cartGrandTotal(this.cartLines()));
-  // Status and customer are filtered server-side, so they apply across every page and agree with
-  // total(). Only an order-number term is matched here, because the API has no filter for it —
-  // re-testing a customer term locally would discard server matches whose formatting differs
-  // (the API strips non-digits from a phone, the stored value keeps none of the user's separators).
-  readonly displayedOrders = computed(() => {
-    const orderNumberTerm = this.clientOrderNumberFilter();
-    const filtered = orderNumberTerm
-      ? this.orders().filter(order => this.orderNumber(order).toLowerCase().includes(orderNumberTerm))
-      : this.orders();
-
-    return [...filtered].sort((left, right) => this.compareOrders(left, right));
-  });
+  // Every filter is applied by the API, so this only orders the page the server
+  // returned. Nothing is filtered out here — doing so would silently disagree
+  // with total() and hide matches the server did find.
+  readonly displayedOrders = computed(() =>
+    [...this.orders()].sort((left, right) => this.compareOrders(left, right)));
 
   private currentSubscribedOrderId: string | null = null;
   private removeStatusChangedHandler: (() => void) | null = null;
@@ -163,7 +169,9 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    void Promise.all([this.loadCustomers(), this.loadProducts(), this.loadOrders()]);
+    // No customer prefetch: the order form asks the server per keystroke instead
+    // of pulling a page of customers up front and filtering it here.
+    void Promise.all([this.loadProducts(), this.loadOrders()]);
     this.removeStatusChangedHandler = this.orderRealtime.onStatusChanged(
       notification => this.handleOrderStatusChanged(notification));
     this.removeReconnectedHandler = this.orderRealtime.onReconnected(() => {
@@ -185,20 +193,6 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     document.removeEventListener('visibilitychange', this.visibilityHandler);
     this.clearRefreshTimers();
     this.stopPendingPolling();
-  }
-
-  async loadCustomers(): Promise<void> {
-    try {
-      const page = await this.customerLookup.search({
-        name: this.customerSearch,
-        phone: this.customerPhoneSearch,
-        page: 1,
-        pageSize: 10
-      });
-      this.customers.set(page.items);
-    } catch (error) {
-      this.notifyError('Load Customers Failed', error);
-    }
   }
 
   async loadProducts(): Promise<void> {
@@ -228,7 +222,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     this.errorMessage.set('');
     try {
       const page = await this.orderApi.search({
-        customer: this.serverCustomerFilter(),
+        orderNumber: this.orderNumberFilter.trim() || undefined,
+        customerName: this.customerNameFilter.trim() || undefined,
+        customerPhone: this.customerPhoneFilter.trim() || undefined,
+        customerPhoneMatchMode: this.customerPhoneMatchModeFilter,
         status: this.statusFilter,
         from: this.fromDate || undefined,
         to: this.toDate || undefined,
@@ -250,10 +247,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  selectCustomer(customer: CustomerLookupResponse): void {
-    this.selectedCustomer.set(customer);
+  updateOrderCustomer(customer: OrderCustomerRequest): void {
+    this.orderCustomer.set(customer);
     this.formDirty.set(true);
-    this.formErrors.set({ ...this.formErrors(), customer: undefined });
+    this.customerFormErrors.set({});
   }
 
   sellableVariants(): { product: ProductLookupResponse; variant: ProductVariantLookupResponse }[] {
@@ -294,7 +291,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async resetFilters(): Promise<void> {
-    this.orderSearch = '';
+    this.orderNumberFilter = '';
+    this.customerNameFilter = '';
+    this.customerPhoneFilter = '';
+    this.customerPhoneMatchModeFilter = 'Prefix';
     this.statusFilter = '';
     this.fromDate = '';
     this.toDate = '';
@@ -332,7 +332,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   orderNumber(order: OrderResponse): string {
-    return `ORD-${order.id.slice(0, 8).toUpperCase()}`;
+    return order.orderCode;
   }
 
   currentOrderNumber(): string {
@@ -348,12 +348,11 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     this.modalMode.set('create');
     this.currentOrder.set(null);
     this.currentEtag.set(null);
-    this.selectedCustomer.set(null);
+    this.orderCustomer.set(emptyOrderCustomer());
     this.cartLines.set([]);
-    this.customerSearch = '';
-    this.customerPhoneSearch = '';
     this.productSearch = '';
     this.formErrors.set({});
+    this.customerFormErrors.set({});
     this.formDirty.set(false);
     this.orderModalOpen.set(true);
   }
@@ -370,14 +369,17 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     }
 
     this.modalMode.set('edit');
-    this.selectedCustomer.set({
-      id: selected.customerId,
+    // Straight from the order's own snapshot. The customer record is never
+    // re-fetched to overwrite it: the two are allowed to differ.
+    this.orderCustomer.set({
       name: selected.customerName,
       phone: selected.customerPhone,
-      status: 'Normal'
+      email: selected.customerEmail ?? '',
+      address: selected.customerAddress ?? ''
     });
     this.cartLines.set(this.toCartLines(selected));
     this.formErrors.set({});
+    this.customerFormErrors.set({});
     this.formDirty.set(false);
     this.orderModalOpen.set(true);
   }
@@ -396,8 +398,9 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
 
     this.orderModalOpen.set(false);
     this.formErrors.set({});
+    this.customerFormErrors.set({});
     this.formDirty.set(false);
-    this.selectedCustomer.set(null);
+    this.orderCustomer.set(emptyOrderCustomer());
     this.cartLines.set([]);
   }
 
@@ -417,7 +420,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     }
 
     if (this.modalMode() === 'edit') {
-      await this.replaceOrderLines();
+      await this.saveOrderEdits();
       return;
     }
 
@@ -484,27 +487,18 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const customer = this.selectedCustomer();
-    if (!customer || customer.status !== 'Normal') {
-      this.formErrors.set({ ...this.formErrors(), customer: 'Select a Normal customer.' });
-      return;
-    }
-
     this.saving.set(true);
     this.formErrors.set({});
     try {
-      const lines: OrderLineRequest[] = this.cartLines().map(line => ({
-        productVariantId: line.variant.id,
-        quantity: line.quantity,
-        discountPercent: line.discountPercent
-      }));
-      const result = await this.orderApi.create(customer.id, lines);
+      // Sent as typed. Whether this customer already exists is the backend's
+      // question, answered in the same transaction that creates the order.
+      const result = await this.orderApi.create(this.orderCustomer(), this.toOrderLineRequests());
       this.currentOrder.set(result.body);
       this.currentEtag.set(result.etag ?? null);
       await this.subscribeToOrder(result.body.id);
       this.updateWaitingState(result.body);
       this.cartLines.set([]);
-      this.selectedCustomer.set(null);
+      this.orderCustomer.set(emptyOrderCustomer());
       this.orderModalOpen.set(false);
       this.formDirty.set(false);
       await this.loadOrders();
@@ -515,13 +509,20 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  async replaceOrderLines(): Promise<void> {
+  /**
+   * Saves an edited order.
+   *
+   * The customer snapshot and the lines are separate endpoints, so only what
+   * actually changed is sent, and the ETag from the first call is threaded into
+   * the second — the order's version moves after each one.
+   */
+  async saveOrderEdits(): Promise<void> {
     if (this.saving()) {
       return;
     }
 
     const order = this.currentOrder();
-    const etag = this.currentEtag();
+    let etag = this.currentEtag();
     if (!order || !etag) {
       this.notificationService.warning('Refresh Required', 'Refresh the order and try again.');
       return;
@@ -530,15 +531,22 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     this.saving.set(true);
     this.formErrors.set({});
     try {
-      const lines: OrderLineRequest[] = this.cartLines().map(line => ({
-        productVariantId: line.variant.id,
-        quantity: line.quantity,
-        discountPercent: line.discountPercent
-      }));
-      const result = await this.orderApi.replaceLines(order.id, lines, etag);
-      this.currentOrder.set(result.body);
-      this.currentEtag.set(result.etag ?? null);
-      this.updateWaitingState(result.body);
+      let saved = order;
+      if (this.hasCustomerChanged(order)) {
+        const result = await this.orderApi.updateCustomer(order.id, this.orderCustomer(), etag);
+        saved = result.body;
+        etag = result.etag ?? etag;
+      }
+
+      if (this.haveLinesChanged(order)) {
+        const result = await this.orderApi.replaceLines(order.id, this.toOrderLineRequests(), etag);
+        saved = result.body;
+        etag = result.etag ?? etag;
+      }
+
+      this.currentOrder.set(saved);
+      this.currentEtag.set(etag);
+      this.updateWaitingState(saved);
       this.orderModalOpen.set(false);
       this.formDirty.set(false);
       await this.loadOrders();
@@ -547,6 +555,34 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  private toOrderLineRequests(): OrderLineRequest[] {
+    return this.cartLines().map(line => ({
+      productVariantId: line.variant.id,
+      quantity: line.quantity,
+      discountPercent: line.discountPercent
+    }));
+  }
+
+  private hasCustomerChanged(order: OrderResponse): boolean {
+    const customer = this.orderCustomer();
+    return customer.name !== order.customerName
+      || customer.phone !== order.customerPhone
+      || (customer.email || '') !== (order.customerEmail || '')
+      || (customer.address || '') !== (order.customerAddress || '');
+  }
+
+  private haveLinesChanged(order: OrderResponse): boolean {
+    const lines = this.toOrderLineRequests();
+    if (lines.length !== order.lines.length) {
+      return true;
+    }
+
+    return lines.some(line => {
+      const existing = order.lines.find(x => x.productVariantId === line.productVariantId);
+      return !existing || existing.quantity !== line.quantity || existing.discountPercent !== line.discountPercent;
+    });
   }
 
   async loadOrderDetail(orderId: string): Promise<void> {
@@ -687,19 +723,32 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Explains every problem rather than just disabling Save, so the user can see
+   * what to fix instead of guessing why the button does nothing.
+   */
   private validateOrderForm(): boolean {
-    const errors: { customer?: string; lines?: string } = {};
-    const customer = this.selectedCustomer();
-    if (!customer || customer.status !== 'Normal') {
-      errors.customer = 'Select a Normal customer before saving.';
+    const customer = this.orderCustomer();
+    const customerErrors: OrderCustomerFormErrors = {};
+    if (!customer.name.trim()) {
+      customerErrors.name = 'Customer name is required.';
     }
 
+    const customerPhoneDigits = customer.phone.replace(/\D/g, '');
+    if (!customer.phone.trim()) {
+      customerErrors.phone = 'Phone is required.';
+    } else if (customerPhoneDigits.length < 9 || customerPhoneDigits.length > 15) {
+      customerErrors.phone = 'Phone must contain 9 to 15 digits.';
+    }
+
+    const errors: { lines?: string } = {};
     if (this.cartLines().length === 0) {
       errors.lines = 'Add at least one product.';
     }
 
+    this.customerFormErrors.set(customerErrors);
     this.formErrors.set(errors);
-    return !errors.customer && !errors.lines;
+    return !customerErrors.name && !customerErrors.phone && !errors.lines;
   }
 
   private toCartLines(order: OrderResponse): CartLine[] {
@@ -766,23 +815,6 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       case 'updatedAt':
         return Date.parse(order.updatedAt);
     }
-  }
-
-  /** True when the search box holds an order number, which only the client can match. */
-  private isOrderNumberSearch(term: string): boolean {
-    return /^ord-/i.test(term);
-  }
-
-  private serverCustomerFilter(): string | undefined {
-    // The API matches `customer` against name *or* phone, so phone-shaped terms belong on the server
-    // too. Only the order number stays local, since the API has no equivalent filter.
-    const term = this.orderSearch.trim();
-    return !term || this.isOrderNumberSearch(term) ? undefined : term;
-  }
-
-  private clientOrderNumberFilter(): string {
-    const term = this.orderSearch.trim();
-    return this.isOrderNumberSearch(term) ? term.toLowerCase() : '';
   }
 
   private async subscribeToOrder(orderId: string): Promise<void> {

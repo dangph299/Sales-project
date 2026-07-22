@@ -111,12 +111,11 @@ describe('OrderListPageComponent realtime behavior', () => {
     orderApi.createResult = new Promise<ApiResult<OrderResponse>>(resolve => {
       resolveCreate = resolve;
     });
-    fixture.componentInstance.selectedCustomer.set({
-      id: '33333333-3333-3333-3333-333333333333',
-      customerCode: 'CUST-1',
+    fixture.componentInstance.orderCustomer.set({
       name: 'Customer',
       phone: '0901234567',
-      status: 'Normal'
+      email: '',
+      address: ''
     });
     fixture.componentInstance.cartLines.set([{
       product: {
@@ -160,9 +159,12 @@ class FakeOrderApiService {
 
   readonly order: OrderResponse = {
     id: '22222222-2222-2222-2222-222222222222',
+    orderCode: 'ORD001',
     customerId: '33333333-3333-3333-3333-333333333333',
     customerName: 'Customer',
     customerPhone: '0901234567',
+    customerEmail: null,
+    customerAddress: null,
     createdAt: new Date().toISOString(),
     status: 'PendingInventory',
     totalQuantity: 1,
@@ -195,6 +197,10 @@ class FakeOrderApiService {
 class FakeLookupApiService {
   search(): Promise<PagedResult<never>> {
     return Promise.resolve(emptyPage<never>());
+  }
+
+  suggestByPhone(): Promise<never[]> {
+    return Promise.resolve([]);
   }
 }
 
