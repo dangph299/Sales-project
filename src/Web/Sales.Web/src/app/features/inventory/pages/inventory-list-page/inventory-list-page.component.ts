@@ -72,10 +72,13 @@ export class InventoryListPageComponent implements OnInit {
     this.loading.set(true);
     this.errorMessage.set('');
     try {
+      // Every variant, whatever its product's lifecycle state: stock is physical, and a product is
+      // normally received into the warehouse before it is published. Filtering by product status
+      // left new variants with no row, and so no way to adjust them.
       const page = await this.productLookup.search({
         sku: this.skuFilter,
         name: this.nameFilter,
-        status: 'Published',
+        status: '',
         page: 1,
         pageSize: 20
       });
