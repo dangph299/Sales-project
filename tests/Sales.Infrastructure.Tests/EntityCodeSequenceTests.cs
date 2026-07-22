@@ -31,12 +31,19 @@ public sealed class EntityCodeSequenceTests
     }
 
     [Fact]
+    public void Order_codes_come_from_the_order_sequence()
+    {
+        Assert.Equal("ORD", EntityCodeSequence.Order.Prefix);
+        Assert.Equal("order_code_seq", EntityCodeSequence.Order.SequenceName);
+    }
+
+    [Fact]
     public void No_prefix_or_sequence_is_shared_between_entities()
     {
         var prefixes = EntityCodeSequence.All.Select(sequence => sequence.Prefix).ToArray();
         var sequenceNames = EntityCodeSequence.All.Select(sequence => sequence.SequenceName).ToArray();
 
-        Assert.Equal(3, EntityCodeSequence.All.Count);
+        Assert.Equal(4, EntityCodeSequence.All.Count);
         Assert.Equal(prefixes.Length, prefixes.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal(sequenceNames.Length, sequenceNames.Distinct(StringComparer.Ordinal).Count());
     }

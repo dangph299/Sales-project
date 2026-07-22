@@ -16,6 +16,16 @@ public sealed class SearchOrdersHandler(IOrderReadService readService) : IReques
     /// <returns>A page of matching orders.</returns>
     public async Task<PagedResult<OrderDto>> Handle(SearchOrders request, CancellationToken ct)
     {
-        return await readService.SearchAsync(request.From, request.To, request.Customer, request.Status, request.Page, request.PageSize, ct);
+        return await readService.SearchAsync(
+            request.OrderNumber,
+            request.CustomerName,
+            request.CustomerPhone,
+            request.CustomerPhoneMatchMode,
+            request.From,
+            request.To,
+            request.Status,
+            request.Page,
+            request.PageSize,
+            ct);
     }
 }

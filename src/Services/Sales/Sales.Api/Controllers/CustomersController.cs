@@ -64,6 +64,28 @@ public sealed class CustomersController : ControllerBase
     }
 
     /// <summary>
+    /// Finds customers whose phone number starts with a search term, for the order form's phone
+    /// autocomplete.
+    /// </summary>
+    /// <remarks>
+    /// Returns only what a dropdown needs, capped to a small number of rows, and never includes
+    /// soft-deleted customers.
+    /// </remarks>
+    /// <param name="phone">Phone fragment, in any format. Normalized server-side.</param>
+    /// <param name="limit">Maximum number of suggestions. Clamped to 1..20. Defaults to 10.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the matching customers, or an empty list when the term holds no digit.</returns>
+    [HttpGet("lookup")]
+    public async Task<IActionResult> Lookup(
+        [FromQuery] string? phone,
+        [FromQuery] int limit = 10,
+        CancellationToken ct = default)
+    {
+        var customers = await _sender.Send(new LookupCustomersByPhone(phone, limit), ct);
+        return this.ToOkResponse(customers);
+    }
+
+    /// <summary>
     /// Loads a single customer by its identifier.
     /// </summary>
     /// <param name="id">Customer identifier.</param>

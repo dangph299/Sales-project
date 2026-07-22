@@ -17,14 +17,28 @@ public interface IOrderReadService
     Task<OrderDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Searches orders by creation date range, customer name/phone, and/or status.
+    /// Searches orders by independent filters, reading every customer value from the order's own
+    /// snapshot rather than joining the customer table.
     /// </summary>
+    /// <param name="orderNumber">An optional whole or partial order code, matched from the start.</param>
+    /// <param name="customerName">An optional keyword matched anywhere within the order's customer name.</param>
+    /// <param name="customerPhone">An optional phone fragment, in any format. Normalized here, so the caller sends what the user typed.</param>
+    /// <param name="customerPhoneMatchMode">Which end of the phone number <paramref name="customerPhone"/> must match.</param>
     /// <param name="from">An optional inclusive lower bound on <c>CreatedAt</c>.</param>
     /// <param name="to">An optional inclusive upper bound on <c>CreatedAt</c>.</param>
-    /// <param name="customer">An optional substring to match against the order's customer name or phone.</param>
     /// <param name="status">An optional status the order must currently be in.</param>
     /// <param name="page">1-based page number.</param>
     /// <param name="pageSize">Maximum page size.</param>
     /// <returns>A page of matching orders.</returns>
-    Task<PagedResult<OrderDto>> SearchAsync(DateTimeOffset? from, DateTimeOffset? to, string? customer, OrderStatus? status, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<PagedResult<OrderDto>> SearchAsync(
+        string? orderNumber,
+        string? customerName,
+        string? customerPhone,
+        OrderCustomerPhoneMatchMode customerPhoneMatchMode,
+        DateTimeOffset? from,
+        DateTimeOffset? to,
+        OrderStatus? status,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }

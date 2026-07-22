@@ -24,4 +24,20 @@ public interface ICustomerReadService
     /// <param name="pageSize">Maximum page size.</param>
     /// <returns>A page of matching customers.</returns>
     Task<PagedResult<CustomerDto>> SearchAsync(string? name, string? phone, int page, int pageSize, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Finds live customers whose normalized phone number starts with a search term, for the order
+    /// form's autocomplete.
+    /// </summary>
+    /// <remarks>
+    /// A prefix match, not a substring one: the business question is "which customer's number begins
+    /// with what I have typed", and a leading wildcard could not use the phone index anyway.
+    /// </remarks>
+    /// <param name="customerPhoneSearchTerm">Phone fragment, in any format. Normalized by the implementation.</param>
+    /// <param name="limit">Maximum number of suggestions to return.</param>
+    /// <returns>Matching customers, or an empty collection when the term holds no digit.</returns>
+    Task<IReadOnlyCollection<CustomerLookupDto>> LookupByPhonePrefixAsync(
+        string? customerPhoneSearchTerm,
+        int limit,
+        CancellationToken cancellationToken = default);
 }
