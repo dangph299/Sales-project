@@ -68,4 +68,14 @@ public sealed class InventoryItemTests
         Assert.True(reservation.IsStale(4));
         Assert.False(reservation.IsStale(6));
     }
+
+    [Fact]
+    public void Create_stores_the_identifier_as_the_product_variant_id()
+    {
+        var productVariantId = Guid.NewGuid();
+
+        var item = InventoryItem.Create(productVariantId, "sku", 10);
+
+        Assert.Equal(productVariantId, item.ProductVariantId);
+    }
 }

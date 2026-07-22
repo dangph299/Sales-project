@@ -1,22 +1,22 @@
 namespace Inventory.Domain;
 
 /// <summary>
-/// Tracks available and reserved stock for a single product. Owns the invariant that available
-/// stock can never go negative.
+/// Tracks available and reserved stock for a single product variant. Owns the invariant that
+/// available stock can never go negative.
 /// </summary>
 public sealed class InventoryItem : IEntity<Guid>
 {
     private InventoryItem() { }
 
     /// <summary>
-    /// Gets the unique identifier of the product this item tracks stock for.
+    /// Gets the unique identifier of the product variant this item tracks stock for.
     /// </summary>
-    public Guid ProductId { get; private set; }
+    public Guid ProductVariantId { get; private set; }
 
-    Guid IEntity<Guid>.Id => ProductId;
+    Guid IEntity<Guid>.Id => ProductVariantId;
 
     /// <summary>
-    /// Gets the product's normalized SKU.
+    /// Gets the product variant's normalized SKU.
     /// </summary>
     public string Sku { get; private set; } = null!;
 
@@ -38,15 +38,15 @@ public sealed class InventoryItem : IEntity<Guid>
     /// <summary>
     /// Creates a new inventory item with an initial available quantity.
     /// </summary>
-    /// <param name="id">Product identifier.</param>
-    /// <param name="sku">Product's SKU.</param>
+    /// <param name="productVariantId">Product variant identifier.</param>
+    /// <param name="sku">Product variant's SKU.</param>
     /// <param name="available">Initial available quantity. Must not be negative.</param>
     /// <returns>Newly created inventory item.</returns>
     /// <exception cref="InvalidOperationException">Thrown when <paramref name="available"/> is negative.</exception>
-    public static InventoryItem Create(Guid id, string sku, int available)
+    public static InventoryItem Create(Guid productVariantId, string sku, int available)
     {
         if (available < 0) throw new InvalidOperationException("Initial stock cannot be negative.");
-        return new() { ProductId = id, Sku = sku.Trim().ToUpperInvariant(), Available = available };
+        return new() { ProductVariantId = productVariantId, Sku = sku.Trim().ToUpperInvariant(), Available = available };
     }
 
     /// <summary>
