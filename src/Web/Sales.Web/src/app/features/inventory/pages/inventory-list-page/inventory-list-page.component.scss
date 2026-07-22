@@ -1,20 +1,5 @@
-.toolbar {
-  align-items: flex-end;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 18px;
-
-  label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 180px;
-  }
-}
-
-.selectable {
-  cursor: pointer;
+.toolbar label {
+  min-width: 180px;
 }
 
 .actions-column {

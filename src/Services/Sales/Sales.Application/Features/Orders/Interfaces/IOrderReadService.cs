@@ -23,7 +23,6 @@ public interface IOrderReadService
     /// <param name="orderNumber">An optional whole or partial order code, matched from the start.</param>
     /// <param name="customerName">An optional keyword matched anywhere within the order's customer name.</param>
     /// <param name="customerPhone">An optional phone fragment, in any format. Normalized here, so the caller sends what the user typed.</param>
-    /// <param name="customerPhoneMatchMode">Which end of the phone number <paramref name="customerPhone"/> must match.</param>
     /// <param name="from">An optional inclusive lower bound on <c>CreatedAt</c>.</param>
     /// <param name="to">An optional inclusive upper bound on <c>CreatedAt</c>.</param>
     /// <param name="status">An optional status the order must currently be in.</param>
@@ -34,7 +33,6 @@ public interface IOrderReadService
         string? orderNumber,
         string? customerName,
         string? customerPhone,
-        OrderCustomerPhoneMatchMode customerPhoneMatchMode,
         DateTimeOffset? from,
         DateTimeOffset? to,
         OrderStatus? status,

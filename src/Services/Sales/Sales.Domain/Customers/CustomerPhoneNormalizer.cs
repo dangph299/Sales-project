@@ -51,8 +51,7 @@ public static class CustomerPhoneNormalizer
     }
 
     /// <summary>
-    /// Reverses an already normalized phone value, so that a suffix search can run as an indexed
-    /// prefix scan against the reversed column.
+    /// Reverses an already normalized phone value.
     /// </summary>
     /// <param name="normalizedCustomerPhone">A value already produced by <see cref="Normalize"/> or
     /// <see cref="NormalizeSearchTerm"/>. An empty string is accepted and returns an empty string,

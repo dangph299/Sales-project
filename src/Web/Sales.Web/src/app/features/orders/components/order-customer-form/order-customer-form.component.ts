@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzAutocompleteModule, NzOptionSelectionChange } from 'ng-zorro-antd/auto-complete';
+import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs';
 import { CustomerLookupApiService } from '../../../common/api/customer-lookup-api.service';
@@ -35,9 +36,8 @@ export interface OrderCustomerFormErrors {
 @Component({
   selector: 'app-order-customer-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzAutocompleteModule, NzInputModule],
-  templateUrl: './order-customer-form.component.html',
-  styleUrl: './order-customer-form.component.scss'
+  imports: [CommonModule, FormsModule, NzAutocompleteModule, NzFormModule, NzInputModule],
+  templateUrl: './order-customer-form.component.html'
 })
 export class OrderCustomerFormComponent implements OnInit, OnDestroy {
   private readonly customerLookup = inject(CustomerLookupApiService);

@@ -4,9 +4,8 @@ namespace Sales.Application.Features.Orders.DTOs;
 /// Read model for an order, returned by queries and API responses.
 /// </summary>
 /// <remarks>
-/// Every customer field here is the order's own snapshot, read from the order row. The normalized
-/// and reversed phone columns are deliberately absent: they exist only so the database can index
-/// phone searches, and no client has any use for them.
+/// Every customer field here is the order's own snapshot rather than the customer's current
+/// details.
 /// </remarks>
 /// <param name="Id">Order's unique identifier.</param>
 /// <param name="OrderCode">Order's backend-assigned business code.</param>

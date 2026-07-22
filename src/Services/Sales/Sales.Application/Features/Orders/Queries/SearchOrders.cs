@@ -13,7 +13,6 @@ namespace Sales.Application.Features.Orders.Queries;
 /// <param name="OrderNumber">An optional whole or partial order code, matched from the start.</param>
 /// <param name="CustomerName">An optional keyword matched anywhere within the order's customer name snapshot.</param>
 /// <param name="CustomerPhone">An optional phone fragment, in any format, matched against the order's customer phone snapshot.</param>
-/// <param name="CustomerPhoneMatchMode">Which end of the phone number <paramref name="CustomerPhone"/> must match. Defaults to <see cref="OrderCustomerPhoneMatchMode.Prefix"/>.</param>
 /// <param name="From">An optional inclusive lower bound on the order's creation time.</param>
 /// <param name="To">An optional inclusive upper bound on the order's creation time.</param>
 /// <param name="Status">An optional status the order must currently be in.</param>
@@ -23,7 +22,6 @@ public sealed record SearchOrders(
     string? OrderNumber = null,
     string? CustomerName = null,
     string? CustomerPhone = null,
-    OrderCustomerPhoneMatchMode CustomerPhoneMatchMode = OrderCustomerPhoneMatchMode.Prefix,
     DateTimeOffset? From = null,
     DateTimeOffset? To = null,
     OrderStatus? Status = null,

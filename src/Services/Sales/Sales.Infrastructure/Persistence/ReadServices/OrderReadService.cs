@@ -29,7 +29,6 @@ public sealed class OrderReadService(SalesDbContext db, IMapper mapper) : IOrder
         string? orderNumber,
         string? customerName,
         string? customerPhone,
-        OrderCustomerPhoneMatchMode customerPhoneMatchMode,
         DateTimeOffset? from,
         DateTimeOffset? to,
         OrderStatus? status,
@@ -53,9 +52,7 @@ public sealed class OrderReadService(SalesDbContext db, IMapper mapper) : IOrder
         var normalizedCustomerPhoneSearchTerm = CustomerPhoneNormalizer.NormalizeSearchTerm(customerPhone);
         if (normalizedCustomerPhoneSearchTerm.Length > 0)
         {
-            spec = Compose(spec, new OrderCustomerPhoneMatchesSpecification(
-                normalizedCustomerPhoneSearchTerm,
-                customerPhoneMatchMode));
+            spec = Compose(spec, new OrderCustomerPhoneMatchesSpecification(normalizedCustomerPhoneSearchTerm));
         }
 
         if (spec is not null) query = query.Where(spec.ToExpression());

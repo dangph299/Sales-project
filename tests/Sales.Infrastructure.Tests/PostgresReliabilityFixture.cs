@@ -5,18 +5,14 @@ using Xunit;
 namespace Sales.Infrastructure.Tests;
 
 /// <summary>
-/// Provides a real PostgreSQL for the reliability suite so EF Core behavior (concurrency tokens,
-/// outbox/inbox queries, <see cref="DateTimeOffset"/> comparisons, index operator classes and
-/// migration SQL) is exercised against the same engine used in production. When none can be reached
-/// the fixture reports <see cref="IsAvailable"/> as <see langword="false"/> so tests skip visibly
-/// instead of passing silently.
+/// Provides a real PostgreSQL for the reliability suite. When none can be reached the fixture
+/// reports <see cref="IsAvailable"/> as <see langword="false"/> so tests skip visibly instead of
+/// passing silently.
 /// </summary>
 /// <remarks>
-/// A connection string in <c>SALES_TEST_POSTGRES</c> takes precedence over starting a container. CI
-/// already sets that variable against its service container, and it is also the way to run this
-/// suite on a machine where a PostgreSQL is running but the Docker socket is not accessible to the
-/// current user. The database it names is dropped and recreated by the migration tests, so it must
-/// be a dedicated test database and never a development one.
+/// A connection string in <c>SALES_TEST_POSTGRES</c> is used in preference to starting a container.
+/// The database it names is dropped and recreated by the migration tests, so it must be a dedicated
+/// test database and never a development one.
 /// </remarks>
 public sealed class PostgresReliabilityFixture : IAsyncLifetime
 {

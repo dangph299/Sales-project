@@ -1,26 +1,3 @@
-.kpi-grid {
-  display: grid;
-  gap: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  margin-bottom: 18px;
-
-  span {
-    color: #8c8c8c;
-    display: block;
-    font-size: 13px;
-  }
-
-  strong {
-    display: block;
-    font-size: 22px;
-    line-height: 1.4;
-  }
-
-  small {
-    color: #8c8c8c;
-  }
-}
-
 .content-grid {
   display: grid;
   gap: 18px;

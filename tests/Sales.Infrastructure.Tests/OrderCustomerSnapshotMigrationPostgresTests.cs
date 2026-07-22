@@ -9,15 +9,9 @@ using Xunit;
 namespace Sales.Infrastructure.Tests;
 
 /// <summary>
-/// Proves the snapshot migration either backfills legacy orders correctly or refuses to run.
+/// Covers the snapshot migration: it either backfills legacy orders correctly or refuses to run and
+/// leaves the data untouched.
 /// </summary>
-/// <remarks>
-/// The refusal cases matter more than the happy path. Truncating an over-long phone number would
-/// silently file two different customers' orders under one search value, and blanking an
-/// unparseable one would drop the order out of every phone search without anyone noticing, so the
-/// migration must stop and say so instead. Only a real PostgreSQL instance can establish this: the
-/// backfill is raw SQL and the failure is a <c>RAISE EXCEPTION</c>.
-/// </remarks>
 [Trait("Category", "Reliability")]
 [Collection("SalesReliabilityPostgres")]
 public sealed class OrderCustomerSnapshotMigrationPostgresTests

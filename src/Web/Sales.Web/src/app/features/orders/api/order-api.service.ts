@@ -3,7 +3,6 @@ import { ApiClientService } from '../../../core/api/api-client.service';
 import { ApiResult } from '../../../core/api/api-result.model';
 import { PagedResult } from '../../../core/api/paged-result.model';
 import { ApiEndpointConfigurationService } from '../../../core/config/api-endpoint-configuration.service';
-import { OrderCustomerPhoneMatchMode } from '../constants/order-customer-phone-match-mode';
 import { OrderStatus } from '../constants/order-status';
 import { OrderCustomerRequest } from './requests/order-customer.request';
 import { OrderLineRequest } from './requests/order-line.request';
@@ -21,7 +20,6 @@ export interface SearchOrdersFilters {
   orderNumber?: string;
   customerName?: string;
   customerPhone?: string;
-  customerPhoneMatchMode?: OrderCustomerPhoneMatchMode;
   from?: string;
   to?: string;
   status?: OrderStatus | '' | null;
@@ -43,9 +41,6 @@ export class OrderApiService {
       orderNumber: filters.orderNumber,
       customerName: filters.customerName,
       customerPhone: filters.customerPhone,
-      // Only meaningful alongside a phone term, and omitted otherwise so the
-      // backend keeps its own default.
-      customerPhoneMatchMode: filters.customerPhone ? filters.customerPhoneMatchMode : undefined,
       from: filters.from,
       to: filters.to,
       status: filters.status,

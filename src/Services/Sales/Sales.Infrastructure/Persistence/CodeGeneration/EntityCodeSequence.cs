@@ -7,15 +7,9 @@ namespace Sales.Infrastructure;
 /// way those numbers are rendered into a code.
 /// </summary>
 /// <remarks>
-/// The prefix, the sequence name and the code format are declared here once and nowhere else: the
-/// EF model reads these to create the sequences and size the columns, the migration reads them to
-/// seed each one, and the generators read them to build codes.
-/// <para>
-/// The formats are not uniform. Customer, product and category codes are padded to three digits but
-/// keep counting past 999 into four, so they have no ceiling. Order codes are a fixed-width
-/// <c>ORD-0000001</c>, which does have a ceiling — running past it would produce a code that no
-/// longer fits the column or the agreed format, so the sequence refuses rather than widening.
-/// </para>
+/// Customer, product and category codes pad to three digits and keep counting past 999, so they
+/// have no ceiling. Order codes are a fixed-width <c>ORD-0000001</c> and stop at
+/// <c>ORD-9999999</c>.
 /// </remarks>
 public sealed record EntityCodeSequence
 {
@@ -60,10 +54,10 @@ public sealed record EntityCodeSequence
     /// <summary>
     /// Renders one allocated sequence number as a business code.
     /// </summary>
-    /// <param name="sequenceNumber">The number <c>nextval</c> handed out.</param>
+    /// <param name="sequenceNumber">The allocated number.</param>
+    /// <returns>The prefix followed by the number, padded to <see cref="NumericWidth"/> digits.</returns>
     /// <exception cref="InvalidOperationException">
-    /// The sequence has run past <see cref="MaximumSequenceNumber"/>. Continuing would hand out a
-    /// code wider than the agreed format and the column, so allocation stops here instead.
+    /// <paramref name="sequenceNumber"/> is past <see cref="MaximumSequenceNumber"/>.
     /// </exception>
     public string FormatCode(long sequenceNumber)
     {

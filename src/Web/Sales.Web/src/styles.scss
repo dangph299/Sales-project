@@ -43,6 +43,13 @@ a {
   text-transform: uppercase;
 }
 
+.page-header__actions,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .content-grid {
   display: grid;
   gap: 16px;
@@ -53,20 +60,8 @@ a {
   grid-template-columns: minmax(0, 1.4fr) minmax(340px, .8fr);
 }
 
-.panel-card,
-.kpi-card,
-.notice-panel {
-  background: #fff;
-  border: 1px solid #f0f0f0;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
-  padding: 16px;
-}
-
-.panel-card.wide {
-  min-width: 0;
-}
-
+/* Statistic cards. The card itself is an nz-card; these place the grid and set
+   the label / value / context type scale. */
 .kpi-grid {
   display: grid;
   gap: 16px;
@@ -74,33 +69,40 @@ a {
   margin-bottom: 16px;
 }
 
-.kpi-card span,
-.kpi-card small {
+.kpi-grid span,
+.kpi-grid small {
   color: #8c8c8c;
   display: block;
+  font-size: 13px;
 }
 
-.kpi-card strong {
+.kpi-grid strong {
   display: block;
-  font-size: 1.8rem;
-  line-height: 1.2;
-  margin: 6px 0;
+  font-size: 22px;
+  line-height: 1.4;
 }
 
-.section-title {
-  align-items: center;
+/* Filter bars above a list. Fields keep their natural width and wrap, so a page
+   with two filters does not stretch them across the viewport. */
+.toolbar {
+  align-items: flex-end;
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 18px;
 }
 
-.section-title h2,
-.section-title h3 {
-  margin: 0;
+.toolbar label,
+.toolbar .filter-field {
+  color: #637083;
+  display: flex;
+  flex-direction: column;
+  font-size: .82rem;
+  gap: 4px;
+  min-width: 160px;
 }
 
-.toolbar,
+/* Multi-column form rows. */
 .form-grid,
 .variant-form {
   align-items: end;
@@ -110,17 +112,24 @@ a {
   margin-bottom: 16px;
 }
 
-.toolbar.compact {
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  margin-bottom: 10px;
+/* nz-form-item brings its own label and validation spacing, so inside a grid it
+   only needs placing: top-aligned, so a field carrying a hint or an error keeps
+   its label and input level with the rest of the row. */
+.form-grid nz-form-item {
+  align-self: start;
+  margin-bottom: 0;
 }
 
-.toolbar label,
-.toolbar .filter-field {
-  color: #637083;
-  display: grid;
-  font-size: .82rem;
-  gap: 6px;
+.form-grid.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.form-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.form-grid .wide {
+  grid-column: 1 / -1;
 }
 
 .form-actions,
@@ -136,50 +145,13 @@ a {
   overflow-x: auto;
 }
 
-.data-table {
-  border-collapse: collapse;
-  min-width: 760px;
-  width: 100%;
-}
-
-.data-table th,
-.data-table td {
-  border-bottom: 1px solid #f0f0f0;
-  padding: 10px;
-  text-align: left;
-  vertical-align: top;
-}
-
-.data-table th {
-  background: #fafafa;
-  color: #637083;
-  font-size: .78rem;
-  text-transform: uppercase;
-}
-
-.data-table tr.selected,
-.list-panel button.selected {
-  background: #e6f4ff;
-}
-
-.list-panel {
-  display: grid;
-  gap: 8px;
-  max-height: 360px;
-  overflow: auto;
-}
-
-.list-panel button {
-  justify-content: space-between;
-  text-align: left;
-}
-
-.table-input {
-  max-width: 92px;
-}
-
-.table-row-clickable {
+/* Rows that open a detail view when clicked. */
+.selectable {
   cursor: pointer;
+}
+
+.actions-column {
+  white-space: nowrap;
 }
 
 .sort-header {
@@ -220,20 +192,13 @@ a {
   color: #8c8c8c;
 }
 
-.field-error,
-.error-text {
+.field-error {
   color: #cf1322;
+  font-size: .78rem;
 }
 
-.detail-panel,
-.notice-panel,
 .state-panel {
   margin-bottom: 16px;
-}
-
-.plain-list {
-  margin: 0;
-  padding-left: 18px;
 }
 
 .color-swatch {
@@ -266,7 +231,9 @@ pre {
 }
 
 @media (max-width: 900px) {
-  .content-grid.two {
+  .content-grid.two,
+  .form-grid.two,
+  .form-grid.three {
     grid-template-columns: 1fr;
   }
 

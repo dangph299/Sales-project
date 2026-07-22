@@ -52,8 +52,8 @@ public sealed class Order : AggregateRoot<Guid>
     public string NormalizedCustomerPhone { get; private set; } = null!;
 
     /// <summary>
-    /// Gets <see cref="NormalizedCustomerPhone"/> reversed, which lets a phone suffix search run as
-    /// an indexed prefix scan.
+    /// Gets <see cref="NormalizedCustomerPhone"/> reversed, which is what a search matches against
+    /// when it matches the end of a phone number.
     /// </summary>
     public string ReversedCustomerPhone { get; private set; } = null!;
 

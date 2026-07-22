@@ -20,8 +20,7 @@ public interface ICustomerRepository : IRepository<Customer>
     /// </summary>
     /// <remarks>
     /// The lock is released when the surrounding transaction commits or rolls back; the caller does
-    /// not release it. The unique index on the customer's normalized phone remains the correctness
-    /// backstop, so a provider that cannot take this lock stays correct, only more contended.
+    /// not release it.
     /// </remarks>
     /// <param name="normalizedCustomerPhone">Phone number already normalized via <see cref="CustomerPhoneNormalizer.Normalize"/>.</param>
     Task AcquireNormalizedPhoneLockAsync(string normalizedCustomerPhone, CancellationToken cancellationToken = default);

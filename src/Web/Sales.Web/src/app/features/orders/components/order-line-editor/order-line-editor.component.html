@@ -56,7 +56,7 @@
   </tbody>
 </nz-table>
 
-<section class="summary-strip" *ngIf="lines.length > 0">
+<section class="summary-strip" *ngIf="showSummary && lines.length > 0">
   <span>Subtotal: {{ subtotal | money }}</span>
   <strong>Grand total: {{ grandTotal | money }}</strong>
   <button

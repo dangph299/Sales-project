@@ -11,11 +11,7 @@ namespace Sales.Infrastructure.Tests;
 /// Exercises order customer search against a real PostgreSQL instance.
 /// </summary>
 /// <remarks>
-/// These behaviours cannot be established anywhere else: <c>ILIKE</c>, <c>LIKE</c> anchoring,
-/// <c>varchar_pattern_ops</c>, partial indexes and the trigram index are all PostgreSQL specifics,
-/// and SQLite or the EF in-memory provider would happily "pass" while the real database behaved
-/// differently. When Docker is unavailable every test here skips visibly rather than passing
-/// silently.
+/// When no PostgreSQL is available every test here skips visibly rather than passing silently.
 /// </remarks>
 [Trait("Category", "Reliability")]
 [Collection("SalesReliabilityPostgres")]
@@ -41,27 +37,43 @@ public sealed class OrderCustomerSearchPostgresTests
     }
 
     [SkippableFact]
-    public async Task Phone_prefix_search_matches_from_the_start_of_the_number()
+    public async Task Phone_search_matches_from_the_start_of_the_number()
     {
         await using var context = await PrepareAsync();
         await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
-        await SeedOrderAsync(context, "ORD-0000902", "B", "0912345678");
+        await SeedOrderAsync(context, "ORD-0000902", "B", "0909999999");
+        await SeedOrderAsync(context, "ORD-0000903", "C", "0912345678");
 
-        var results = await SearchAsync(context, customerPhone: "0901", customerPhoneMatchMode: OrderCustomerPhoneMatchMode.Prefix);
+        var results = await SearchAsync(context, customerPhone: "090");
 
-        Assert.Equal(["ORD-0000901"], results.Items.Select(x => x.OrderCode));
+        Assert.Equal(["ORD-0000901", "ORD-0000902"], results.Items.Select(x => x.OrderCode).Order());
     }
 
     [SkippableFact]
-    public async Task Phone_suffix_search_matches_from_the_end_of_the_number()
+    public async Task Phone_search_matches_from_the_end_of_the_number()
     {
         await using var context = await PrepareAsync();
         await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
-        await SeedOrderAsync(context, "ORD-0000902", "B", "0912345678");
+        await SeedOrderAsync(context, "ORD-0000902", "B", "0911114567");
+        await SeedOrderAsync(context, "ORD-0000903", "C", "0912345678");
 
-        var results = await SearchAsync(context, customerPhone: "4567", customerPhoneMatchMode: OrderCustomerPhoneMatchMode.Suffix);
+        // The user is not asked which end they remembered, so this finds both without a match mode.
+        var results = await SearchAsync(context, customerPhone: "4567");
+
+        Assert.Equal(["ORD-0000901", "ORD-0000902"], results.Items.Select(x => x.OrderCode).Order());
+    }
+
+    [SkippableFact]
+    public async Task An_order_matching_both_ends_is_returned_once()
+    {
+        await using var context = await PrepareAsync();
+        // Starts with 090 and ends with 090, so both halves of the predicate hold.
+        await SeedOrderAsync(context, "ORD-0000901", "A", "090123090");
+
+        var results = await SearchAsync(context, customerPhone: "090");
 
         Assert.Equal(["ORD-0000901"], results.Items.Select(x => x.OrderCode));
+        Assert.Equal(1, results.Total);
     }
 
     [SkippableTheory]
@@ -80,24 +92,14 @@ public sealed class OrderCustomerSearchPostgresTests
     }
 
     [SkippableFact]
-    public async Task Prefix_search_does_not_match_digits_in_the_middle_of_the_number()
+    public async Task Phone_search_does_not_match_digits_in_the_middle_of_the_number()
     {
         await using var context = await PrepareAsync();
         await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
 
-        // "1234" sits in the middle. A Contains-style match would find it; a prefix must not.
-        var results = await SearchAsync(context, customerPhone: "1234", customerPhoneMatchMode: OrderCustomerPhoneMatchMode.Prefix);
-
-        Assert.Empty(results.Items);
-    }
-
-    [SkippableFact]
-    public async Task Suffix_search_does_not_match_digits_at_the_start_of_the_number()
-    {
-        await using var context = await PrepareAsync();
-        await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
-
-        var results = await SearchAsync(context, customerPhone: "0901", customerPhoneMatchMode: OrderCustomerPhoneMatchMode.Suffix);
+        // "1234" sits in the middle: it is neither end, so searching both ends must still miss it.
+        // A Contains-style match would find it, and would not be able to use either index.
+        var results = await SearchAsync(context, customerPhone: "1234");
 
         Assert.Empty(results.Items);
     }
@@ -165,7 +167,7 @@ public sealed class OrderCustomerSearchPostgresTests
             .Include(x => x.Lines)
             .AsNoTracking()
             .Where(new OrderCustomerNameContainsSpecification("nguyen").ToExpression())
-            .Where(new OrderCustomerPhoneMatchesSpecification("0901", OrderCustomerPhoneMatchMode.Prefix).ToExpression())
+            .Where(new OrderCustomerPhoneMatchesSpecification("0901").ToExpression())
             .ToQueryString();
 
         Assert.DoesNotContain("customers", sql, StringComparison.OrdinalIgnoreCase);
@@ -233,7 +235,6 @@ public sealed class OrderCustomerSearchPostgresTests
         string? orderNumber = null,
         string? customerName = null,
         string? customerPhone = null,
-        OrderCustomerPhoneMatchMode customerPhoneMatchMode = OrderCustomerPhoneMatchMode.Prefix,
         int pageSize = 50)
     {
         var readService = new OrderReadService(context, SalesMapperFactory.Create());
@@ -241,7 +242,6 @@ public sealed class OrderCustomerSearchPostgresTests
             orderNumber,
             customerName,
             customerPhone,
-            customerPhoneMatchMode,
             null,
             null,
             null,

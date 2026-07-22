@@ -22,7 +22,6 @@ public sealed class SearchOrdersValidator : AbstractValidator<SearchOrders>
         RuleFor(x => x.CustomerPhone)
             .Must(HaveAtLeastOneDigitWhenSupplied)
             .WithMessage("Customer phone search must contain at least one digit.");
-        RuleFor(x => x.CustomerPhoneMatchMode).IsInEnum();
         RuleFor(x => x.Page).GreaterThan(0);
         RuleFor(x => x.PageSize).GreaterThan(0);
     }

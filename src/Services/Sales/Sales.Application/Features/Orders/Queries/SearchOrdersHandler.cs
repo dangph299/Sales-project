@@ -20,7 +20,6 @@ public sealed class SearchOrdersHandler(IOrderReadService readService) : IReques
             request.OrderNumber,
             request.CustomerName,
             request.CustomerPhone,
-            request.CustomerPhoneMatchMode,
             request.From,
             request.To,
             request.Status,

@@ -8,9 +8,7 @@ namespace Sales.Infrastructure;
 /// Matches orders whose business code starts with a search term.
 /// </summary>
 /// <remarks>
-/// Runs against the whole table rather than whichever page the client happens to be showing, and
-/// uses the unique <c>IX_orders_OrderCode</c> index. Order codes are uppercase, so the term is
-/// uppercased to spare the caller having to be.
+/// The term is matched case-insensitively, so the caller may pass it in any case.
 /// </remarks>
 /// <param name="orderCodeSearchTerm">Whole or partial order code, matched from the start.</param>
 public sealed class OrderCodeStartsWithSpecification(string orderCodeSearchTerm) : Specification<Order>

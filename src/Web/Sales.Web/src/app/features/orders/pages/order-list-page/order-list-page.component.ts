@@ -5,6 +5,7 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
+import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
@@ -32,10 +33,6 @@ import {
   OrderCustomerFormComponent,
   OrderCustomerFormErrors
 } from '../../components/order-customer-form/order-customer-form.component';
-import {
-  OrderCustomerPhoneMatchMode,
-  orderCustomerPhoneMatchModes
-} from '../../constants/order-customer-phone-match-mode';
 import { OrderStatus, describeOrderStatusChange, orderStatusDisplay } from '../../constants/order-status';
 import { CartLine, cartGrandTotal, normalizeQuantity } from '../../models/cart-line.model';
 import { OrderStatusChangedNotification } from '../../models/order-status-changed.model';
@@ -69,6 +66,7 @@ function emptyOrderCustomer(): OrderCustomerRequest {
     NzCardModule,
     NzDescriptionsModule,
     NzDropDownModule,
+    NzFormModule,
     NzInputModule,
     NzMenuModule,
     NzModalModule,
@@ -110,7 +108,6 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   orderNumberFilter = '';
   customerNameFilter = '';
   customerPhoneFilter = '';
-  customerPhoneMatchModeFilter: OrderCustomerPhoneMatchMode = 'Prefix';
   /** `null` is what nzAllowClear writes back; the API client drops empty values from the query. */
   statusFilter: OrderStatus | '' | null = '';
   fromDate = '';
@@ -121,7 +118,6 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   readonly sortDirection = signal<SortDirection>('desc');
 
   readonly statusDisplay = orderStatusDisplay;
-  readonly phoneMatchModes = orderCustomerPhoneMatchModes;
   readonly orderStatuses: { value: OrderStatus; label: string }[] = [
     { value: 'Draft', label: 'Draft' },
     { value: 'PendingInventory', label: 'Pending Inventory' },
@@ -225,7 +221,6 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
         orderNumber: this.orderNumberFilter.trim() || undefined,
         customerName: this.customerNameFilter.trim() || undefined,
         customerPhone: this.customerPhoneFilter.trim() || undefined,
-        customerPhoneMatchMode: this.customerPhoneMatchModeFilter,
         status: this.statusFilter,
         from: this.fromDate || undefined,
         to: this.toDate || undefined,
@@ -294,7 +289,6 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     this.orderNumberFilter = '';
     this.customerNameFilter = '';
     this.customerPhoneFilter = '';
-    this.customerPhoneMatchModeFilter = 'Prefix';
     this.statusFilter = '';
     this.fromDate = '';
     this.toDate = '';

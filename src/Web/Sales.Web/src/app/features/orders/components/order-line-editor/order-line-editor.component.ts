@@ -38,6 +38,12 @@ export class OrderLineEditorComponent {
   @Input() saving = false;
   @Input() showFooterAction = true;
 
+  /**
+   * Whether this component shows the cart totals. The order modal turns them off
+   * because it presents the total as a statistic card of its own.
+   */
+  @Input() showSummary = true;
+
   @Output() linesChange = new EventEmitter<CartLine[]>();
   @Output() createOrder = new EventEmitter<void>();
 

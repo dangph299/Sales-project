@@ -6,24 +6,14 @@ using Xunit.Abstractions;
 namespace Sales.Infrastructure.Tests;
 
 /// <summary>
-/// Checks that the phone indexes are actually usable, by asking PostgreSQL what it would do.
+/// Checks that the order and customer searches can use their indexes rather than scanning.
 /// </summary>
-/// <remarks>
-/// An index can exist and still never be used: under this database's non-C collation a default
-/// B-tree cannot answer <c>LIKE 'digits%'</c> at all, which is why these columns carry
-/// <c>varchar_pattern_ops</c>. Nothing short of a real planner can confirm that, so these tests
-/// seed enough rows for a sequential scan to stop looking cheap, run <c>ANALYZE</c>, and read the
-/// plan. The full plan text is written to the test output so a run can be quoted rather than
-/// summarised.
-/// </remarks>
 [Trait("Category", "Reliability")]
 [Collection("SalesReliabilityPostgres")]
 public sealed class OrderPhoneIndexPlanPostgresTests
 {
-    /// <summary>
-    /// Enough rows that the planner prefers an index to a sequential scan. On a small table it
-    /// would correctly choose a seq scan however good the index is, and the test would say nothing.
-    /// </summary>
+    // Enough rows that the planner prefers an index to a sequential scan. On a small table it would
+    // correctly choose a seq scan however good the index is, and the test would say nothing.
     private const int SeededRowCount = 5_000;
 
     private readonly PostgresReliabilityFixture _fixture;
@@ -61,6 +51,28 @@ public sealed class OrderPhoneIndexPlanPostgresTests
             """);
 
         AssertIndexScan(plan, "IX_orders_ReversedCustomerPhone");
+    }
+
+    [SkippableFact]
+    public async Task Searching_both_ends_at_once_can_use_both_phone_indexes()
+    {
+        await using var context = await SeedAsync();
+
+        // The shape the order search actually runs now that the user is not asked which end they
+        // remembered. The risk of an OR is that the planner gives up and scans the table once
+        // instead of combining the two indexes.
+        var plan = await ExplainAsync(
+            context,
+            """
+            SELECT "Id" FROM orders
+            WHERE "NormalizedCustomerPhone" LIKE '09000014%' OR "ReversedCustomerPhone" LIKE '0041%'
+            """);
+
+        _output.WriteLine(plan);
+        Assert.Contains("IX_orders_NormalizedCustomerPhone", plan, StringComparison.Ordinal);
+        Assert.Contains("IX_orders_ReversedCustomerPhone", plan, StringComparison.Ordinal);
+        Assert.Contains("BitmapOr", plan, StringComparison.Ordinal);
+        Assert.DoesNotContain("Seq Scan", plan, StringComparison.Ordinal);
     }
 
     [SkippableFact]

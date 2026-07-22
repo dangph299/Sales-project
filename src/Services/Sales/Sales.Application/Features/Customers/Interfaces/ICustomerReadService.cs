@@ -30,8 +30,7 @@ public interface ICustomerReadService
     /// form's autocomplete.
     /// </summary>
     /// <remarks>
-    /// A prefix match, not a substring one: the business question is "which customer's number begins
-    /// with what I have typed", and a leading wildcard could not use the phone index anyway.
+    /// A prefix match, not a substring one: the number must begin with the term.
     /// </remarks>
     /// <param name="customerPhoneSearchTerm">Phone fragment, in any format. Normalized by the implementation.</param>
     /// <param name="limit">Maximum number of suggestions to return.</param>

@@ -1,13 +1,11 @@
 namespace Sales.Domain;
 
 /// <summary>
-/// The three forms an order stores for one customer phone number: what is shown to a user, what a
-/// phone search matches against, and what a suffix search matches against.
+/// The three forms an order stores for one customer phone number.
 /// </summary>
 /// <remarks>
-/// The three values are derived together from a single input and exposed without setters, so an
-/// order can never end up with a display phone that disagrees with the columns its searches read.
-/// No caller can supply the normalized or reversed form independently.
+/// All three are derived from a single input and are read-only, so they cannot disagree with each
+/// other.
 /// </remarks>
 public sealed record OrderCustomerPhone
 {
@@ -30,8 +28,8 @@ public sealed record OrderCustomerPhone
     public string NormalizedValue { get; }
 
     /// <summary>
-    /// Gets <see cref="NormalizedValue"/> with its digits reversed, which lets a suffix search run
-    /// as an indexed prefix scan.
+    /// Gets <see cref="NormalizedValue"/> with its digits reversed, which is what a search matches
+    /// against when it matches the end of a phone number.
     /// </summary>
     public string ReversedValue { get; }
 

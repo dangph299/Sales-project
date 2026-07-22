@@ -53,7 +53,6 @@ public sealed class OrdersController : ControllerBase
     /// <param name="orderNumber">An optional whole or partial order code, matched from the start.</param>
     /// <param name="customerName">An optional keyword matched anywhere within the order's customer name snapshot.</param>
     /// <param name="customerPhone">An optional phone fragment, in any format. The backend normalizes it; the caller sends what the user typed.</param>
-    /// <param name="customerPhoneMatchMode">Which end of the phone number <paramref name="customerPhone"/> must match. Defaults to <c>Prefix</c>.</param>
     /// <param name="from">An optional inclusive lower bound on the order's creation time.</param>
     /// <param name="to">An optional inclusive upper bound on the order's creation time.</param>
     /// <param name="status">An optional status the order must currently be in. Bound by name, so an
@@ -67,7 +66,6 @@ public sealed class OrdersController : ControllerBase
         [FromQuery] string? orderNumber,
         [FromQuery] string? customerName,
         [FromQuery] string? customerPhone,
-        [FromQuery] OrderCustomerPhoneMatchMode customerPhoneMatchMode = OrderCustomerPhoneMatchMode.Prefix,
         [FromQuery] DateTimeOffset? from = null,
         [FromQuery] DateTimeOffset? to = null,
         [FromQuery] OrderStatus? status = null,
@@ -76,7 +74,7 @@ public sealed class OrdersController : ControllerBase
         CancellationToken ct = default)
     {
         var orders = await _sender.Send(
-            new SearchOrders(orderNumber, customerName, customerPhone, customerPhoneMatchMode, from, to, status, page, pageSize),
+            new SearchOrders(orderNumber, customerName, customerPhone, from, to, status, page, pageSize),
             ct);
         return this.ToOkResponse(orders);
     }

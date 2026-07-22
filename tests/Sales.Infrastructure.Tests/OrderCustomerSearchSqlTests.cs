@@ -7,15 +7,8 @@ using Xunit.Abstractions;
 namespace Sales.Infrastructure.Tests;
 
 /// <summary>
-/// Pins the SQL the phone search specifications generate.
+/// Pins the SQL the order search specifications generate.
 /// </summary>
-/// <remarks>
-/// EF Core builds this SQL without opening a connection, so unlike the execution-plan tests this
-/// runs everywhere. It guards the property the indexes depend on: both phone searches must compile
-/// to a <c>LIKE 'digits%'</c> with the wildcard only at the end. A refactor that reintroduced
-/// <c>Contains</c> or <c>EndsWith</c> would still return correct rows and would still pass a
-/// behavioural test, while quietly turning every phone search into a sequential scan.
-/// </remarks>
 public sealed class OrderCustomerSearchSqlTests
 {
     private readonly ITestOutputHelper _output;
@@ -26,25 +19,27 @@ public sealed class OrderCustomerSearchSqlTests
     }
 
     [Fact]
-    public void Phone_prefix_search_anchors_the_wildcard_at_the_end()
+    public void Phone_search_reads_both_ends_in_one_predicate()
     {
-        var sql = BuildSql(new OrderCustomerPhoneMatchesSpecification("090123", OrderCustomerPhoneMatchMode.Prefix));
+        var sql = BuildSql(new OrderCustomerPhoneMatchesSpecification("4567"));
 
         _output.WriteLine(sql);
+        // Both halves in one WHERE, so an order matching both ends still comes back once, and each
+        // half stays anchored so its index remains usable.
         Assert.Contains("\"NormalizedCustomerPhone\" LIKE ", sql, StringComparison.Ordinal);
-        Assert.DoesNotContain("\"ReversedCustomerPhone\" LIKE ", sql, StringComparison.Ordinal);
+        Assert.Contains("\"ReversedCustomerPhone\" LIKE ", sql, StringComparison.Ordinal);
+        Assert.Contains(" OR ", sql, StringComparison.Ordinal);
+        Assert.DoesNotContain("UNION", sql, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("LIKE '%", sql, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Phone_suffix_search_reads_the_reversed_column_instead_of_a_leading_wildcard()
+    public void Phone_search_reverses_the_term_rather_than_the_column()
     {
-        var sql = BuildSql(new OrderCustomerPhoneMatchesSpecification("4567", OrderCustomerPhoneMatchMode.Suffix));
+        var sql = BuildSql(new OrderCustomerPhoneMatchesSpecification("4567"));
 
-        _output.WriteLine(sql);
-        Assert.Contains("\"ReversedCustomerPhone\" LIKE ", sql, StringComparison.Ordinal);
-        Assert.DoesNotContain("\"NormalizedCustomerPhone\" LIKE ", sql, StringComparison.Ordinal);
-        Assert.DoesNotContain("LIKE '%", sql, StringComparison.Ordinal);
+        // reverse() applied to the column would be correct and unindexable.
+        Assert.DoesNotContain("reverse(", sql, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -67,12 +62,10 @@ public sealed class OrderCustomerSearchSqlTests
         Assert.Contains("\"CustomerName\"", sql, StringComparison.Ordinal);
     }
 
-    [Theory]
-    [InlineData(OrderCustomerPhoneMatchMode.Prefix)]
-    [InlineData(OrderCustomerPhoneMatchMode.Suffix)]
-    public void Phone_search_never_joins_the_customer_table(OrderCustomerPhoneMatchMode customerPhoneMatchMode)
+    [Fact]
+    public void Phone_search_never_joins_the_customer_table()
     {
-        var sql = BuildSql(new OrderCustomerPhoneMatchesSpecification("0901", customerPhoneMatchMode));
+        var sql = BuildSql(new OrderCustomerPhoneMatchesSpecification("0901"));
 
         Assert.DoesNotContain("customers", sql, StringComparison.OrdinalIgnoreCase);
     }
