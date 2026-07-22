@@ -15,7 +15,8 @@ public sealed class OrderCustomerMatchesSpecification(string customer) : Specifi
     public override Expression<Func<Order, bool>> ToExpression()
     {
         var value = customer.Trim();
-        var phone = new string(value.Where(char.IsDigit).ToArray());
-        return x => EF.Functions.ILike(x.CustomerName, $"%{value}%") || (phone != "" && x.CustomerPhone.Contains(phone));
+        var normalizedCustomerPhoneSearchTerm = CustomerPhoneNormalizer.NormalizeSearchTerm(value);
+        return x => EF.Functions.ILike(x.CustomerName, $"%{value}%")
+            || (normalizedCustomerPhoneSearchTerm != "" && x.CustomerPhone.Contains(normalizedCustomerPhoneSearchTerm));
     }
 }

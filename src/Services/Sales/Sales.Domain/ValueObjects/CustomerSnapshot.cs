@@ -28,13 +28,13 @@ public sealed record CustomerSnapshot
     /// </summary>
     /// <param name="id">Customer identifier.</param>
     /// <param name="name">Customer's name.</param>
-    /// <param name="phone">Customer's phone number, normalized via <see cref="Customer.NormalizePhone"/>.</param>
+    /// <param name="phone">Customer's phone number, normalized via <see cref="CustomerPhoneNormalizer"/>.</param>
     /// <returns>Validated snapshot.</returns>
     /// <exception cref="DomainException">Thrown when <paramref name="id"/> is empty or <paramref name="name"/> is empty/whitespace.</exception>
     public static CustomerSnapshot Create(Guid id, string name, string phone)
     {
         if (id == Guid.Empty) throw new DomainException("Customer id is required.");
         if (string.IsNullOrWhiteSpace(name)) throw new DomainException("Customer name is required.");
-        return new(id, name.Trim(), Customer.NormalizePhone(phone));
+        return new(id, name.Trim(), CustomerPhoneNormalizer.Normalize(phone));
     }
 }

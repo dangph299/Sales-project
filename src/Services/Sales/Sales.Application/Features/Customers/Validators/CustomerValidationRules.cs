@@ -1,4 +1,5 @@
 using FluentValidation;
+using Sales.Domain;
 
 namespace Sales.Application.Features.Customers.Validators;
 
@@ -17,12 +18,6 @@ internal static class CustomerValidationRules
     /// </summary>
     public static IRuleBuilderOptions<T, string> ValidPhone<T>(this IRuleBuilder<T, string> rule) =>
         rule.NotEmpty()
-            .Must(HavePlausibleDigitCount)
+            .Must(CustomerPhoneNormalizer.HasPersistableDigitCount)
             .WithMessage("Phone must contain 9 to 15 digits.");
-
-    private static bool HavePlausibleDigitCount(string phone)
-    {
-        var digitCount = phone.Count(char.IsDigit);
-        return digitCount is >= 9 and <= 15;
-    }
 }
