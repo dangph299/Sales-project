@@ -65,7 +65,7 @@ public sealed class ReleaseBeforeReservePostgresTests
 
         await using (var verify = NewContext())
         {
-            var item = await verify.Items.AsNoTracking().SingleAsync(x => x.ProductId == productId);
+            var item = await verify.Items.AsNoTracking().SingleAsync(x => x.ProductVariantId == productId);
             Assert.Equal(10, item.Available);
             Assert.Equal(0, item.Reserved);
 
