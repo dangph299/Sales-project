@@ -77,6 +77,7 @@ Chúng **không** dùng chung database và **không** tham chiếu project lẫn
 ```bash
 sudo docker compose -f docker/docker-compose.yml up -d --build
 sudo docker compose -f docker/docker-compose.yml ps
+sudo docker compose -f docker/docker-compose.yml down
 
 sudo docker compose -f docker/docker-compose.yml stop kibana apm-server elasticsearch otel-collector
 sudo docker compose -f docker/docker-compose.yml up kibana apm-server elasticsearch otel-collector -d --build
