@@ -1,23 +1,52 @@
 :host {
   align-items: center;
   display: flex;
-  gap: 16px;
+  gap: 14px;
   width: 100%;
 }
 
 .trigger {
+  flex: 0 0 auto;
   font-size: 18px;
 }
 
 .header-title {
   flex: 1;
-  min-width: 160px;
+  min-width: 140px;
+
+  strong {
+    color: #172033;
+    display: block;
+    font-size: 15px;
+    line-height: 1.2;
+  }
 
   span {
     color: #8c8c8c;
     display: block;
+    font-size: 12px;
     line-height: 1.2;
   }
+}
+
+.header-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+.status-indicators {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.api-indicator {
+  height: 28px;
+  padding: 0 4px;
 }
 
 .login-panel {
@@ -27,22 +56,57 @@
   gap: 8px;
   justify-content: flex-end;
 
+  nz-form-item {
+    margin-bottom: 0;
+  }
+
   input {
-    width: 150px;
+    width: 136px;
   }
 }
 
-@media (max-width: 860px) {
+.profile-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 8px;
+}
+
+[nz-menu] button {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  gap: 8px;
+  padding: 0;
+  width: 100%;
+}
+
+[nz-menu] button:disabled {
+  color: #bfbfbf;
+  cursor: not-allowed;
+}
+
+@media (max-width: 920px) {
   :host {
     align-items: flex-start;
     flex-wrap: wrap;
   }
 
-  .login-panel {
+  .header-actions {
     justify-content: flex-start;
     width: 100%;
+  }
+}
 
-    input {
+@media (max-width: 620px) {
+  .login-panel {
+    width: 100%;
+
+    input,
+    button {
       width: min(100%, 220px);
     }
   }

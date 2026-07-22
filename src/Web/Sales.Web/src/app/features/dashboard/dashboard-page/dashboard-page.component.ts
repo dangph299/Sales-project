@@ -1,10 +1,14 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
-import { NzListModule } from 'ng-zorro-antd/list';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { DashboardChartComponent, DashboardChartPoint } from '../components/dashboard-chart/dashboard-chart.component';
+import { DashboardSectionComponent } from '../components/dashboard-section/dashboard-section.component';
+import { MetricCardComponent } from '../components/metric-card/metric-card.component';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../shared/components/status-tag/status-tag.component';
 import { DateTimePipe } from '../../../shared/pipes/date-time.pipe';
@@ -23,12 +27,16 @@ import { RecentOrderRow, RecentProductRow } from '../models/dashboard-row.model'
     RouterLink,
     PageStateComponent,
     StatusTagComponent,
+    DashboardChartComponent,
+    DashboardSectionComponent,
+    MetricCardComponent,
     DateTimePipe,
     MoneyPipe,
     PriceRangePipe,
     NzButtonModule,
     NzCardModule,
-    NzListModule,
+    NzIconModule,
+    NzSkeletonModule,
     NzTableModule
   ],
   templateUrl: './dashboard-page.component.html',
@@ -42,11 +50,31 @@ export class DashboardPageComponent implements OnInit {
   readonly metrics = signal<DashboardMetrics>(emptyDashboardMetrics);
   readonly recentOrders = signal<RecentOrderRow[]>([]);
   readonly recentProducts = signal<RecentProductRow[]>([]);
+  readonly chartOrders = signal<RecentOrderRow[]>([]);
+  readonly lastUpdatedAt = signal<Date | null>(null);
 
-  readonly systemAlerts = [
-    'The dashboard currently summarizes small pages from list endpoints; a backend aggregation API should be added.',
-    'Operations APIs for outbox, inbox, and dead letters are not exposed, so operational actions are not shown.'
-  ];
+  readonly lastUpdatedLabel = computed(() => {
+    const lastUpdatedAt = this.lastUpdatedAt();
+    if (!lastUpdatedAt) {
+      return 'Not updated yet';
+    }
+
+    const seconds = Math.max(0, Math.floor((Date.now() - lastUpdatedAt.getTime()) / 1000));
+    if (seconds < 60) {
+      return 'Just now';
+    }
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) {
+      return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  });
+
+  readonly revenueTrend = computed<DashboardChartPoint[]>(() => this.toRevenueTrend(this.chartOrders()));
+  readonly ordersByStatus = computed<DashboardChartPoint[]>(() => this.toOrdersByStatus(this.chartOrders()));
 
   ngOnInit(): void {
     void this.load();
@@ -60,10 +88,42 @@ export class DashboardPageComponent implements OnInit {
       this.metrics.set(snapshot.metrics);
       this.recentOrders.set(snapshot.recentOrders);
       this.recentProducts.set(snapshot.recentProducts);
+      this.chartOrders.set(snapshot.chartOrders);
+      this.lastUpdatedAt.set(new Date());
     } catch (error) {
       this.errorMessage.set(describeApiError(error));
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private toRevenueTrend(orders: RecentOrderRow[]): DashboardChartPoint[] {
+    const today = new Date();
+    return Array.from({ length: 7 }, (_, index) => {
+      const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (6 - index));
+      const key = this.dateKey(date);
+      return {
+        label: date.toLocaleDateString(undefined, { weekday: 'short' }),
+        value: orders
+          .filter(order => this.dateKey(new Date(order.createdAt)) === key)
+          .reduce((total, order) => total + order.total, 0),
+        tone: 'info'
+      };
+    });
+  }
+
+  private toOrdersByStatus(orders: RecentOrderRow[]): DashboardChartPoint[] {
+    const statusTotals = orders.reduce<Record<string, DashboardChartPoint>>((totals, order) => {
+      const label = order.status.label;
+      totals[label] = totals[label] || { label, value: 0, tone: order.status.tone };
+      totals[label].value += 1;
+      return totals;
+    }, {});
+
+    return Object.values(statusTotals);
+  }
+
+  private dateKey(date: Date): string {
+    return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
   }
 }

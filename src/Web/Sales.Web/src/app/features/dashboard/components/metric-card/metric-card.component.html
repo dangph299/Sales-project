@@ -1,0 +1,10 @@
+<nz-card class="metric-card" [ngClass]="'metric-card--' + tone">
+  <div class="metric-card__topline">
+    <span class="metric-card__icon" aria-hidden="true">
+      <span nz-icon [nzType]="icon"></span>
+    </span>
+    <span class="metric-card__title">{{ title }}</span>
+  </div>
+  <strong class="metric-card__value">{{ metric }}</strong>
+  <span class="metric-card__secondary" *ngIf="secondary">{{ secondary }}</span>
+</nz-card>

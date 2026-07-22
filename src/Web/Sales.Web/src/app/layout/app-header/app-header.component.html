@@ -13,32 +13,76 @@
   <span>Development</span>
 </div>
 
-<form nz-form nzLayout="inline" class="login-panel" (ngSubmit)="login()">
-  <nz-form-item>
-    <nz-form-control>
-      <input
-        nz-input
-        aria-label="User name"
-        name="userName"
-        [ngModel]="userName()"
-        (ngModelChange)="userName.set($event)"
-        placeholder="User name">
-    </nz-form-control>
-  </nz-form-item>
-  <nz-form-item>
-    <nz-form-control>
-      <input
-        nz-input
-        aria-label="Password"
-        name="password"
-        type="password"
-        [ngModel]="password()"
-        (ngModelChange)="password.set($event)"
-        placeholder="Password">
-    </nz-form-control>
-  </nz-form-item>
-  <button nz-button nzType="primary" type="submit" [nzLoading]="authenticating()">
-    {{ isAuthenticated() ? 'Refresh Token' : 'Login' }}
+<div class="header-actions">
+  <div class="status-indicators" aria-label="System status">
+    <nz-badge [nzStatus]="isAuthenticated() ? 'success' : 'default'" [nzText]="isAuthenticated() ? 'Authenticated' : 'Guest'"></nz-badge>
+    <nz-badge [nzStatus]="realtimeBadgeStatus()" [nzText]="realtimeLabel()"></nz-badge>
+    <button
+      nz-button
+      nzType="text"
+      type="button"
+      class="api-indicator"
+      [disabled]="checkingHealth()"
+      (click)="checkHealth()">
+      <nz-badge [nzStatus]="apiBadgeStatus()" [nzText]="apiLabel()"></nz-badge>
+    </button>
+  </div>
+
+  <form *ngIf="!isAuthenticated()" nz-form nzLayout="inline" class="login-panel" (ngSubmit)="login()">
+    <nz-form-item>
+      <nz-form-control>
+        <input
+          nz-input
+          aria-label="User name"
+          name="userName"
+          [ngModel]="userName()"
+          (ngModelChange)="userName.set($event)"
+          placeholder="User name">
+      </nz-form-control>
+    </nz-form-item>
+    <nz-form-item>
+      <nz-form-control>
+        <input
+          nz-input
+          aria-label="Password"
+          name="password"
+          type="password"
+          [ngModel]="password()"
+          (ngModelChange)="password.set($event)"
+          placeholder="Password">
+      </nz-form-control>
+    </nz-form-item>
+    <button nz-button nzType="primary" type="submit" [nzLoading]="authenticating()">Login</button>
+  </form>
+
+  <button
+    *ngIf="isAuthenticated()"
+    nz-button
+    nz-dropdown
+    nzTrigger="click"
+    [nzDropdownMenu]="profileMenu"
+    type="button"
+    class="profile-button"
+    aria-label="Open user menu">
+    <span nz-icon nzType="user"></span>
+    Admin
+    <span nz-icon nzType="down"></span>
   </button>
-  <button nz-button type="button" (click)="logout()" [disabled]="!isAuthenticated()">Logout</button>
-</form>
+
+  <nz-dropdown-menu #profileMenu="nzDropdownMenu">
+    <ul nz-menu>
+      <li nz-menu-item>
+        <button type="button" (click)="refreshToken()" [disabled]="authenticating()">
+          <span nz-icon nzType="reload"></span>
+          Refresh Token
+        </button>
+      </li>
+      <li nz-menu-item>
+        <button type="button" (click)="logout()">
+          <span nz-icon nzType="logout"></span>
+          Logout
+        </button>
+      </li>
+    </ul>
+  </nz-dropdown-menu>
+</div>
