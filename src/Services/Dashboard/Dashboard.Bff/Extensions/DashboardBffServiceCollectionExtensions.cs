@@ -1,8 +1,10 @@
+using BuildingBlocks.Application;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web;
 using Dashboard.Bff.Auth;
 using Dashboard.Bff.Clients;
 using Dashboard.Bff.Options;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
 namespace Dashboard.Bff.Extensions;
@@ -64,6 +66,20 @@ public static class DashboardBffServiceCollectionExtensions
         }
 
         serviceAccountOptionsBuilder.ValidateOnStart();
+
+        builder.Services.TryAddSingleton<IClock, SystemClock>();
+        builder.Services.AddScoped<ICallerTokenAccessor, CallerTokenAccessor>();
+
+        builder.Services.AddHttpClient("sales-auth", (provider, client) =>
+        {
+            var downstreamOptions = provider.GetRequiredService<IOptions<DownstreamOptions>>().Value;
+            client.BaseAddress = new Uri(downstreamOptions.SalesBaseUrl);
+        });
+        builder.Services.AddSingleton<IServiceTokenProvider>(provider => new ServiceAccountTokenProvider(
+            provider.GetRequiredService<IHttpClientFactory>().CreateClient("sales-auth"),
+            provider.GetRequiredService<IOptions<ServiceAccountOptions>>(),
+            provider.GetRequiredService<IClock>(),
+            provider.GetRequiredService<ILogger<ServiceAccountTokenProvider>>()));
 
         builder.Services.AddTransient<DownstreamAuthDelegatingHandler>();
 
