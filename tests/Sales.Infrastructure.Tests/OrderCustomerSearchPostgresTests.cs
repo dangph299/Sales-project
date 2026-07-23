@@ -230,6 +230,83 @@ public sealed class OrderCustomerSearchPostgresTests
         Assert.Empty(await readService.LookupByPhonePrefixAsync("", 10));
     }
 
+    [SkippableFact]
+    public async Task Order_number_search_treats_percent_as_a_literal()
+    {
+        await using var context = await PrepareAsync();
+        await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000902", "B", "0912345678");
+
+        // Unescaped, "%" is a wildcard that matches every order code. Escaped, it matches only a code
+        // that literally contains "%", of which there are none.
+        var results = await SearchAsync(context, orderNumber: "%");
+
+        Assert.Empty(results.Items);
+    }
+
+    [SkippableFact]
+    public async Task Order_number_search_treats_underscore_as_a_literal()
+    {
+        await using var context = await PrepareAsync();
+        await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
+
+        // Unescaped, "_" matches any single character, so "ORD-000090_" would match "ORD-0000901".
+        // Escaped, it looks for a literal underscore, which the code has not got.
+        var results = await SearchAsync(context, orderNumber: "ORD-000090_");
+
+        Assert.Empty(results.Items);
+    }
+
+    [SkippableFact]
+    public async Task Order_number_search_still_matches_a_literal_prefix()
+    {
+        await using var context = await PrepareAsync();
+        await SeedOrderAsync(context, "ORD-0000901", "A", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000902", "B", "0912345678");
+
+        var results = await SearchAsync(context, orderNumber: "ORD-000090");
+
+        Assert.Equal(["ORD-0000901", "ORD-0000902"], results.Items.Select(x => x.OrderCode).Order());
+    }
+
+    [SkippableFact]
+    public async Task Customer_name_search_treats_percent_as_a_literal()
+    {
+        await using var context = await PrepareAsync();
+        await SeedOrderAsync(context, "ORD-0000901", "50% discount buyer", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000902", "5089 regular buyer", "0912345678");
+
+        // Unescaped, "50%" reads as "contains 50 then anything" and matches both. Escaped, it matches
+        // only the name that literally contains "50%".
+        var results = await SearchAsync(context, customerName: "50%");
+
+        Assert.Equal(["ORD-0000901"], results.Items.Select(x => x.OrderCode));
+    }
+
+    [SkippableFact]
+    public async Task Customer_name_search_treats_backslash_as_a_literal()
+    {
+        await using var context = await PrepareAsync();
+        await SeedOrderAsync(context, "ORD-0000901", @"a\b partner", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000902", "ab partner", "0912345678");
+
+        var results = await SearchAsync(context, customerName: @"a\b");
+
+        Assert.Equal(["ORD-0000901"], results.Items.Select(x => x.OrderCode));
+    }
+
+    [SkippableFact]
+    public async Task Customer_name_search_still_matches_a_literal_fragment()
+    {
+        await using var context = await PrepareAsync();
+        await SeedOrderAsync(context, "ORD-0000901", "Nguyen Van A", "0901234567");
+        await SeedOrderAsync(context, "ORD-0000902", "Tran Thi B", "0912345678");
+
+        var results = await SearchAsync(context, customerName: "nguyen");
+
+        Assert.Equal(["ORD-0000901"], results.Items.Select(x => x.OrderCode));
+    }
+
     private async Task<PagedResult<Application.Features.Orders.DTOs.OrderDto>> SearchAsync(
         SalesDbContext context,
         string? orderNumber = null,

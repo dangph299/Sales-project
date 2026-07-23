@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NzAutocompleteModule, NzOptionSelectionChange } from 'ng-zorro-antd/auto-complete';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { Subject, debounceTime, distinctUntilChanged, switchMap, takeUntil } from 'rxjs';
+import { Subject, debounceTime, defer, distinctUntilChanged, finalize, from, switchMap, takeUntil } from 'rxjs';
 import { CustomerLookupApiService } from '../../../common/api/customer-lookup-api.service';
 import { CustomerPhoneSuggestionResponse } from '../../../common/contracts/customer-lookup.response';
 import { OrderCustomerRequest } from '../../api/requests/order-customer.request';
@@ -63,12 +63,19 @@ export class OrderCustomerFormComponent implements OnInit, OnDestroy {
       .pipe(
         debounceTime(suggestionDebounceMs),
         distinctUntilChanged(),
-        switchMap(customerPhoneSearchTerm => this.loadSuggestions(customerPhoneSearchTerm)),
+        // The loading flag is raised inside switchMap, not before distinctUntilChanged: a repeated
+        // term is dropped here and must not start a request nor a spinner. defer runs the factory
+        // only when the inner observable is subscribed — that is, after switchMap has torn down any
+        // previous request — so raising the flag there cannot be undone by the outgoing request's
+        // finalize. finalize then lowers it on success, error, and the switchMap cancellation a newer
+        // term triggers, so the flag can never stick on.
+        switchMap(customerPhoneSearchTerm =>
+          defer(() => {
+            this.searching.set(true);
+            return from(this.loadSuggestions(customerPhoneSearchTerm));
+          }).pipe(finalize(() => this.searching.set(false)))),
         takeUntil(this.destroyed))
-      .subscribe(suggestions => {
-        this.suggestions.set(suggestions);
-        this.searching.set(false);
-      });
+      .subscribe(suggestions => this.suggestions.set(suggestions));
   }
 
   ngOnDestroy(): void {
@@ -94,7 +101,6 @@ export class OrderCustomerFormComponent implements OnInit, OnDestroy {
   }
 
   searchByPhone(customerPhoneSearchTerm: string): void {
-    this.searching.set(true);
     this.phoneSearchTerms.next(customerPhoneSearchTerm);
   }
 

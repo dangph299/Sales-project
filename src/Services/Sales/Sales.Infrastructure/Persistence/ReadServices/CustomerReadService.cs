@@ -33,6 +33,15 @@ public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICu
             // A phone keyword matches customers whose number starts with it (NormalizedPhone prefix)
             // or ends with it (ReversedPhone prefix), so both indexed prefix scans stay usable.
             var normalizedCustomerPhoneSearchTerm = CustomerPhoneNormalizer.NormalizeSearchTerm(phone);
+            if (normalizedCustomerPhoneSearchTerm.Length == 0)
+            {
+                // A phone term that holds no digit (e.g. "abc") is a filter that nothing can match,
+                // not the absence of a filter. Building the query anyway would leave both LIKE
+                // patterns as a bare "%" and return the whole active customer table, so short-circuit
+                // to an empty page instead, mirroring LookupByPhonePrefixAsync.
+                return new([], page, pageSize, 0);
+            }
+
             var reversedCustomerPhoneSearchTerm = CustomerPhoneNormalizer.Reverse(normalizedCustomerPhoneSearchTerm);
             query = query.Where(x =>
                 EF.Functions.Like(x.NormalizedPhone, normalizedCustomerPhoneSearchTerm + "%")

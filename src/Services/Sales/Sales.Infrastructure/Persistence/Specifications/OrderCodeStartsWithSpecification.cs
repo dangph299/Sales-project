@@ -17,6 +17,10 @@ public sealed class OrderCodeStartsWithSpecification(string orderCodeSearchTerm)
     public override Expression<Func<Order, bool>> ToExpression()
     {
         var normalizedOrderCodeSearchTerm = orderCodeSearchTerm.Trim().ToUpperInvariant();
-        return x => EF.Functions.Like(x.OrderCode, normalizedOrderCodeSearchTerm + "%");
+        // The term is a literal prefix, so its own LIKE metacharacters must not act as wildcards: a
+        // user typing "%" or "_" is searching for those characters, not for anything. Only the
+        // trailing "%" we append here is a wildcard.
+        var escapedOrderCodeSearchTerm = LikePatternEscaper.Escape(normalizedOrderCodeSearchTerm);
+        return x => EF.Functions.Like(x.OrderCode, escapedOrderCodeSearchTerm + "%", LikePatternEscaper.EscapeCharacter);
     }
 }

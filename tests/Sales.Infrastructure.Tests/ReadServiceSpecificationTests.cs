@@ -287,6 +287,68 @@ public sealed class ReadServiceSpecificationTests
         Assert.Equal(3, both.Items.Count);
     }
 
+    [Fact]
+    public async Task Customer_phone_search_with_no_digits_returns_no_customers()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var customer = Customer.Create("Nguyen Van A", "0901234567");
+        await fixture.SeedAsync(customer);
+
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        // A term that reduces to no digits is a filter nothing matches, not the absence of a filter:
+        // before the guard, the query fell through to LIKE '%' and returned the whole table.
+        var byLetters = await service.SearchAsync(null, "abc", 1, 20);
+
+        Assert.Empty(byLetters.Items);
+        Assert.Equal(0, byLetters.Total);
+    }
+
+    [Fact]
+    public async Task Customer_phone_search_with_only_symbols_returns_no_customers()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var customer = Customer.Create("Nguyen Van A", "0901234567");
+        await fixture.SeedAsync(customer);
+
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        var bySymbols = await service.SearchAsync(null, " (),.- ", 1, 20);
+
+        Assert.Empty(bySymbols.Items);
+        Assert.Equal(0, bySymbols.Total);
+    }
+
+    [Fact]
+    public async Task Customer_phone_search_matches_a_digit_only_prefix()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var match = Customer.Create("Nguyen Van A", "0901234567");
+        var other = Customer.Create("Tran Thi B", "0912345678");
+        await fixture.SeedAsync(match, other);
+
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        var result = await service.SearchAsync(null, "0901", 1, 20);
+
+        Assert.Equal([match.Id], result.Items.Select(x => x.Id).ToArray());
+    }
+
+    [Fact]
+    public async Task Customer_phone_search_accepts_a_formatted_term_with_valid_digits()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var match = Customer.Create("Nguyen Van A", "0901234567");
+        await fixture.SeedAsync(match);
+
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        // The punctuation is stripped by normalization, so a formatted prefix still matches.
+        var result = await service.SearchAsync(null, "090-123", 1, 20);
+
+        Assert.Equal([match.Id], result.Items.Select(x => x.Id).ToArray());
+    }
+
     // OrderReadService.SearchAsync cannot run on the SQLite fixture: it orders by CreatedAt, and
     // SQLite rejects DateTimeOffset in ORDER BY. The status filter is therefore covered at the
     // specification level, the same way the other order search predicates are.
