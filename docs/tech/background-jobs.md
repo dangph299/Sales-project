@@ -2,23 +2,26 @@
 
 Four mechanisms run work outside a request. They are deliberately different tools for different guarantees.
 
-## 1. Hangfire recurring jobs (Sales only)
+## 1. Hangfire recurring jobs
 
-Storage: PostgreSQL `hangfire` database. Queues: `critical`, `default`, `maintenance`. Dashboard at `/hangfire`, restricted to loopback.
+Sales stores Hangfire data in PostgreSQL `hangfire`; Dashboard.Bff stores its refresh job data in PostgreSQL `dashboard`. Sales queues are `critical`, `default`, `maintenance`; Dashboard.Bff uses `default`. Sales exposes the dashboard UI at `/hangfire`, restricted to loopback.
 
 | Job id | Class | Default schedule | Queue | Work |
 |---|---|---|---|---|
 | `sales-cleanup` | `MaintenanceCleanupJob` | `0 0 * * *` | `maintenance` | delete processed inbox/outbox rows older than 14 days |
 | `orders:cancel-expired` | `CancelExpiredPendingOrdersJob` | `*/5 * * * *` | `critical` | cancel open orders idle past `ExpirationMinutes` |
+| `dashboard:snapshot-refresh` | `DashboardSnapshotRefreshJob` | `* * * * *` | `default` | rebuild and cache the dashboard snapshot |
 
 Registration mechanics live in `RecurringJobManagerExtensions.ScheduleRecurringJob<TJob>(id, settings, expression)`:
 
 - enabled → `AddOrUpdate` on the named queue and cron, always UTC
 - disabled → `RemoveIfExists`, so a turned-off job stops firing instead of lingering on its old schedule
 
-Job ids are constants in `SalesRecurringJobIds` — deliberately **not** configurable, so a config change cannot accidentally create a second recurring job. Schedules are configuration (`SalesRecurringJobs`) and validated on start.
+Job ids are constants in service-owned classes (`SalesRecurringJobIds`, `DashboardRecurringJobIds`) — deliberately **not** configurable, so a config change cannot accidentally create a second recurring job. Schedules are configuration and validated on start.
 
 `MaintenanceCleanupJob` acquires a Redis lock (`lock:jobs:sales-cleanup`, 5-minute TTL, Lua compare-and-delete release) so only one instance cleans up per run. `CancelExpiredPendingOrdersJob` dispatches `CancelExpiredPendingOrders` through MediatR, records the batch metrics, and logs a summary.
+
+`DashboardSnapshotRefreshJob` is an aggregation adapter only: it calls `IDashboardSnapshotBuilder`, then stores the result in `IDashboardSnapshotCache`.
 
 ## 2. Hosted services
 
@@ -45,6 +48,7 @@ Run before the host serves traffic (`RunStartupTasksAsync`):
 - Sales: start the Kafka bus (with a stop hook on `ApplicationStopping`), apply migrations + seed identity roles and the `admin` user, register recurring jobs.
 - Inventory: apply migrations, start the Kafka bus.
 - AuditLog: `MongoStartupService` pings Mongo (20 attempts, 2 s apart) and ensures indexes, then `KafkaBusService` starts consuming.
+- Dashboard.Bff: register the snapshot refresh recurring job when Hangfire is configured.
 
 ## Choosing a mechanism
 

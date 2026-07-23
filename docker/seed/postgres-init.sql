@@ -1,3 +1,4 @@
 CREATE DATABASE sales;
 CREATE DATABASE inventory;
 CREATE DATABASE hangfire;
+CREATE DATABASE dashboard;

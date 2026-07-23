@@ -1,3 +1,9 @@
+using BuildingBlocks.Infrastructure;
+using Dashboard.Bff.Jobs;
+using Dashboard.Bff.Options;
+using Hangfire;
+using Microsoft.Extensions.Options;
+
 namespace Dashboard.Bff.Extensions;
 
 /// <summary>
@@ -13,7 +19,29 @@ public static class DashboardBffStartupTaskExtensions
     /// <returns>A completed task.</returns>
     public static Task RunDashboardStartupTasksAsync(this WebApplication app)
     {
-        _ = app;
+        app.Services.RegisterDashboardRecurringJobs();
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Declares every Dashboard BFF recurring job.
+    /// </summary>
+    /// <param name="serviceProvider">Application service provider.</param>
+    public static void RegisterDashboardRecurringJobs(this IServiceProvider serviceProvider)
+    {
+        ArgumentNullException.ThrowIfNull(serviceProvider);
+
+        using var serviceScope = serviceProvider.CreateScope();
+        var recurringJobManager = serviceScope.ServiceProvider.GetService<IRecurringJobManager>();
+        if (recurringJobManager is null)
+        {
+            return;
+        }
+
+        var options = serviceScope.ServiceProvider.GetRequiredService<IOptions<DashboardRefreshJobOptions>>().Value;
+        recurringJobManager.ScheduleRecurringJob<DashboardSnapshotRefreshJob>(
+            DashboardRecurringJobIds.SnapshotRefresh,
+            options.ToRecurringJobSettings(),
+            job => job.ExecuteAsync(CancellationToken.None));
     }
 }

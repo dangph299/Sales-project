@@ -151,38 +151,55 @@
         emptyText="Create your first order."></app-page-state>
     </app-dashboard-section>
 
-    <app-dashboard-section title="Latest Products">
-      <a section-extra routerLink="/products">View catalog</a>
+    <app-dashboard-section title="Inventory Overview">
+      <a section-extra routerLink="/inventory">View inventory</a>
 
-      <div class="table-wrap" *ngIf="recentProducts().length > 0">
-        <nz-table
-          #productTable
-          [nzData]="recentProducts()"
-          [nzShowPagination]="false"
-          nzSize="middle">
-          <thead>
-            <tr>
-              <th>Product Code</th>
-              <th>Product Name</th>
-              <th>Status</th>
-              <th>Price Range</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let product of productTable.data">
-              <td><strong>{{ product.productCode }}</strong></td>
-              <td>{{ product.productName }}</td>
-              <td><app-status-tag [display]="product.status"></app-status-tag></td>
-              <td>{{ product.minPrice | priceRange: product.maxPrice }}</td>
-            </tr>
-          </tbody>
-        </nz-table>
+      <div class="inventory-overview">
+        <a class="inventory-metric" routerLink="/inventory">
+          <app-metric-card
+            icon="appstore"
+            title="Total Inventory Items"
+            [metric]="inventory().totalItems"
+            secondary="Tracked SKUs"
+            tone="info"></app-metric-card>
+        </a>
+
+        <a class="inventory-metric" routerLink="/inventory">
+          <app-metric-card
+            icon="database"
+            title="Total Stock Quantity"
+            [metric]="inventory().totalQuantity"
+            secondary="Available units"
+            tone="info"></app-metric-card>
+        </a>
+
+        <a class="inventory-metric" routerLink="/inventory" [queryParams]="{ stock: 'in-stock' }">
+          <app-metric-card
+            icon="check-circle"
+            title="In Stock"
+            [metric]="inventory().inStock"
+            secondary="Above threshold"
+            tone="success"></app-metric-card>
+        </a>
+
+        <a class="inventory-metric" routerLink="/inventory" [queryParams]="{ stock: 'low' }">
+          <app-metric-card
+            icon="warning"
+            title="Low Stock"
+            [metric]="inventory().lowStock"
+            secondary="At or below threshold"
+            tone="warning"></app-metric-card>
+        </a>
+
+        <a class="inventory-metric" routerLink="/inventory" [queryParams]="{ stock: 'out' }">
+          <app-metric-card
+            icon="close-circle"
+            title="Out Of Stock"
+            [metric]="inventory().outOfStock"
+            secondary="No available units"
+            tone="danger"></app-metric-card>
+        </a>
       </div>
-
-      <app-page-state
-        [empty]="recentProducts().length === 0"
-        emptyTitle="No product updates"
-        emptyText="Create your first product."></app-page-state>
     </app-dashboard-section>
   </section>
 </ng-container>

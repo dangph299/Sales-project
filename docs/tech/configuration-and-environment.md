@@ -38,9 +38,27 @@ Standard ASP.NET Core precedence: `appsettings.json` → `appsettings.{Environme
 | Key | Default |
 |---|---|
 | `ConnectionStrings:Inventory` | `Host=postgres;Database=inventory;Username=postgres;Password=postgres` |
+| `Inventory:Summary:LowStockThreshold` | `5` |
 | `Kafka:Brokers` | `["kafka:9092"]` |
 | `Jwt:*` | same issuer/audience/key as Sales — both validate tokens Sales issues |
 | `Seq:Url`, `HttpLogging:*`, `Serilog:*`, `Outbox:*`, `InboxConsumer:*` | as above |
+
+## Dashboard.Bff
+
+| Key | Default | Meaning |
+|---|---|---|
+| `ConnectionStrings:Redis` | `redis:6379` | dashboard snapshot cache |
+| `ConnectionStrings:Hangfire` | `Host=postgres;Database=dashboard;…` | refresh job storage |
+| `Downstream:SalesBaseUrl` | compose sets `http://sales-api:8080` | Sales API base URL |
+| `Downstream:InventoryBaseUrl` | compose sets `http://inventory-api:8080` | Inventory API base URL |
+| `ServiceAccount:UserName` / `ServiceAccount:Password` | blank in Development | credentials for background refresh calls |
+| `ServiceAccount:AllowAdminDevFallback` | `false` (`true` in Development/compose) | allows the dev-only seeded `admin` fallback when credentials are blank |
+| `Dashboard:Cache:Key` | `dashboard:snapshot` | cache key |
+| `Dashboard:Cache:TtlSeconds` | `300` | cache TTL |
+| `Dashboard:Cache:UseRedis` | `true` | uses in-memory cache if Redis is unavailable/not configured |
+| `Dashboard:RefreshJob:{Enabled,Cron,Queue}` | `true` / `* * * * *` / `default` | snapshot refresh schedule |
+| `Dashboard:Inventory:LowStockThreshold` | `5` | threshold passed to Inventory summary |
+| `Jwt:*` | same issuer/audience/key as Sales | validates caller bearer tokens |
 
 ## AuditLog.Worker
 
@@ -71,6 +89,7 @@ Standard ASP.NET Core precedence: `appsettings.json` → `appsettings.{Environme
 |---|---|
 | Sales API | 5000 (`/swagger`, `/hangfire`, `/hubs/orders`) |
 | Inventory API | 5001 |
+| Dashboard BFF | 5002 |
 | Angular client | 4200 |
 | PostgreSQL | 5432 |
 | Redis | 6379 |
@@ -82,11 +101,11 @@ Standard ASP.NET Core precedence: `appsettings.json` → `appsettings.{Environme
 | APM Server | 8200 |
 | OTel Collector | 4317 / 4318 |
 
-The Angular dev server proxies `/sales-api` → `localhost:5000` and `/inventory-api` → `localhost:5001` (`proxy.conf.json`), including WebSocket upgrade for SignalR.
+The Angular dev server proxies `/sales-api` → `localhost:5000`, `/inventory-api` → `localhost:5001`, and `/dashboard-api` → `localhost:5002` (`proxy.conf.json`). The Sales proxy includes WebSocket upgrade for SignalR.
 
 ## Secrets
 
-The committed `Jwt:Key` and the seeded `admin` / `Admin123!` credentials are development-only. Override them with environment variables, user secrets, or a compose override outside local development. No secret is ever committed, logged, or audited.
+The committed `Jwt:Key` and the seeded `admin` / `Admin123!` credentials are development-only. Dashboard.Bff may use that admin fallback only when `ServiceAccount:AllowAdminDevFallback=true` in Development; production must provide service-account credentials through environment variables, user secrets, or a compose override. No secret is ever committed, logged, or audited.
 
 ## Feature flags
 

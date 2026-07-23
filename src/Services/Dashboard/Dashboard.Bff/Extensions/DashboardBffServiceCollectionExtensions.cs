@@ -1,10 +1,15 @@
 using BuildingBlocks.Application;
+using BuildingBlocks.Infrastructure;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web;
 using Dashboard.Bff.Aggregation;
 using Dashboard.Bff.Auth;
+using Dashboard.Bff.Caching;
 using Dashboard.Bff.Clients;
+using Dashboard.Bff.Jobs;
 using Dashboard.Bff.Options;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
@@ -105,17 +110,16 @@ public static class DashboardBffServiceCollectionExtensions
             .Validate(o => o.TtlSeconds > 0, "Dashboard:Cache:TtlSeconds must be greater than 0")
             .Validate(o => !string.IsNullOrWhiteSpace(o.Key), "Dashboard:Cache:Key must be non-empty")
             .ValidateOnStart();
+        builder.Services.AddDashboardSnapshotCache(builder.Configuration);
 
-        // TODO(Phase 6): validate cron syntax via shared Hangfire helper
         builder.Services.AddOptions<DashboardRefreshJobOptions>()
             .Bind(builder.Configuration.GetSection(DashboardRefreshJobOptions.SectionName))
+            .Validate(o => o.IsValid(), "Dashboard:RefreshJob must be disabled or have a valid cron expression and queue")
             .Validate(
-                o => !o.Enabled || !string.IsNullOrWhiteSpace(o.Cron),
-                "Dashboard:RefreshJob:Cron must be non-empty when Dashboard:RefreshJob:Enabled is true")
-            .Validate(
-                o => !o.Enabled || !string.IsNullOrWhiteSpace(o.Queue),
-                "Dashboard:RefreshJob:Queue must be non-empty when Dashboard:RefreshJob:Enabled is true")
+                o => !o.Enabled || !string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("Hangfire")),
+                "ConnectionStrings:Hangfire must be configured when Dashboard:RefreshJob:Enabled is true")
             .ValidateOnStart();
+        builder.Services.AddDashboardBackgroundJobs(builder.Configuration);
 
         builder.Services.AddOptions<DashboardInventoryOptions>()
             .Bind(builder.Configuration.GetSection(DashboardInventoryOptions.SectionName))
@@ -125,5 +129,52 @@ public static class DashboardBffServiceCollectionExtensions
         builder.Services.AddScoped<IDashboardSnapshotBuilder, DashboardSnapshotBuilder>();
 
         return builder;
+    }
+
+    private static IServiceCollection AddDashboardSnapshotCache(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var cacheOptions = configuration.GetSection(DashboardCacheOptions.SectionName).Get<DashboardCacheOptions>()
+            ?? new DashboardCacheOptions();
+        var redisConnectionString = configuration.GetConnectionString("Redis");
+
+        if (cacheOptions.UseRedis && !string.IsNullOrWhiteSpace(redisConnectionString))
+        {
+            services.AddStackExchangeRedisCache(options => options.Configuration = redisConnectionString);
+            services.AddScoped<IDashboardSnapshotCache, RedisDashboardSnapshotCache>();
+            return services;
+        }
+
+        services.AddMemoryCache();
+        services.AddScoped<IDashboardSnapshotCache, MemoryDashboardSnapshotCache>();
+        return services;
+    }
+
+    private static IServiceCollection AddDashboardBackgroundJobs(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddScoped<DashboardSnapshotRefreshJob>();
+
+        var refreshOptions = configuration.GetSection(DashboardRefreshJobOptions.SectionName).Get<DashboardRefreshJobOptions>()
+            ?? new DashboardRefreshJobOptions();
+        var hangfireConnectionString = configuration.GetConnectionString("Hangfire");
+        if (string.IsNullOrWhiteSpace(hangfireConnectionString))
+        {
+            return services;
+        }
+
+        services.AddHangfire(config => config.UsePostgreSqlStorage(options =>
+            options.UseNpgsqlConnection(hangfireConnectionString)));
+        services.AddHangfireServer(options =>
+        {
+            options.Queues =
+            [
+                string.IsNullOrWhiteSpace(refreshOptions.Queue) ? HangfireQueueNames.Default : refreshOptions.Queue
+            ];
+        });
+
+        return services;
     }
 }

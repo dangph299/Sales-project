@@ -1,6 +1,6 @@
 # Redis Rules
 
-Redis is used by **Sales only**, for two things: a product read cache and a distributed lock for the cleanup job.
+Redis is used by Sales for product caching and the cleanup lock, and by Dashboard.Bff for the aggregated dashboard snapshot. Inventory and AuditLog do not use Redis.
 
 ## Registration
 
@@ -38,6 +38,8 @@ services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect
 - A Redis lock is an optimisation, never a correctness guarantee. The operation under it must be safe to run twice.
 
 Inventory uses a Postgres advisory lock (`pg_try_advisory_xact_lock`) instead — Inventory has no Redis dependency. Keep it that way.
+
+Dashboard.Bff uses `IDashboardSnapshotCache` over `IDistributedCache` when Redis is configured, with an in-memory fallback for local/dev scenarios where Redis is unavailable. The key is `dashboard:snapshot`.
 
 ## Rules
 

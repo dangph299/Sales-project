@@ -1,3 +1,5 @@
+using BuildingBlocks.Infrastructure;
+
 namespace Dashboard.Bff.Options;
 
 /// <summary>
@@ -15,4 +17,25 @@ public sealed class DashboardRefreshJobOptions
 
     /// <summary>Hangfire queue the refresh job is enqueued on.</summary>
     public string Queue { get; set; } = "default";
+
+    /// <summary>
+    /// Returns whether these settings can schedule or disable the recurring job.
+    /// </summary>
+    public bool IsValid()
+    {
+        return ToRecurringJobSettings().IsValid();
+    }
+
+    /// <summary>
+    /// Converts this flat BFF options shape to the shared recurring-job settings model.
+    /// </summary>
+    public RecurringJobSettings ToRecurringJobSettings()
+    {
+        return new RecurringJobSettings
+        {
+            Enabled = Enabled,
+            Cron = Cron,
+            Queue = Queue
+        };
+    }
 }

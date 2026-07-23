@@ -39,7 +39,7 @@ All lazy-loaded from `app.routes.ts`; `''` and `**` redirect to `dashboard`.
 | `ApiResponseReader` | parses `ApiResponse<T>` / `ApiErrorResponse` into `ApiClientResult<T>` for every status branch |
 | `SessionService` | access/refresh token signals, persisted in `localStorage`, `isAuthenticated` computed |
 | `AuthApiService` | login/logout; the only writer of session tokens |
-| `ApiEndpointConfigurationService` | `salesBase()` / `inventoryBase()`, defaulting to `/sales-api` and `/inventory-api` |
+| `ApiEndpointConfigurationService` | `salesBase()` / `inventoryBase()` / `dashboardBase()`, defaulting to `/sales-api`, `/inventory-api`, and `/dashboard-api` |
 | `SignalrConnectionService` | hub-agnostic connection lifecycle, state signal, event dispatch, resubscribe callbacks |
 | `HealthApiService` | status-bar health probe |
 | `navigation.config.ts` | sidebar items |
@@ -57,7 +57,7 @@ All lazy-loaded from `app.routes.ts`; `''` and `**` redirect to `dashboard`.
 
 | Feature | API service | Backend endpoints | Notable pieces |
 |---|---|---|---|
-| `dashboard` | `DashboardApiService` | aggregates several reads | `dashboard.mapper.ts` |
+| `dashboard` | `DashboardApiService` | `/api/dashboard` through Dashboard.Bff | `dashboard.mapper.ts`, inventory overview |
 | `customers` | `CustomerApiService` | `/api/customers*` | `customer-form`, status/detail/toolbar/action-menu components |
 | `categories` | `CategoryApiService` | `/api/categories*` | `category-tree.mapper`, `category-parent-options.mapper`, parent selector |
 | `products` | `ProductApiService` | `/api/products*` | `product-form`, `product-variant-form` |
@@ -90,12 +90,12 @@ Notifications are treated as a hint to re-read, never as authoritative data.
 ```bash
 cd src/Web/Sales.Web
 npm install
-npm start          # http://localhost:4200, proxied to :5000 / :5001
+npm start          # http://localhost:4200, proxied to :5000 / :5001 / :5002
 npm test
 npm run build
 ```
 
-`proxy.conf.json` maps `/sales-api` → `localhost:5000` (with `ws: true` for SignalR) and `/inventory-api` → `localhost:5001`, stripping the prefix. Log in with `admin` / `Admin123!`.
+`proxy.conf.json` maps `/sales-api` → `localhost:5000` (with `ws: true` for SignalR), `/inventory-api` → `localhost:5001`, and `/dashboard-api` → `localhost:5002`, stripping the prefix. Log in with `admin` / `Admin123!`.
 
 ## Related
 

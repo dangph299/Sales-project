@@ -18,13 +18,13 @@ sudo docker compose -f docker/docker-compose.yml stop kibana apm-server elastics
 sudo docker compose -f docker/docker-compose.yml up kibana apm-server elasticsearch otel-collector -d --build
 ```
 
-Fourteen services. Grouped by role:
+Fifteen services. Grouped by role:
 
 | Group | Services |
 |---|---|
 | Data | `postgres`, `redis`, `mongo` |
 | Messaging | `kafka`, `kafka-init` |
-| Applications | `sales-api`, `inventory-api`, `audit-worker` |
+| Applications | `sales-api`, `inventory-api`, `dashboard-bff`, `audit-worker` |
 | Logging | `seq` |
 | Telemetry | `otel-collector`, `apm-server`, `elasticsearch`, `kibana`, `kibana-init` |
 
@@ -39,6 +39,10 @@ flowchart TD
     KI[kafka-init completed] --> SA
     PG --> IA[inventory-api]
     KI --> IA
+    PG --> DBFF[dashboard-bff]
+    RD --> DBFF
+    SA --> DBFF
+    IA --> DBFF
     MG[mongo healthy] --> AW[audit-worker]
     KI --> AW
     KF[kafka healthy] --> KI
@@ -94,9 +98,10 @@ Runtime images: `aspnet:10.0` for APIs (plus `curl` for the healthcheck), `runti
 |---|---|
 | sales-api | start Kafka bus → apply migrations + seed roles and `admin` → register recurring jobs |
 | inventory-api | apply migrations → start Kafka bus |
+| dashboard-bff | register dashboard snapshot refresh recurring job |
 | audit-worker | ping Mongo (20× 2 s) + create indexes → start Kafka bus |
 
-Databases are created by `docker/seed/postgres-init.sql` (`sales`, `inventory`, `hangfire`) on the Postgres container's first run.
+Databases are created by `docker/seed/postgres-init.sql` (`sales`, `inventory`, `hangfire`, `dashboard`) on the Postgres container's first run.
 
 Applying migrations at startup is fine for this project and **not** something to carry into production — see below.
 
@@ -107,6 +112,7 @@ dotnet restore Sales.sln
 dotnet build Sales.sln --no-restore
 dotnet run --project src/Services/Sales/Sales.Api        # :5000
 dotnet run --project src/Services/Inventory/Inventory.Api
+dotnet run --project src/Services/Dashboard/Dashboard.Bff # :5002
 dotnet run --project src/Services/AuditLog/AuditLog.Worker
 ```
 
@@ -127,7 +133,7 @@ npm install
 npm start          # http://localhost:4200
 ```
 
-`proxy.conf.json` maps `/sales-api` → `localhost:5000` (with `ws: true`, required for the SignalR upgrade) and `/inventory-api` → `localhost:5001`, stripping the prefix. That is why the client's default base URLs are relative paths and no CORS is needed in development.
+`proxy.conf.json` maps `/sales-api` → `localhost:5000` (with `ws: true`, required for the SignalR upgrade), `/inventory-api` → `localhost:5001`, and `/dashboard-api` → `localhost:5002`, stripping the prefix. That is why the client's default base URLs are relative paths and no CORS is needed in development.
 
 ## CI
 
