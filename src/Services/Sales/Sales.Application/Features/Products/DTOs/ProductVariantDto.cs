@@ -6,4 +6,6 @@ public sealed record ProductVariantDto(
     ProductColorDto Color,
     ProductSizeDto Size,
     decimal Price,
-    string Status);
+    string Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);

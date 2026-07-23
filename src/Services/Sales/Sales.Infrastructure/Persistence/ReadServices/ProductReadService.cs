@@ -269,6 +269,7 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
             maxPrice,
             publishedVariantPrices.Length > 0 && !product.IsDelete,
             product.Version,
+            product.CreatedAt,
             product.UpdatedAt,
             product.IsDelete,
             product.DeleteByUser,
@@ -287,7 +288,9 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
                     new ProductColorDto(x.Color.Id, x.Color.ColorCode, x.Color.Name, x.Color.HexCode),
                     new ProductSizeDto(x.Size.Id, x.Size.Code, x.Size.Name),
                     x.Variant.Price.Amount,
-                    x.Variant.Status.ToString()))
+                    x.Variant.Status.ToString(),
+                    x.Variant.CreatedAt,
+                    x.Variant.UpdatedAt))
                 .ToArray()
         };
     }

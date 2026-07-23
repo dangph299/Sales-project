@@ -11,6 +11,7 @@ public sealed record ProductDto(
     decimal? MaxPrice,
     bool IsActive,
     long Version,
+    DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     bool IsDelete,
     string? DeleteByUser,

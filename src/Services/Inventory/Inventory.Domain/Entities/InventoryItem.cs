@@ -31,6 +31,16 @@ public sealed class InventoryItem : IEntity<Guid>
     public int Reserved { get; private set; }
 
     /// <summary>
+    /// Gets the UTC instant this inventory row was created.
+    /// </summary>
+    public DateTimeOffset CreatedAt { get; private set; }
+
+    /// <summary>
+    /// Gets the UTC instant this inventory row was last changed.
+    /// </summary>
+    public DateTimeOffset UpdatedAt { get; private set; }
+
+    /// <summary>
     /// Gets the optimistic concurrency version of this item.
     /// </summary>
     public long Version { get; private set; } = 1;
@@ -46,7 +56,8 @@ public sealed class InventoryItem : IEntity<Guid>
     public static InventoryItem Create(Guid productVariantId, string sku, int available)
     {
         if (available < 0) throw new InvalidOperationException("Initial stock cannot be negative.");
-        return new() { ProductVariantId = productVariantId, Sku = sku.Trim().ToUpperInvariant(), Available = available };
+        var now = DateTimeOffset.UtcNow;
+        return new() { ProductVariantId = productVariantId, Sku = sku.Trim().ToUpperInvariant(), Available = available, CreatedAt = now, UpdatedAt = now };
     }
 
     /// <summary>
@@ -57,8 +68,9 @@ public sealed class InventoryItem : IEntity<Guid>
     public void Adjust(int delta)
     {
         if (Available + delta < 0) throw new InvalidOperationException("Available stock cannot become negative.");
+        if (delta == 0) return;
         Available += delta;
-        Version++;
+        Touch();
     }
 
     /// <summary>
@@ -71,7 +83,7 @@ public sealed class InventoryItem : IEntity<Guid>
         if (quantity <= 0 || Available < quantity) throw new InvalidOperationException($"Insufficient stock for {Sku}.");
         Available -= quantity;
         Reserved += quantity;
-        Version++;
+        Touch();
     }
 
     /// <summary>
@@ -84,6 +96,12 @@ public sealed class InventoryItem : IEntity<Guid>
         if (quantity <= 0 || Reserved < quantity) throw new InvalidOperationException("Invalid reservation release.");
         Reserved -= quantity;
         Available += quantity;
+        Touch();
+    }
+
+    private void Touch()
+    {
         Version++;
+        UpdatedAt = DateTimeOffset.UtcNow;
     }
 }

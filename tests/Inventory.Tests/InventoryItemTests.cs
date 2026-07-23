@@ -78,4 +78,38 @@ public sealed class InventoryItemTests
 
         Assert.Equal(productVariantId, item.ProductVariantId);
     }
+
+    [Fact]
+    public void Create_sets_audit_timestamps()
+    {
+        var item = InventoryItem.Create(Guid.NewGuid(), "sku", 10);
+
+        Assert.NotEqual(default, item.CreatedAt);
+        Assert.Equal(item.CreatedAt, item.UpdatedAt);
+    }
+
+    [Fact]
+    public void Zero_adjustment_does_not_touch_inventory_item()
+    {
+        var item = InventoryItem.Create(Guid.NewGuid(), "sku", 10);
+        var version = item.Version;
+        var updatedAt = item.UpdatedAt;
+
+        item.Adjust(0);
+
+        Assert.Equal(version, item.Version);
+        Assert.Equal(updatedAt, item.UpdatedAt);
+    }
+
+    [Fact]
+    public void Reservation_status_changes_touch_reservation()
+    {
+        var reservation = Reservation.Create(Guid.NewGuid(), 1, [new ReservationRequestLine(Guid.NewGuid(), "sku", 1)]);
+        var version = reservation.Version;
+
+        Assert.True(reservation.Release(2));
+
+        Assert.True(reservation.Version > version);
+        Assert.NotEqual(default, reservation.UpdatedAt);
+    }
 }

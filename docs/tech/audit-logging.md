@@ -16,6 +16,7 @@ Tài liệu này mô tả hệ thống audit log hiện tại sau refactor hybri
 ```text
 Command/API/Kafka Consumer
   -> Domain/Application thay đổi aggregate/entity
+  -> AuditTimestampSaveChangesInterceptor chuẩn hóa CreatedAt/UpdatedAt/CreatedBy/UpdatedBy
   -> EF Core ChangeTracker phát hiện Added/Modified/Deleted
   -> EfCoreAuditEntryFactory tạo AuditLogEvent
   -> IAuditEnricher bổ sung mô tả/metadata nếu cần
@@ -135,7 +136,7 @@ Worker không còn lưu mọi integration event raw như audit document chính. 
 
 Thông thường không cần viết mapper:
 
-1. Đảm bảo entity được EF Core track trong DbContext đã đăng ký `AuditSaveChangesInterceptor`.
+1. Đảm bảo entity được EF Core track trong DbContext đã đăng ký `AuditTimestampSaveChangesInterceptor` và `AuditSaveChangesInterceptor`.
 2. Nếu entity chứa dữ liệu nhạy cảm, cấu hình `IgnoreProperty` hoặc `MaskProperty`.
 3. Nếu entity con thuộc aggregate root, thêm mapping trong `IAuditAggregateResolver` của service.
 4. Nếu cần mô tả nghiệp vụ, thêm `IAuditEnricher`.

@@ -120,22 +120,28 @@ public sealed class Product : AggregateRoot<Guid>
 
         var variant = FindVariant(variantId);
         EnsureVariantDoesNotExist(color.Id, size.Id, variantId);
-        variant.Update(color, size, price, status);
-        Touch();
+        if (variant.Update(color, size, price, status))
+        {
+            Touch();
+        }
     }
 
     public void PublishVariant(Guid variantId)
     {
         EnsureNotDeleted();
-        FindVariant(variantId).Publish();
-        Touch();
+        if (FindVariant(variantId).Publish())
+        {
+            Touch();
+        }
     }
 
     public void DiscontinueVariant(Guid variantId)
     {
         EnsureNotDeleted();
-        FindVariant(variantId).Discontinue();
-        Touch();
+        if (FindVariant(variantId).Discontinue())
+        {
+            Touch();
+        }
     }
 
     public void DeactivateVariant(Guid variantId)
@@ -146,8 +152,10 @@ public sealed class Product : AggregateRoot<Guid>
     public void DeleteVariant(Guid variantId, string deleteByUser)
     {
         EnsureNotDeleted();
-        FindVariant(variantId).Delete(deleteByUser);
-        Touch();
+        if (FindVariant(variantId).Delete(deleteByUser))
+        {
+            Touch();
+        }
     }
 
     public ProductVariant GetVariant(Guid variantId)

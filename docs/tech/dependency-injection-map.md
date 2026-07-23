@@ -63,7 +63,7 @@ AddSalesRealtime(configuration)         // SignalR + CORS + JWT-from-query-strin
 ### `AddSalesInfrastructure`
 | Service | Impl | Lifetime |
 |---|---|---|
-| `SalesDbContext` | Npgsql + audit interceptor | scoped |
+| `SalesDbContext` | Npgsql + audit timestamp + audit outbox interceptors | scoped |
 | `IRepository<>` | `Repository<>` | scoped |
 | `IProductRepository` / `IOrderRepository` | `ProductRepository` / `OrderRepository` | scoped |
 | `IUnitOfWork` | `UnitOfWork` | scoped |
@@ -99,7 +99,7 @@ AddInventoryInfrastructure(configuration)
 ```
 
 ### `AddInventoryInfrastructure`
-`InventoryDbContext` (Npgsql + audit interceptor) · `IClock` → `SystemClock` (singleton) · `IInventoryRepository`, `IReservationRepository` · `IInventoryItemReadService` and `IReservationReadService` both → `InventoryReadService` · `IUnitOfWork` → `InventoryUnitOfWork` · `IInventoryTransactionManager` → `InventoryTransactionManager` · `IInventoryInbox` → `InventoryInbox` · `IInventoryEventOutbox` → `InventoryEventOutbox` · `InventoryMaintenanceService` (scoped) + `InventoryMaintenanceWorker` (hosted) · `IInventoryMetrics` → `InventoryMetricsAdapter` (singleton) · `IAuditAggregateResolver` / `IAuditEnricher` → Inventory versions · `IIntegrationEventProcessor` → `InventoryIntegrationEventProcessor` · `IInboxFailureRecorder` → `InventoryInboxFailureRecorder` · `ActivitySource` (singleton) · `IOutboxPublisher` → `KafkaOutboxPublisher("inventory-outbox")` · `InventoryOutboxPublisher`, `InventoryInboxRedriveService` (hosted) · KafkaFlow cluster with consumer group `inventory-orders-v1`.
+`InventoryDbContext` (Npgsql + audit timestamp + audit outbox interceptors) · `IClock` → `SystemClock` (singleton) · `IInventoryRepository`, `IReservationRepository` · `IInventoryItemReadService` and `IReservationReadService` both → `InventoryReadService` · `IUnitOfWork` → `InventoryUnitOfWork` · `IInventoryTransactionManager` → `InventoryTransactionManager` · `IInventoryInbox` → `InventoryInbox` · `IInventoryEventOutbox` → `InventoryEventOutbox` · `InventoryMaintenanceService` (scoped) + `InventoryMaintenanceWorker` (hosted) · `IInventoryMetrics` → `InventoryMetricsAdapter` (singleton) · `IAuditAggregateResolver` / `IAuditEnricher` → Inventory versions · `IIntegrationEventProcessor` → `InventoryIntegrationEventProcessor` · `IInboxFailureRecorder` → `InventoryInboxFailureRecorder` · `ActivitySource` (singleton) · `IOutboxPublisher` → `KafkaOutboxPublisher("inventory-outbox")` · `InventoryOutboxPublisher`, `InventoryInboxRedriveService` (hosted) · KafkaFlow cluster with consumer group `inventory-orders-v1`.
 
 Startup tasks: migrate, start the Kafka bus.
 

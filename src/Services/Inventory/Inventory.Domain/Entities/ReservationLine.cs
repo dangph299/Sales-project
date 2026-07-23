@@ -38,10 +38,17 @@ public sealed class ReservationLine : Entity<Guid>
         };
     }
 
-    internal void ReplaceWith(ReservationRequestLine line)
+    internal bool ReplaceWith(ReservationRequestLine line)
     {
         if (line.ProductId != ProductId) throw new InvalidOperationException("Reservation line product cannot be changed.");
-        Sku = line.Sku.Trim().ToUpperInvariant();
+        var normalizedSku = line.Sku.Trim().ToUpperInvariant();
+        if (Sku == normalizedSku && Quantity == line.Quantity)
+        {
+            return false;
+        }
+
+        Sku = normalizedSku;
         Quantity = line.Quantity;
+        return true;
     }
 }

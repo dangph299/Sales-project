@@ -10,5 +10,6 @@ export interface CategoryResponse {
   sortOrder: number;
   status: CategoryStatus | string;
   productCount?: number;
+  createdAt?: string | null;
   updatedAt?: string | null;
 }

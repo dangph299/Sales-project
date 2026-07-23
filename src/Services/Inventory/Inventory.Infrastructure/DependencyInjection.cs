@@ -37,7 +37,9 @@ public static class DependencyInjection
         });
         services.AddDbContext<InventoryDbContext>((sp, options) => options
             .UseNpgsql(configuration.GetConnectionString("Inventory"))
-            .AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
+            .AddInterceptors(
+                sp.GetRequiredService<AuditTimestampSaveChangesInterceptor>(),
+                sp.GetRequiredService<AuditSaveChangesInterceptor>()));
         services.AddSingleton<IClock, SystemClock>();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IReservationRepository, ReservationRepository>();

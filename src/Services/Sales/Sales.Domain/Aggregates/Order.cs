@@ -132,6 +132,16 @@ public sealed class Order : AggregateRoot<Guid>
     public void UpdateCustomerSnapshot(OrderCustomerSnapshot orderCustomerSnapshot)
     {
         EnsureDraft();
+        if (CustomerName == orderCustomerSnapshot.Name &&
+            CustomerPhone == orderCustomerSnapshot.Phone.DisplayValue &&
+            NormalizedCustomerPhone == orderCustomerSnapshot.Phone.NormalizedValue &&
+            ReversedCustomerPhone == orderCustomerSnapshot.Phone.ReversedValue &&
+            CustomerEmail == orderCustomerSnapshot.Email &&
+            CustomerAddress == orderCustomerSnapshot.Address)
+        {
+            return;
+        }
+
         ApplyEditableCustomerSnapshot(orderCustomerSnapshot);
         Touch();
     }
@@ -169,28 +179,46 @@ public sealed class Order : AggregateRoot<Guid>
     public void ReplaceLines(IEnumerable<OrderLineItem> lines)
     {
         EnsureDraft();
-        SetLines(lines, touch: true);
-        Raise(new OrderLinesReplacedDomainEvent(Id, TotalQuantity, Total.Amount));
+        if (SetLines(lines, touch: true))
+        {
+            Raise(new OrderLinesReplacedDomainEvent(Id, TotalQuantity, Total.Amount));
+        }
     }
 
-    private void SetLines(IEnumerable<OrderLineItem> lines, bool touch)
+    private bool SetLines(IEnumerable<OrderLineItem> lines, bool touch)
     {
         var requested = lines.ToList();
         if (requested.Count == 0) throw new DomainException("Order needs at least one line.");
         if (requested.Select(x => x.Product.ProductVariantId).Distinct().Count() != requested.Count)
             throw new DomainException("A product variant can occur only once in an order.");
 
+        var changed = false;
         foreach (var line in _lines.Where(existing => requested.All(x => x.Product.ProductVariantId != existing.ProductVariantId)).ToArray())
+        {
             _lines.Remove(line);
+            changed = true;
+        }
 
         foreach (var (product, quantity, discountPercent) in requested)
         {
             var existing = _lines.SingleOrDefault(x => x.ProductVariantId == product.ProductVariantId);
-            if (existing is null) _lines.Add(OrderLine.Create(Id, product, quantity, discountPercent));
-            else existing.ReplaceWith(product, quantity, discountPercent);
+            if (existing is null)
+            {
+                _lines.Add(OrderLine.Create(Id, product, quantity, discountPercent));
+                changed = true;
+            }
+            else if (existing.ReplaceWith(product, quantity, discountPercent))
+            {
+                changed = true;
+            }
         }
 
-        if (touch) Touch();
+        if (touch && changed)
+        {
+            Touch();
+        }
+
+        return changed;
     }
 
     /// <summary>
@@ -272,6 +300,7 @@ public sealed class Order : AggregateRoot<Guid>
     public void Cancel()
     {
         if (Status == OrderStatus.Confirmed || Status == OrderStatus.PendingInventory) throw new DomainException("Confirmed or pending inventory orders cannot be cancelled.");
+        if (Status == OrderStatus.Cancelled) return;
         Status = OrderStatus.Cancelled;
         Touch();
     }

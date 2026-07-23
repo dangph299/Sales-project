@@ -69,7 +69,7 @@ public sealed class ProductVariant : Entity<Guid>
         return new ProductVariant(Guid.NewGuid(), productId, color.Id, size.Id, sku, Money.Vnd(price), status);
     }
 
-    public void Update(Color color, Size size, decimal price, EProductVariantStatus status)
+    internal bool Update(Color color, Size size, decimal price, EProductVariantStatus status)
     {
         EnsureNotDeleted();
         ArgumentNullException.ThrowIfNull(color);
@@ -77,38 +77,47 @@ public sealed class ProductVariant : Entity<Guid>
         if (!Enum.IsDefined(status)) throw new DomainException("Product variant status is invalid.");
         EnsureCanChangeTo(status);
 
+        var normalizedPrice = Money.Vnd(price);
+        if (ColorId == color.Id && SizeId == size.Id && Price == normalizedPrice && Status == status)
+        {
+            return false;
+        }
+
         ColorId = color.Id;
         SizeId = size.Id;
-        Price = Money.Vnd(price);
+        Price = normalizedPrice;
         Status = status;
         Touch();
+        return true;
     }
 
-    public void Publish()
+    internal bool Publish()
     {
         EnsureNotDeleted();
-        if (Status == EProductVariantStatus.Published) return;
+        if (Status == EProductVariantStatus.Published) return false;
         if (Status is not (EProductVariantStatus.Draft or EProductVariantStatus.Discontinued))
             throw new DomainException("Only draft or discontinued product variants can be published.");
 
         Status = EProductVariantStatus.Published;
         Touch();
+        return true;
     }
 
-    public void Discontinue()
+    internal bool Discontinue()
     {
         EnsureNotDeleted();
-        if (Status == EProductVariantStatus.Discontinued) return;
+        if (Status == EProductVariantStatus.Discontinued) return false;
         if (Status != EProductVariantStatus.Published)
             throw new DomainException("Only published product variants can be discontinued.");
 
         Status = EProductVariantStatus.Discontinued;
         Touch();
+        return true;
     }
 
-    public void Delete(string deleteByUser)
+    internal bool Delete(string deleteByUser)
     {
-        if (IsDelete) return;
+        if (IsDelete) return false;
         if (Status is not (EProductVariantStatus.Draft or EProductVariantStatus.Discontinued))
         {
             throw new DomainException("Only draft or discontinued product variants can be deleted.");
@@ -120,6 +129,7 @@ public sealed class ProductVariant : Entity<Guid>
         DeletedBy = actor;
         DeletedAt = DateTimeOffset.UtcNow;
         Touch();
+        return true;
     }
 
     private void Touch()
