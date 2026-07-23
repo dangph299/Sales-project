@@ -1,6 +1,7 @@
 using BuildingBlocks.Application;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web;
+using Dashboard.Bff.Aggregation;
 using Dashboard.Bff.Auth;
 using Dashboard.Bff.Clients;
 using Dashboard.Bff.Options;
@@ -115,6 +116,13 @@ public static class DashboardBffServiceCollectionExtensions
                 o => !o.Enabled || !string.IsNullOrWhiteSpace(o.Queue),
                 "Dashboard:RefreshJob:Queue must be non-empty when Dashboard:RefreshJob:Enabled is true")
             .ValidateOnStart();
+
+        builder.Services.AddOptions<DashboardInventoryOptions>()
+            .Bind(builder.Configuration.GetSection(DashboardInventoryOptions.SectionName))
+            .Validate(o => o.LowStockThreshold >= 0, "Dashboard:Inventory:LowStockThreshold must be greater than or equal to 0")
+            .ValidateOnStart();
+
+        builder.Services.AddScoped<IDashboardSnapshotBuilder, DashboardSnapshotBuilder>();
 
         return builder;
     }
