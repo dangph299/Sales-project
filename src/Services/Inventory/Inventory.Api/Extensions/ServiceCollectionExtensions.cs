@@ -37,6 +37,11 @@ public static class ServiceCollectionExtensions
         builder.Services.AddInventoryApplication();
         builder.Services.AddInventoryInfrastructure(builder.Configuration);
 
+        builder.Services.AddOptions<InventorySummaryOptions>()
+            .Bind(builder.Configuration.GetSection(InventorySummaryOptions.SectionName))
+            .Validate(o => o.LowStockThreshold >= 0, "Inventory:Summary:LowStockThreshold must be >= 0")
+            .ValidateOnStart();
+
         return builder;
     }
 }
