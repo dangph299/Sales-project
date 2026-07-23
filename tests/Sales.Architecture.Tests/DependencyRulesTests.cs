@@ -198,9 +198,7 @@ public sealed class DependencyRulesTests
     [Fact]
     public void DashboardBff_DoesNotReferenceServiceAssemblies()
     {
-        var bff = AppDomain.CurrentDomain.GetAssemblies()
-            .FirstOrDefault(a => a.GetName().Name == "Dashboard.Bff");
-        if (bff is null) return; // Phase 2 wires the project reference into this test project.
+        var bff = typeof(Dashboard.Bff.Contracts.DashboardSnapshot).Assembly;
 
         var referenced = bff.GetReferencedAssemblies().Select(a => a.Name).ToArray();
         string[] forbidden =
