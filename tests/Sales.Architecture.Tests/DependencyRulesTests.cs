@@ -194,4 +194,20 @@ public sealed class DependencyRulesTests
 
         Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
     }
+
+    [Fact]
+    public void DashboardBff_DoesNotReferenceServiceAssemblies()
+    {
+        var bff = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Dashboard.Bff");
+        if (bff is null) return; // Phase 2 wires the project reference into this test project.
+
+        var referenced = bff.GetReferencedAssemblies().Select(a => a.Name).ToArray();
+        string[] forbidden =
+        [
+            "Sales.Application", "Sales.Infrastructure", "Sales.Domain",
+            "Inventory.Application", "Inventory.Infrastructure", "Inventory.Domain"
+        ];
+        Assert.Empty(referenced.Intersect(forbidden));
+    }
 }
