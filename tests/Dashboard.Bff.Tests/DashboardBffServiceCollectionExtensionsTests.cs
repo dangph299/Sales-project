@@ -1,3 +1,4 @@
+using BuildingBlocks.Contracts;
 using Dashboard.Bff.Auth;
 using Dashboard.Bff.Clients;
 using Dashboard.Bff.Extensions;
@@ -70,5 +71,27 @@ public sealed class DashboardBffServiceCollectionExtensionsTests
         var second = provider.GetRequiredService<IServiceTokenProvider>();
 
         Assert.Same(first, second);
+    }
+
+    [Fact]
+    public void AddDashboardBff_registers_the_shared_error_message_provider()
+    {
+        using var provider = CreateBuilder().Services.BuildServiceProvider();
+
+        var messageProvider = provider.GetRequiredService<IErrorMessageProvider>();
+
+        Assert.IsType<DefaultErrorMessageProvider>(messageProvider);
+    }
+
+    [Fact]
+    public void AddDashboardBff_registers_a_valid_service_provider()
+    {
+        using var provider = CreateBuilder().Services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true
+        });
+
+        Assert.NotNull(provider);
     }
 }

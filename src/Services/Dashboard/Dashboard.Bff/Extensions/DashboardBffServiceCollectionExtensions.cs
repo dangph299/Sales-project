@@ -1,4 +1,5 @@
 using BuildingBlocks.Application;
+using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web;
@@ -42,6 +43,8 @@ public static class DashboardBffServiceCollectionExtensions
             options.MeterName = MeterName;
         });
 
+        builder.Services.AddSingleton<IErrorMessageProvider, DefaultErrorMessageProvider>();
+        builder.Services.AddBuildingBlocksInfrastructure(builder.Configuration);
         builder.Services.AddHttpContextAccessor();
 
         builder.Services.AddOptions<DownstreamOptions>()
