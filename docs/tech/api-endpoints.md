@@ -39,6 +39,7 @@ Every endpoint that exists today. Roles are the `[Authorize]` requirement. "Auth
 |---|---|---|---|
 | POST | `/api/products` | Admin | `CreateProductCommand { name, description?, categoryId, variants? }` → `201` |
 | GET | `/api/products` | Auth | `productCode`, `name`, `categoryId`, `sku`, `colorId`, `sizeId`, `status`, `page`, `pageSize` |
+| GET | `/api/products/variants` | Auth | `productCode`, `productName`, `sku`, `variantStatus`, `sortBy`, `sortDirection`, `page`, `pageSize` → `PagedResult<ProductVariantLookupDto>` for variant-oriented screens |
 | GET | `/api/products/{id:guid}` | Auth | published products only; `200` + `ETag`. Cached read. |
 | PUT | `/api/products/{id:guid}` | Admin | `{ name, description?, categoryId, status }` |
 | POST | `/api/products/{id:guid}/variants` | Admin | `{ colorId, sizeId, price, status }` |
@@ -88,6 +89,7 @@ SignalR hub methods: `SubscribeToOrder(orderId)`, `UnsubscribeFromOrder(orderId)
 | Verb | Path | Role | Returns |
 |---|---|---|---|
 | GET | `/api/inventory/{productId:guid}` | Auth | `InventorySnapshot { productId, sku, available, reserved, version }`, `404` if none |
+| POST | `/api/inventory/by-variant-ids` | Auth | `{ productVariantIds[] }` capped at 100 ids → `InventoryBatchSnapshot { items[] }`; missing inventory rows return zero quantities and do not create rows |
 | GET | `/api/inventory/reservations/{orderId:guid}` | Auth | `ReservationSnapshot { orderId, status, createdAt, lines[] }`, `404` if none |
 | POST | `/api/inventory/{productId:guid}/adjust` | Admin, Warehouse | `{ sku, quantityDelta }` → adjusted snapshot; creates the item if absent |
 

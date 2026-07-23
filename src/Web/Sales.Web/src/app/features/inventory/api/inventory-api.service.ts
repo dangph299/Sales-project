@@ -2,7 +2,8 @@ import { Injectable, inject } from '@angular/core';
 import { ApiClientService } from '../../../core/api/api-client.service';
 import { ApiEndpointConfigurationService } from '../../../core/config/api-endpoint-configuration.service';
 import { AdjustInventoryRequest } from './requests/adjust-inventory.request';
-import { InventoryResponse } from './responses/inventory.response';
+import { GetInventoryByVariantIdsRequest } from './requests/get-inventory-by-variant-ids.request';
+import { InventoryBatchResponse, InventoryResponse } from './responses/inventory.response';
 
 @Injectable({ providedIn: 'root' })
 export class InventoryApiService {
@@ -16,6 +17,11 @@ export class InventoryApiService {
   /** Null when the variant has no inventory record yet. */
   getByVariant(productVariantId: string): Promise<InventoryResponse | null> {
     return this.client.getOptional<InventoryResponse>(this.baseUrl, `/api/inventory/${productVariantId}`);
+  }
+
+  getByVariants(productVariantIds: string[]): Promise<InventoryBatchResponse> {
+    const request: GetInventoryByVariantIdsRequest = { productVariantIds };
+    return this.client.post<InventoryBatchResponse>(this.baseUrl, '/api/inventory/by-variant-ids', request);
   }
 
   adjust(productVariantId: string, request: AdjustInventoryRequest): Promise<InventoryResponse> {

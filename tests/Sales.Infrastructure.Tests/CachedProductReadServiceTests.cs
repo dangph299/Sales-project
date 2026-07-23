@@ -261,5 +261,19 @@ public sealed class CachedProductReadServiceTests
         {
             throw new NotSupportedException("Search is not used by these tests.");
         }
+
+        public Task<PagedResult<ProductVariantLookupDto>> SearchVariantsAsync(
+            string? productCode,
+            string? productName,
+            string? sku,
+            string? variantStatus,
+            string? sortBy,
+            string? sortDirection,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException("Variant search is not used by these tests.");
+        }
     }
 }

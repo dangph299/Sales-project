@@ -2,23 +2,26 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { PagedResult } from '../../../../core/api/paged-result.model';
 import { ProductLookupApiService } from '../../../common/api/product-lookup-api.service';
-import { ProductLookupResponse } from '../../../common/contracts/product-lookup.response';
+import { ProductVariantPageResponse } from '../../../common/contracts/product-lookup.response';
+import { InventoryResponse } from '../../api/responses/inventory.response';
 import { InventoryApiService } from '../../api/inventory-api.service';
 import { InventoryListPageComponent } from './inventory-list-page.component';
 
 describe('InventoryListPageComponent stock rows', () => {
   let fixture: ComponentFixture<InventoryListPageComponent>;
   let productLookup: FakeProductLookupApiService;
+  let inventoryApi: FakeInventoryApiService;
 
   beforeEach(async () => {
     productLookup = new FakeProductLookupApiService();
+    inventoryApi = new FakeInventoryApiService();
 
     await TestBed.configureTestingModule({
       imports: [InventoryListPageComponent],
       providers: [
         provideNoopAnimations(),
         { provide: ProductLookupApiService, useValue: productLookup },
-        { provide: InventoryApiService, useValue: new FakeInventoryApiService() }
+        { provide: InventoryApiService, useValue: inventoryApi }
       ]
     }).compileComponents();
 
@@ -31,18 +34,14 @@ describe('InventoryListPageComponent stock rows', () => {
     fixture.destroy();
   });
 
-  // Stock is physical: a variant holds units whatever lifecycle state its product is in, and a
-  // product is normally stocked before it is published. Filtering the lookup by product status hid
-  // every variant of an unpublished product, leaving no row to adjust from.
-  it('does not restrict the stock list to published products', async () => {
+  it('searches the variant page endpoint instead of the product page endpoint', async () => {
     await fixture.componentInstance.loadStockRows();
 
-    expect(productLookup.lastFilters?.status).toBe('');
+    expect(productLookup.searchCalls).toBe(0);
+    expect(productLookup.searchVariantsCalls).toBeGreaterThan(0);
   });
 
   it('asks the server for the requested page instead of only the first', async () => {
-    // The grid used to be pinned to page 1, so a product sorted past the first page — and every
-    // variant under it — was unreachable.
     fixture.componentInstance.changePage(3);
     await fixture.whenStable();
 
@@ -60,7 +59,7 @@ describe('InventoryListPageComponent stock rows', () => {
     expect(productLookup.lastFilters?.page).toBe(1);
   });
 
-  it('reports the product count the pager walks through', async () => {
+  it('reports the variant count the pager walks through', async () => {
     productLookup.total = 57;
 
     await fixture.componentInstance.loadStockRows();
@@ -69,7 +68,7 @@ describe('InventoryListPageComponent stock rows', () => {
   });
 
   it('steps back to the last populated page when the current one has gone', async () => {
-    productLookup.products = [];
+    productLookup.variants = [];
     productLookup.total = 20;
     fixture.componentInstance.pageIndex = 5;
 
@@ -78,18 +77,18 @@ describe('InventoryListPageComponent stock rows', () => {
     expect(fixture.componentInstance.pageIndex).toBe(1);
   });
 
-  it('sorts by the chosen column and reverses on a second click', async () => {
-    productLookup.products = [productWithVariants()];
+  it('sends sorting to the server and reverses on a second click', async () => {
+    productLookup.variants = productWithVariants();
     await fixture.componentInstance.loadStockRows();
 
     fixture.componentInstance.sortBy('color');
-    const ascending = fixture.componentInstance.filteredRows().map(row => row.variant.color?.code);
+    await fixture.whenStable();
 
     fixture.componentInstance.sortBy('color');
-    const descending = fixture.componentInstance.filteredRows().map(row => row.variant.color?.code);
+    await fixture.whenStable();
 
-    expect(ascending).toEqual(['BLK', 'RED', 'WHT']);
-    expect(descending).toEqual(['WHT', 'RED', 'BLK']);
+    expect(productLookup.lastFilters?.sortBy).toBe('color');
+    expect(productLookup.lastFilters?.sortDirection).toBe('descend');
   });
 
   it('marks only the column being sorted', async () => {
@@ -100,7 +99,7 @@ describe('InventoryListPageComponent stock rows', () => {
   });
 
   it('sorts variants missing a colour or size without dropping them', async () => {
-    productLookup.products = [productWithUnsetColour()];
+    productLookup.variants = productWithUnsetColour();
     await fixture.componentInstance.loadStockRows();
 
     fixture.componentInstance.sortBy('color');
@@ -109,84 +108,127 @@ describe('InventoryListPageComponent stock rows', () => {
   });
 
   it('lists a variant whose product is still a draft', async () => {
-    productLookup.products = [draftProductWithVariant()];
+    productLookup.variants = [draftProductWithVariant()];
 
     await fixture.componentInstance.loadStockRows();
 
     expect(fixture.componentInstance.stockRows().map(row => row.variant.sku)).toEqual(['PRD02-BLK-M']);
   });
+
+  it('uses one inventory batch request for the loaded variant page', async () => {
+    productLookup.variants = productWithVariants();
+    inventoryApi.resetCalls();
+
+    await fixture.componentInstance.loadStockRows();
+
+    expect(inventoryApi.batchCalls.length).toBe(1);
+    expect(inventoryApi.batchCalls[0]).toEqual(['v-1', 'v-2', 'v-3']);
+    expect(inventoryApi.getByVariantCalls).toBe(0);
+  });
+
+  it('merges inventory by product variant id and defaults missing rows to zero', async () => {
+    productLookup.variants = productWithVariants();
+    inventoryApi.items = [
+      { productId: 'v-2', sku: 'PRD01-BLK-M', available: 8, reserved: 2, version: 3 }
+    ];
+
+    await fixture.componentInstance.loadStockRows();
+
+    const rows = fixture.componentInstance.stockRows();
+    expect(rows.find(row => row.variant.id === 'v-2')?.inventory?.available).toBe(8);
+    expect(rows.find(row => row.variant.id === 'v-1')?.inventory?.available).toBe(0);
+  });
 });
 
 class FakeProductLookupApiService {
-  lastFilters: { status?: string; page?: number; pageSize?: number } | null = null;
-  products: ProductLookupResponse[] = [];
+  lastFilters: { sortBy?: string; sortDirection?: string; page?: number; pageSize?: number } | null = null;
+  variants: ProductVariantPageResponse[] = [];
   total: number | null = null;
+  searchCalls = 0;
+  searchVariantsCalls = 0;
 
-  search(filters: { status?: string; page?: number; pageSize?: number } = {}): Promise<PagedResult<ProductLookupResponse>> {
+  search(): Promise<never> {
+    this.searchCalls++;
+    return Promise.reject(new Error('Inventory page must not use product lookup search.'));
+  }
+
+  searchVariants(filters: { sortBy?: string; sortDirection?: string; page?: number; pageSize?: number } = {}):
+    Promise<PagedResult<ProductVariantPageResponse>> {
+    this.searchVariantsCalls++;
     this.lastFilters = filters;
     return Promise.resolve({
-      items: this.products,
+      items: this.variants,
       page: filters.page ?? 1,
       pageSize: filters.pageSize ?? 20,
-      total: this.total ?? this.products.length
+      total: this.total ?? this.variants.length
     });
   }
 }
 
 class FakeInventoryApiService {
-  /** No stock has ever been recorded for these variants, which is the case under test. */
+  items: InventoryResponse[] = [];
+  batchCalls: string[][] = [];
+  getByVariantCalls = 0;
+
   getByVariant(): Promise<null> {
+    this.getByVariantCalls++;
     return Promise.resolve(null);
+  }
+
+  getByVariants(productVariantIds: string[]): Promise<{ items: InventoryResponse[] }> {
+    this.batchCalls.push(productVariantIds);
+    return Promise.resolve({ items: this.items });
+  }
+
+  resetCalls(): void {
+    this.batchCalls = [];
+    this.getByVariantCalls = 0;
   }
 }
 
-function productWithVariants(): ProductLookupResponse {
-  return {
-    id: '77777777-7777-7777-7777-777777777777',
-    sku: 'PRD01',
-    productCode: 'PRD01',
-    name: 'Shirt',
-    status: 'Published',
-    variants: [
-      { id: 'v-1', sku: 'PRD01-WHT-M', color: colour('WHT', 'White'), size: null, price: 100, status: 'Published' },
-      { id: 'v-2', sku: 'PRD01-BLK-M', color: colour('BLK', 'Black'), size: null, price: 100, status: 'Published' },
-      { id: 'v-3', sku: 'PRD01-RED-M', color: colour('RED', 'Red'), size: null, price: 100, status: 'Published' }
-    ]
-  };
+function productWithVariants(): ProductVariantPageResponse[] {
+  return [
+    variant('v-1', 'PRD01-WHT-M', 'Shirt', 'WHT'),
+    variant('v-2', 'PRD01-BLK-M', 'Shirt', 'BLK'),
+    variant('v-3', 'PRD01-RED-M', 'Shirt', 'RED')
+  ];
 }
 
-function productWithUnsetColour(): ProductLookupResponse {
-  return {
-    id: '66666666-6666-6666-6666-666666666666',
-    sku: 'PRD03',
-    productCode: 'PRD03',
-    name: 'Cap',
-    status: 'Published',
-    variants: [
-      { id: 'v-4', sku: 'PRD03-BLK-M', color: colour('BLK', 'Black'), size: null, price: 100, status: 'Published' },
-      { id: 'v-5', sku: 'PRD03-ONE', color: null, size: null, price: 100, status: 'Published' }
-    ]
-  };
+function productWithUnsetColour(): ProductVariantPageResponse[] {
+  return [
+    variant('v-4', 'PRD03-BLK-M', 'Cap', 'BLK'),
+    { ...variant('v-5', 'PRD03-ONE', 'Cap', 'BLK'), color: null }
+  ];
 }
 
 function colour(code: string, name: string) {
   return { id: `colour-${code}`, code, name, hexCode: '#000000' };
 }
 
-function draftProductWithVariant(): ProductLookupResponse {
+function draftProductWithVariant(): ProductVariantPageResponse {
   return {
-    id: '88888888-8888-8888-8888-888888888888',
-    sku: 'PRD02-BLK-M',
+    productId: '88888888-8888-8888-8888-888888888888',
     productCode: 'PRD02',
-    name: 'Clothing',
-    status: 'Draft',
-    variants: [
-      {
-        id: '99999999-9999-9999-9999-999999999999',
-        sku: 'PRD02-BLK-M',
-        price: 100,
-        status: 'Published'
-      }
-    ]
+    productName: 'Clothing',
+    productStatus: 'Draft',
+    productVariantId: '99999999-9999-9999-9999-999999999999',
+    sku: 'PRD02-BLK-M',
+    price: 100,
+    variantStatus: 'Published'
+  };
+}
+
+function variant(id: string, sku: string, productName: string, colorCode: string): ProductVariantPageResponse {
+  return {
+    productId: '77777777-7777-7777-7777-777777777777',
+    productCode: sku.split('-')[0],
+    productName,
+    productStatus: 'Published',
+    productVariantId: id,
+    sku,
+    color: colour(colorCode, colorCode),
+    size: null,
+    price: 100,
+    variantStatus: 'Published'
   };
 }

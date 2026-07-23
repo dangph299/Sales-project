@@ -5,7 +5,8 @@ namespace Sales.Infrastructure;
 /// <summary>
 /// Cache-aside decorator over <see cref="ProductReadService"/>: checks the product cache before
 /// falling back to the database for <see cref="GetAsync"/>, and warms the cache on a miss.
-/// <see cref="SearchAsync"/> is not cached and always delegates to the inner service.
+/// <see cref="SearchAsync"/> and variant lookup are not cached and always delegate to the inner
+/// service.
 /// </summary>
 public sealed class CachedProductReadService(IProductReadService inner, IProductCache cache) : IProductReadService
 {
@@ -66,6 +67,30 @@ public sealed class CachedProductReadService(IProductReadService inner, IProduct
         CancellationToken cancellationToken = default)
     {
         return inner.SearchAsync(productCode, name, categoryId, sku, colorId, sizeId, status, page, pageSize, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<PagedResult<ProductVariantLookupDto>> SearchVariantsAsync(
+        string? productCode,
+        string? productName,
+        string? sku,
+        string? variantStatus,
+        string? sortBy,
+        string? sortDirection,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        return inner.SearchVariantsAsync(
+            productCode,
+            productName,
+            sku,
+            variantStatus,
+            sortBy,
+            sortDirection,
+            page,
+            pageSize,
+            cancellationToken);
     }
 
     private static bool IsActive(ProductDto product)

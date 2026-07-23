@@ -75,6 +75,37 @@ public sealed class ProductsController : ControllerBase
     }
 
     /// <summary>
+    /// Searches product variants by catalog and variant filters.
+    /// </summary>
+    /// <param name="productCode">Optional exact product code filter.</param>
+    /// <param name="productName">Optional product name substring filter.</param>
+    /// <param name="sku">Optional exact variant SKU filter.</param>
+    /// <param name="variantStatus">Optional variant status filter.</param>
+    /// <param name="sortBy">Optional sort field: sku, productCode, productName, color, size, or status.</param>
+    /// <param name="sortDirection">Optional sort direction: asc/desc or ascend/descend.</param>
+    /// <param name="page">1-based page number. Defaults to 1.</param>
+    /// <param name="pageSize">Maximum page size. Defaults to 20.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with a page of matching product variants.</returns>
+    [HttpGet("variants")]
+    public async Task<IActionResult> SearchVariants(
+        [FromQuery] string? productCode,
+        [FromQuery] string? productName,
+        [FromQuery] string? sku,
+        [FromQuery] string? variantStatus,
+        [FromQuery] string? sortBy,
+        [FromQuery] string? sortDirection,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var variants = await _sender.Send(
+            new SearchProductVariantsQuery(productCode, productName, sku, variantStatus, sortBy, sortDirection, page, pageSize),
+            ct);
+        return this.ToOkResponse(variants);
+    }
+
+    /// <summary>
     /// Loads a single product by its identifier.
     /// </summary>
     /// <param name="id">Product identifier.</param>

@@ -55,4 +55,18 @@ public interface IProductReadService
         int page,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Searches product variants with owning product details for variant-oriented screens.
+    /// </summary>
+    Task<PagedResult<ProductVariantLookupDto>> SearchVariantsAsync(
+        string? productCode,
+        string? productName,
+        string? sku,
+        string? variantStatus,
+        string? sortBy,
+        string? sortDirection,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }

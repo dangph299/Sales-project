@@ -6,3 +6,7 @@ export interface InventoryResponse {
   reserved: number;
   version: number;
 }
+
+export interface InventoryBatchResponse {
+  items: InventoryResponse[];
+}

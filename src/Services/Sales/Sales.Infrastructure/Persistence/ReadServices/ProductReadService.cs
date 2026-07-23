@@ -130,6 +130,103 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
         return new(productDtos, page, pageSize, total);
     }
 
+    /// <inheritdoc/>
+    public async Task<PagedResult<ProductVariantLookupDto>> SearchVariantsAsync(
+        string? productCode,
+        string? productName,
+        string? sku,
+        string? variantStatus,
+        string? sortBy,
+        string? sortDirection,
+        int page,
+        int pageSize,
+        CancellationToken ct = default)
+    {
+        (page, pageSize) = Paging.Normalize(page, pageSize);
+
+        var query =
+            from variant in db.ProductVariants.AsNoTracking()
+            join product in db.Products.AsNoTracking() on variant.ProductId equals product.Id
+            join color in db.Colors.AsNoTracking() on variant.ColorId equals color.Id
+            join size in db.Sizes.AsNoTracking() on variant.SizeId equals size.Id
+            where !product.IsDelete
+            select new
+            {
+                Product = product,
+                Variant = variant,
+                Color = color,
+                Size = size
+            };
+
+        if (!string.IsNullOrWhiteSpace(productCode))
+        {
+            var normalizedProductCode = ProductCodeRules.Normalize(productCode, "Product code");
+            query = query.Where(x => x.Product.ProductCode == normalizedProductCode);
+        }
+
+        if (!string.IsNullOrWhiteSpace(productName))
+        {
+            var pattern = $"%{productName.Trim()}%";
+            query = db.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL"
+                ? query.Where(x => EF.Functions.ILike(x.Product.Name, pattern))
+                : query.Where(x => EF.Functions.Like(x.Product.Name, pattern));
+        }
+
+        if (!string.IsNullOrWhiteSpace(sku))
+        {
+            var normalizedSku = ProductCodeRules.Normalize(sku, "SKU");
+            query = query.Where(x => x.Variant.Sku == normalizedSku);
+        }
+
+        if (!string.IsNullOrWhiteSpace(variantStatus) &&
+            Enum.TryParse<EProductVariantStatus>(variantStatus, ignoreCase: true, out var parsedVariantStatus))
+        {
+            query = query.Where(x => x.Variant.Status == parsedVariantStatus);
+        }
+
+        var total = await query.LongCountAsync(ct);
+        var descending = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(sortDirection, "descend", StringComparison.OrdinalIgnoreCase);
+        var ordered = (sortBy ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "productcode" => descending
+                ? query.OrderByDescending(x => x.Product.ProductCode).ThenBy(x => x.Variant.Id)
+                : query.OrderBy(x => x.Product.ProductCode).ThenBy(x => x.Variant.Id),
+            "product" or "productname" => descending
+                ? query.OrderByDescending(x => x.Product.Name).ThenBy(x => x.Variant.Id)
+                : query.OrderBy(x => x.Product.Name).ThenBy(x => x.Variant.Id),
+            "color" => descending
+                ? query.OrderByDescending(x => x.Color.ColorCode).ThenBy(x => x.Variant.Id)
+                : query.OrderBy(x => x.Color.ColorCode).ThenBy(x => x.Variant.Id),
+            "size" => descending
+                ? query.OrderByDescending(x => x.Size.SortOrder).ThenByDescending(x => x.Size.Code).ThenBy(x => x.Variant.Id)
+                : query.OrderBy(x => x.Size.SortOrder).ThenBy(x => x.Size.Code).ThenBy(x => x.Variant.Id),
+            "status" or "variantstatus" => descending
+                ? query.OrderByDescending(x => x.Variant.Status).ThenBy(x => x.Variant.Id)
+                : query.OrderBy(x => x.Variant.Status).ThenBy(x => x.Variant.Id),
+            _ => descending
+                ? query.OrderByDescending(x => x.Variant.Sku).ThenBy(x => x.Variant.Id)
+                : query.OrderBy(x => x.Variant.Sku).ThenBy(x => x.Variant.Id)
+        };
+        var rows = await ordered
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(x => new ProductVariantLookupDto(
+                x.Product.Id,
+                x.Product.ProductCode,
+                x.Product.Name,
+                x.Product.Status.ToString(),
+                x.Variant.Id,
+                x.Variant.Sku,
+                new ProductColorDto(x.Color.Id, x.Color.ColorCode, x.Color.Name, x.Color.HexCode),
+                new ProductSizeDto(x.Size.Id, x.Size.Code, x.Size.Name),
+                x.Variant.Price.Amount,
+                x.Variant.Status.ToString()))
+            .ToArrayAsync(ct);
+
+        return new(rows, page, pageSize, total);
+    }
+
     private async Task<Dictionary<Guid, (ProductVariant Variant, Color Color, Size Size)[]>> LoadVariants(
         IReadOnlyCollection<Guid> productIds,
         CancellationToken cancellationToken)
