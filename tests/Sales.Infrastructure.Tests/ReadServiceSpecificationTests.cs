@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Sales.Domain;
 
 namespace Sales.Infrastructure.Tests;
@@ -285,6 +286,29 @@ public sealed class ReadServiceSpecificationTests
         var both = await service.SearchAsync(null, "09", 1, 20);
 
         Assert.Equal(3, both.Items.Count);
+    }
+
+    [Fact]
+    public async Task Sqlite_honours_the_escape_the_variant_name_search_falls_back_to()
+    {
+        // SearchVariantsAsync uses EF.Functions.ILike on Npgsql but falls back to Like on any other
+        // provider, and only the Like branch runs on SQLite. This pins that the three-argument
+        // Like(column, pattern, escape) both translates on SQLite and honours the escaping, so the
+        // fallback treats a typed "%" as a literal exactly as the Npgsql path does.
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var literal = ProductTestFactory.CreatePublishedProduct("PRD-1", "50% off bundle", 100);
+        var other = ProductTestFactory.CreatePublishedProduct("PRD-2", "5000 unit pack", 100);
+        await fixture.SeedAsync(literal, other);
+
+        await using var context = fixture.CreateContext();
+        // "50%" escaped for a contains-match: the inner % is escaped, the surrounding two are wildcards.
+        const string pattern = "%50\\%%";
+        var names = await context.Products.AsNoTracking()
+            .Where(x => EF.Functions.Like(x.Name, pattern, "\\"))
+            .Select(x => x.Name)
+            .ToListAsync();
+
+        Assert.Equal(["50% off bundle"], names);
     }
 
     [Fact]

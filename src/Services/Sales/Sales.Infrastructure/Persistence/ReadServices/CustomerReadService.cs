@@ -27,7 +27,14 @@ public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICu
         (page, pageSize) = Paging.Normalize(page, pageSize);
         var activeCustomer = new ActiveCustomerSpecification();
         var query = db.Customers.AsNoTracking().Where(activeCustomer.ToExpression());
-        if (!string.IsNullOrWhiteSpace(name)) query = query.Where(x => EF.Functions.ILike(x.Name, $"%{name.Trim()}%"));
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            // The name is a literal "contains" fragment: escape its LIKE metacharacters so a typed
+            // "%" or "_" finds those characters instead of acting as a wildcard.
+            var escapedCustomerNameSearchTerm = LikePatternEscaper.Escape(name.Trim());
+            query = query.Where(x =>
+                EF.Functions.ILike(x.Name, $"%{escapedCustomerNameSearchTerm}%", LikePatternEscaper.EscapeCharacter));
+        }
         if (!string.IsNullOrWhiteSpace(phone))
         {
             // A phone keyword matches customers whose number starts with it (NormalizedPhone prefix)
