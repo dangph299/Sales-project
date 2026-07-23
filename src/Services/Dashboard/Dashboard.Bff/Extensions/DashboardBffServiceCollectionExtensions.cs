@@ -1,6 +1,9 @@
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web;
+using Dashboard.Bff.Auth;
+using Dashboard.Bff.Clients;
 using Dashboard.Bff.Options;
+using Microsoft.Extensions.Options;
 
 namespace Dashboard.Bff.Extensions;
 
@@ -61,6 +64,24 @@ public static class DashboardBffServiceCollectionExtensions
         }
 
         serviceAccountOptionsBuilder.ValidateOnStart();
+
+        builder.Services.AddTransient<DownstreamAuthDelegatingHandler>();
+
+        builder.Services.AddHttpClient<ISalesClient, SalesClient>((provider, client) =>
+            {
+                var downstreamOptions = provider.GetRequiredService<IOptions<DownstreamOptions>>().Value;
+                client.BaseAddress = new Uri(downstreamOptions.SalesBaseUrl);
+            })
+            .AddHttpMessageHandler<DownstreamAuthDelegatingHandler>()
+            .AddStandardResilienceHandler();
+
+        builder.Services.AddHttpClient<IInventoryClient, InventoryClient>((provider, client) =>
+            {
+                var downstreamOptions = provider.GetRequiredService<IOptions<DownstreamOptions>>().Value;
+                client.BaseAddress = new Uri(downstreamOptions.InventoryBaseUrl);
+            })
+            .AddHttpMessageHandler<DownstreamAuthDelegatingHandler>()
+            .AddStandardResilienceHandler();
 
         builder.Services.AddOptions<DashboardCacheOptions>()
             .Bind(builder.Configuration.GetSection(DashboardCacheOptions.SectionName))
