@@ -94,6 +94,83 @@ describe('OrderCustomerFormComponent phone entry', () => {
     expect(component.isNewCustomer()).toBeTrue();
   });
 
+  it('recovers loading and customer state when the same number is re-entered after clearing', async () => {
+    lookup.suggestions = [suggestion()]; // 0901234567
+
+    typePhone('0901234567');
+    await settleDebounce();
+    expect(component.searching()).toBeFalse();
+    expect(component.isNewCustomer()).toBeFalse();
+
+    typePhone('');
+    await settleDebounce();
+
+    typePhone('0901234567');
+    await settleDebounce();
+
+    expect(component.searching()).toBeFalse();
+    expect(component.isNewCustomer()).toBeFalse();
+  });
+
+  it('does not get stuck loading when the same number is entered twice in a row', async () => {
+    lookup.suggestions = [suggestion()];
+
+    typePhone('0901234567');
+    await settleDebounce();
+    expect(component.searching()).toBeFalse();
+
+    // distinctUntilChanged drops this repeat, so no request runs. The old code flipped `searching`
+    // on before the pipe, so the dropped term left it stuck true and hid the new-customer hint.
+    typePhone('0901234567');
+    await settleDebounce();
+
+    expect(component.searching()).toBeFalse();
+    expect(component.isNewCustomer()).toBeFalse();
+  });
+
+  it('resets loading when the lookup fails', async () => {
+    lookup.shouldError = true;
+
+    typePhone('0987654321');
+    await settleDebounce();
+
+    expect(component.searching()).toBeFalse();
+    expect(component.suggestionErrorMessage()).not.toBe('');
+  });
+
+  it('does not leave loading stuck when a newer term cancels an in-flight lookup', async () => {
+    lookup.manualResolve = true;
+
+    typePhone('0901111111');
+    await settleDebounce();
+    expect(component.searching()).toBeTrue();
+
+    // A newer term makes switchMap tear down the first, still-pending lookup and start a second.
+    typePhone('0902222222');
+    await settleDebounce();
+    expect(component.searching()).toBeTrue();
+
+    lookup.resolveAll();
+    // Let the resolved lookup's promise chain (loadSuggestions → from → finalize) drain before
+    // reading the flag, the same way settleDebounce settles the other async paths.
+    await settleDebounce();
+
+    expect(component.searching()).toBeFalse();
+  });
+
+  it('clears suggestions and loading when the field is emptied', async () => {
+    lookup.suggestions = [suggestion()];
+    typePhone('0901234567');
+    await settleDebounce();
+    expect(component.suggestions().length).toBe(1);
+
+    typePhone('');
+    await settleDebounce();
+
+    expect(component.suggestions()).toEqual([]);
+    expect(component.searching()).toBeFalse();
+  });
+
   function phoneInput(): HTMLInputElement {
     return fixture.nativeElement.querySelector('input[name="orderCustomerPhone"]') as HTMLInputElement;
   }
@@ -128,9 +205,28 @@ function userPick(): NzOptionSelectionChange {
 
 class FakeCustomerLookupApiService {
   suggestions: CustomerPhoneSuggestionResponse[] = [];
+  shouldError = false;
+  manualResolve = false;
+
+  private resolvers: Array<(value: CustomerPhoneSuggestionResponse[]) => void> = [];
 
   suggestByPhone(): Promise<CustomerPhoneSuggestionResponse[]> {
+    if (this.shouldError) {
+      return Promise.reject(new Error('lookup failed'));
+    }
+
+    if (this.manualResolve) {
+      return new Promise<CustomerPhoneSuggestionResponse[]>(resolve => this.resolvers.push(resolve));
+    }
+
     return Promise.resolve(this.suggestions);
+  }
+
+  /** Completes every lookup left pending by {@link manualResolve}. */
+  resolveAll(): void {
+    const pending = this.resolvers;
+    this.resolvers = [];
+    pending.forEach(resolve => resolve(this.suggestions));
   }
 
   search(): Promise<never> {

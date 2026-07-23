@@ -30,6 +30,8 @@ public static class AuditingServiceCollectionExtensions
         services.TryAddScoped<IAuditContextAccessor, SystemAuditContextAccessor>();
         services.TryAddScoped<IAuditAggregateResolver, DefaultAuditAggregateResolver>();
         services.TryAddScoped<IAuditEntryFactory, EfCoreAuditEntryFactory>();
+        services.TryAddSingleton(TimeProvider.System);
+        services.TryAddScoped<AuditTimestampSaveChangesInterceptor>();
         services.TryAddScoped<AuditSaveChangesInterceptor>();
         return services;
     }

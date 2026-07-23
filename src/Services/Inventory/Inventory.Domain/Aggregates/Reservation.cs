@@ -90,8 +90,14 @@ public sealed class Reservation : AggregateRoot<Guid>
     {
         if (Status != ReservationStatus.Active) throw new InvalidOperationException("Only active reservations can be replaced.");
         if (IsStale(orderVersion)) return false;
+        var changed = LastOrderVersion != orderVersion;
         LastOrderVersion = orderVersion;
-        SetLines(lines);
+        changed = SetLines(lines) || changed;
+        if (changed)
+        {
+            Touch();
+        }
+
         return true;
     }
 
@@ -105,9 +111,9 @@ public sealed class Reservation : AggregateRoot<Guid>
         if (Status != ReservationStatus.Released) throw new InvalidOperationException("Only released reservations can be reactivated.");
         if (IsStale(orderVersion)) return false;
         Status = ReservationStatus.Active;
-        CreatedAt = DateTimeOffset.UtcNow;
         LastOrderVersion = orderVersion;
         SetLines(lines);
+        Touch();
         return true;
     }
 
@@ -121,10 +127,11 @@ public sealed class Reservation : AggregateRoot<Guid>
         if (IsStale(orderVersion)) return false;
         LastOrderVersion = orderVersion;
         Status = ReservationStatus.Released;
+        Touch();
         return true;
     }
 
-    private void SetLines(IEnumerable<ReservationRequestLine> lines)
+    private bool SetLines(IEnumerable<ReservationRequestLine> lines)
     {
         var materialized = lines.ToArray();
         if (materialized.Length == 0) throw new InvalidOperationException("Reservation needs at least one line.");
@@ -132,16 +139,27 @@ public sealed class Reservation : AggregateRoot<Guid>
         if (materialized.Select(x => x.ProductId).Distinct().Count() != materialized.Length)
             throw new InvalidOperationException("A product can occur only once in a reservation.");
 
+        var changed = false;
         foreach (var existing in _lines.Where(existing => materialized.All(x => x.ProductId != existing.ProductId)).ToArray())
         {
             _lines.Remove(existing);
+            changed = true;
         }
 
         foreach (var line in materialized)
         {
             var existing = _lines.SingleOrDefault(x => x.ProductId == line.ProductId);
-            if (existing is null) _lines.Add(ReservationLine.Create(Id, line));
-            else existing.ReplaceWith(line);
+            if (existing is null)
+            {
+                _lines.Add(ReservationLine.Create(Id, line));
+                changed = true;
+            }
+            else if (existing.ReplaceWith(line))
+            {
+                changed = true;
+            }
         }
+
+        return changed;
     }
 }

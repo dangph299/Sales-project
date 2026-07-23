@@ -84,9 +84,25 @@ public sealed class OrderLine : Entity<Guid>
         return new OrderLine(orderId, product, quantity, discountPercent);
     }
 
-    internal void ReplaceWith(ProductSnapshot product, int quantity, decimal discountPercent)
+    internal bool ReplaceWith(ProductSnapshot product, int quantity, decimal discountPercent)
     {
         Validate(quantity, discountPercent);
+        if (ProductId == product.Id &&
+            ProductVariantId == product.ProductVariantId &&
+            ProductCode == product.ProductCode &&
+            Sku == product.Sku &&
+            ProductName == product.Name &&
+            ColorCode == product.ColorCode &&
+            ColorName == product.ColorName &&
+            SizeCode == product.SizeCode &&
+            UnitPrice == product.UnitPrice &&
+            IsSellThroughDiscontinued == product.IsSellThroughDiscontinued &&
+            Quantity == quantity &&
+            DiscountPercent == discountPercent)
+        {
+            return false;
+        }
+
         ProductId = product.Id;
         ProductVariantId = product.ProductVariantId;
         ProductCode = product.ProductCode;
@@ -99,6 +115,7 @@ public sealed class OrderLine : Entity<Guid>
         IsSellThroughDiscontinued = product.IsSellThroughDiscontinued;
         Quantity = quantity;
         DiscountPercent = discountPercent;
+        return true;
     }
 
     private static void Validate(int quantity, decimal discountPercent)

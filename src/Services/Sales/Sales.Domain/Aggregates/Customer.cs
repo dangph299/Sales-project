@@ -100,8 +100,10 @@ public sealed class Customer : AggregateRoot<Guid>
         EnsureNotDeleted();
         var oldName = Name;
         var oldPhone = Phone;
+        var oldEmail = Email;
+        var oldAddress = Address;
         SetDetails(name, phone, email, address);
-        if (oldName == Name && oldPhone == Phone) return;
+        if (oldName == Name && oldPhone == Phone && oldEmail == Email && oldAddress == Address) return;
         Touch();
         Raise(new CustomerUpdatedDomainEvent(Id, oldName, oldPhone, Name, Phone));
     }

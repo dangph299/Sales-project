@@ -8,4 +8,6 @@ public sealed record CategoryDto(
     Guid? ParentCategoryId,
     int SortOrder,
     string Status,
-    long Version);
+    long Version,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset UpdatedAt);

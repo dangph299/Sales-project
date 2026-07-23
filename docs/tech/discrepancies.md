@@ -38,10 +38,6 @@ Deliberate and documented in the class: it uses `UserManager` and `SalesDbContex
 
 ## Domain behaviour worth knowing
 
-### Editing only email/address does not bump a customer's version
-
-`Customer.Update` always re-applies all four values but only calls `Touch()` and raises `CustomerUpdatedDomainEvent` when `Name` or `Phone` changed. An email-only edit therefore persists but leaves `Version` and `UpdatedAt` unchanged — so it produces no audit "Updated" action and no ETag change.
-
 ### `Customer.Create(name, phone)` uses a process-local sequence
 
 The two-argument overload builds `CUS{Interlocked.Increment(ref customerCodeSequence):D6}` from a static field. It is only used by tests; production goes through `ICustomerCodeGenerator` and the Postgres sequence. Two API instances using the overload would collide.

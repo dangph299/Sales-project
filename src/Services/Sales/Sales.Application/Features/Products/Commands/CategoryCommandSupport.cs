@@ -16,7 +16,9 @@ internal static class CategoryCommandSupport
             category.ParentCategoryId,
             category.SortOrder,
             category.Status.ToString(),
-            category.Version);
+            category.Version,
+            category.CreatedAt,
+            category.UpdatedAt);
     }
 
     public static ECategoryStatus ParseCategoryStatus(string status)

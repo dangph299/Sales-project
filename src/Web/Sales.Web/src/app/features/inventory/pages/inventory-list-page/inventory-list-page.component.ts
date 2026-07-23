@@ -15,7 +15,9 @@ import { confirmAction } from '../../../../shared/utilities/confirm-action';
 import { describeApiError } from '../../../../shared/utilities/describe-api-error';
 import { ProductLookupApiService } from '../../../common/api/product-lookup-api.service';
 import { productLookupStatusDisplay } from '../../../common/constants/product-lookup-status';
+import { ProductLookupResponse, ProductVariantLookupResponse } from '../../../common/contracts/product-lookup.response';
 import { InventoryApiService } from '../../api/inventory-api.service';
+import { InventoryResponse } from '../../api/responses/inventory.response';
 import { StockAdjustmentFormComponent } from '../../components/stock-adjustment-form/stock-adjustment-form.component';
 import { StockState, lowStockThreshold, stockStateLabels, stockStateOf } from '../../constants/stock-state';
 import { StockAdjustmentFormModel, emptyStockAdjustmentForm } from '../../models/stock-adjustment-form.model';
@@ -56,7 +58,7 @@ export class InventoryListPageComponent implements OnInit {
   readonly errorMessage = signal('');
   readonly mutationErrorMessage = signal('');
   readonly stockRows = signal<StockRow[]>([]);
-  /** Number of products matching the filters, which is what the pager walks through. */
+  /** Number of variants matching the filters, which is what the pager walks through. */
   readonly total = signal(0);
   readonly selectedRow = signal<StockRow | null>(null);
   readonly adjustmentModalOpen = signal(false);
@@ -83,13 +85,11 @@ export class InventoryListPageComponent implements OnInit {
     this.loading.set(true);
     this.errorMessage.set('');
     try {
-      // Every variant, whatever its product's lifecycle state: stock is physical, and a product is
-      // normally received into the warehouse before it is published. Filtering by product status
-      // left new variants with no row, and so no way to adjust them.
-      const page = await this.productLookup.search({
+      const page = await this.productLookup.searchVariants({
         sku: this.skuFilter,
-        name: this.nameFilter,
-        status: '',
+        productName: this.nameFilter,
+        sortBy: this.sortKey(),
+        sortDirection: this.sortDirection(),
         page: this.pageIndex,
         pageSize: this.pageSize
       });
@@ -102,16 +102,13 @@ export class InventoryListPageComponent implements OnInit {
         return;
       }
 
-      // One inventory read per variant, issued together: awaiting them in the loop serialised the
-      // whole grid behind up to (products x variants) sequential round trips.
-      const pairs = page.items.flatMap(product =>
-        (product.variants ?? []).map(variant => ({ product, variant })));
-      const inventories = await Promise.all(
-        pairs.map(pair => this.inventoryApi.getByVariant(pair.variant.id)));
-      const rows: StockRow[] = pairs.map((pair, index) => ({
-        product: pair.product,
-        variant: pair.variant,
-        inventory: inventories[index]
+      const variantIds = page.items.map(item => item.productVariantId);
+      const inventoryBatch = await this.inventoryApi.getByVariants(variantIds);
+      const inventoryByVariantId = new Map(inventoryBatch.items.map(item => [item.productId, item]));
+      const rows: StockRow[] = page.items.map(item => ({
+        product: this.toProduct(item),
+        variant: this.toVariant(item),
+        inventory: inventoryByVariantId.get(item.productVariantId) ?? this.emptyInventory(item.productVariantId, item.sku)
       }));
 
       this.stockRows.set(rows);
@@ -141,21 +138,23 @@ export class InventoryListPageComponent implements OnInit {
   }
 
   filteredRows(): StockRow[] {
-    const rows = this.stockStateFilter === ''
+    return this.stockStateFilter === ''
       ? this.stockRows()
       : this.stockRows().filter(row => this.stockState(row) === this.stockStateFilter);
-
-    return this.sortRows(rows);
   }
 
   sortBy(key: StockSortKey): void {
     if (this.sortKey() !== key) {
       this.sortKey.set(key);
       this.sortDirection.set('ascend');
+      this.pageIndex = 1;
+      void this.loadStockRows();
       return;
     }
 
     this.sortDirection.set(this.sortDirection() === 'ascend' ? 'descend' : 'ascend');
+    this.pageIndex = 1;
+    void this.loadStockRows();
   }
 
   sortIndicator(key: StockSortKey): string {
@@ -189,35 +188,6 @@ export class InventoryListPageComponent implements OnInit {
     this.adjustmentModalOpen.set(false);
     this.adjustmentForm = emptyStockAdjustmentForm();
     this.mutationErrorMessage.set('');
-  }
-
-  private sortRows(rows: StockRow[]): StockRow[] {
-    const key = this.sortKey();
-    const direction = this.sortDirection();
-
-    return [...rows].sort((left, right) => {
-      const result = this.sortValue(left, key).localeCompare(this.sortValue(right, key), undefined, {
-        numeric: true,
-        sensitivity: 'base'
-      });
-
-      return direction === 'ascend' ? result : -result;
-    });
-  }
-
-  private sortValue(row: StockRow, key: StockSortKey): string {
-    switch (key) {
-      case 'product':
-        return row.product.name;
-      case 'color':
-        return row.variant.color?.code ?? '';
-      case 'size':
-        return row.variant.size?.code ?? '';
-      case 'status':
-        return row.variant.status;
-      default:
-        return row.variant.sku;
-    }
   }
 
   stockState(row: StockRow): StockState {
@@ -267,5 +237,49 @@ export class InventoryListPageComponent implements OnInit {
     } finally {
       this.saving.set(false);
     }
+  }
+
+  private toProduct(item: {
+    productId: string;
+    productCode: string;
+    productName: string;
+    productStatus: string;
+  }): ProductLookupResponse {
+    return {
+      id: item.productId,
+      sku: item.productCode,
+      productCode: item.productCode,
+      name: item.productName,
+      status: item.productStatus,
+      variants: []
+    };
+  }
+
+  private toVariant(item: {
+    productVariantId: string;
+    sku: string;
+    color?: ProductVariantLookupResponse['color'];
+    size?: ProductVariantLookupResponse['size'];
+    price: number;
+    variantStatus: string;
+  }): ProductVariantLookupResponse {
+    return {
+      id: item.productVariantId,
+      sku: item.sku,
+      color: item.color,
+      size: item.size,
+      price: item.price,
+      status: item.variantStatus
+    };
+  }
+
+  private emptyInventory(productVariantId: string, sku: string): InventoryResponse {
+    return {
+      productId: productVariantId,
+      sku,
+      available: 0,
+      reserved: 0,
+      version: 0
+    };
   }
 }

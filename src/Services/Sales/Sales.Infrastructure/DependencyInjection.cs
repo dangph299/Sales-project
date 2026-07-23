@@ -38,7 +38,9 @@ public static class DependencyInjection
         });
         services.AddDbContext<SalesDbContext>((sp, options) => options
             .UseNpgsql(configuration.GetConnectionString("Sales"))
-            .AddInterceptors(sp.GetRequiredService<AuditSaveChangesInterceptor>()));
+            .AddInterceptors(
+                sp.GetRequiredService<AuditTimestampSaveChangesInterceptor>(),
+                sp.GetRequiredService<AuditSaveChangesInterceptor>()));
         services.AddSalesRepositories();
         services.AddSalesReadServices();
         services.AddSalesCodeGeneration();

@@ -8,13 +8,11 @@
 </section>
 
 <section class="toolbar">
-  <label>
-    SKU
-    <input nz-input name="inventorySku" [(ngModel)]="skuFilter" (keyup.enter)="search()">
+  <label> SKU
+    <input nz-input name="inventorySku" [(ngModel)]="skuFilter" (keyup.enter)="search()" placeholder="Search by SKU">
   </label>
-  <label>
-    Product name
-    <input nz-input name="inventoryProductName" [(ngModel)]="nameFilter" (keyup.enter)="search()">
+  <label> Product name
+    <input nz-input name="inventoryProductName" [(ngModel)]="nameFilter" (keyup.enter)="search()" placeholder="Search by product name">
   </label>
   <div class="filter-field">
     <span>Stock state (this page)</span>
@@ -113,7 +111,7 @@
       </tr>
     </tbody>
   </nz-table>
-  <ng-template #totalTemplate let-total>Total {{ total }} products</ng-template>
+  <ng-template #totalTemplate let-total>Total {{ total }} variants</ng-template>
 </nz-card>
 
 <nz-modal

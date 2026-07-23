@@ -26,3 +26,16 @@ export interface ProductVariantLookupResponse {
   price: number;
   status: string;
 }
+
+export interface ProductVariantPageResponse {
+  productId: string;
+  productCode: string;
+  productName: string;
+  productStatus: string;
+  productVariantId: string;
+  sku: string;
+  color?: ColorResponse | null;
+  size?: SizeResponse | null;
+  price: number;
+  variantStatus: string;
+}

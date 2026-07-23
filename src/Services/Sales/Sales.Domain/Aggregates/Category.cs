@@ -47,7 +47,19 @@ public sealed class Category : AggregateRoot<Guid>
     public void Update(string name, string? description, Guid? parentCategoryId, int sortOrder)
     {
         EnsureNotDeleted();
+        var oldName = Name;
+        var oldDescription = Description;
+        var oldParentCategoryId = ParentCategoryId;
+        var oldSortOrder = SortOrder;
         ChangeDetails(name, description, parentCategoryId, sortOrder);
+        if (oldName == Name &&
+            oldDescription == Description &&
+            oldParentCategoryId == ParentCategoryId &&
+            oldSortOrder == SortOrder)
+        {
+            return;
+        }
+
         Touch();
     }
 

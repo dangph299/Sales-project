@@ -21,6 +21,31 @@ public sealed class InventoryReadService(InventoryDbContext db, IMapper mapper)
     }
 
     /// <inheritdoc/>
+    public async Task<IReadOnlyCollection<InventorySnapshot>> GetByProductVariantIdsAsync(
+        IReadOnlyCollection<Guid> productVariantIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = productVariantIds
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToArray();
+
+        if (ids.Length == 0)
+        {
+            return [];
+        }
+
+        var items = await db.Items.AsNoTracking()
+            .Where(x => ids.Contains(x.ProductVariantId))
+            .Select(x => new InventorySnapshot(x.ProductVariantId, x.Sku, x.Available, x.Reserved, x.Version))
+            .ToDictionaryAsync(x => x.ProductId, cancellationToken);
+
+        return ids
+            .Select(id => items.GetValueOrDefault(id) ?? new InventorySnapshot(id, string.Empty, 0, 0, 0))
+            .ToArray();
+    }
+
+    /// <inheritdoc/>
     public async Task<ReservationSnapshot?> GetReservationAsync(Guid orderId, CancellationToken cancellationToken = default)
     {
         var reservation = await db.Reservations.Include(x => x.Lines)

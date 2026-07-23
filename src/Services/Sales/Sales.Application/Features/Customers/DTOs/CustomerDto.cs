@@ -7,6 +7,7 @@ namespace Sales.Application.Features.Customers.DTOs;
 /// <param name="Name">Customer's name.</param>
 /// <param name="Phone">Customer's normalized phone number.</param>
 /// <param name="Version">Customer's current optimistic concurrency version.</param>
+/// <param name="CreatedAt">UTC instant the customer was created.</param>
 /// <param name="UpdatedAt">UTC instant the customer was last changed.</param>
 /// <param name="IsDelete">Whether the customer has been soft-deleted.</param>
 /// <param name="DeleteByUser">User that soft-deleted the customer, or <see langword="null"/> if it is active.</param>
@@ -16,6 +17,7 @@ public sealed record CustomerDto(
     string Name,
     string Phone,
     long Version,
+    DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt,
     bool IsDelete,
     string? DeleteByUser,

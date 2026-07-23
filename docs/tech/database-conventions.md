@@ -27,8 +27,8 @@ Conventions applied consistently:
 - `HasMaxLength` on every string column (`32` codes, `100` names of reference data, `200` entity names, `254` email, `500` address, `1000` description, `96` SKU, `128` actor columns).
 - Enums: `HasConversion<string>().HasMaxLength(32)` (24 for `ReservationStatus`).
 - Money: `ValueConverter<Money, decimal>` + `HasColumnType("numeric(18,0)")`.
-- Concurrency: `Property(x => x.Version).IsConcurrencyToken()` on `Category`, `Product`, `ProductVariant`, `Customer`, `Order`, `InventoryItem`.
-- Computed domain properties are `Ignore`d: `Order.Total`, `Order.TotalQuantity`, `OrderLine.LineTotal`, `Product.Sku`, `Product.IsActive`, and `Reservation.DomainEvents/UpdatedAt/Version`.
+- Concurrency: `Property(x => x.Version).IsConcurrencyToken()` on `Category`, `Product`, `ProductVariant`, `Customer`, `Order`, `InventoryItem`, and `Reservation`.
+- Computed domain properties are `Ignore`d: `Order.Total`, `Order.TotalQuantity`, `OrderLine.LineTotal`, `Product.Sku`, `Product.IsActive`, and `Reservation.DomainEvents`.
 - Private backing collections: `Navigation(x => x.Lines).UsePropertyAccessMode(PropertyAccessMode.Field)`.
 - Outbox payloads use `jsonb`.
 

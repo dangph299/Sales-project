@@ -64,10 +64,10 @@ erDiagram
 ```
 
 ### `inventory_items`
-`ProductId` PK (the Sales **product variant** id) · `Sku` unique · `Available` · `Reserved` · `Version`
+`ProductId` PK (the Sales **product variant** id) · `Sku` unique · `Available` · `Reserved` · `CreatedAt` · `UpdatedAt` · `Version`
 
 ### `reservations`
-`Id` PK · `OrderId` unique · `Status` · `CreatedAt` · `LastOrderVersion`
+`Id` PK · `OrderId` unique · `Status` · `CreatedAt` · `UpdatedAt` · `LastOrderVersion` · `Version`
 
 ### `reservation_lines`
 `Id` PK · `ReservationId` FK · `ProductId` · `Sku` · `Quantity`

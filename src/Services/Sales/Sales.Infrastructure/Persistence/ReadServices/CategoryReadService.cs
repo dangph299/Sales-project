@@ -25,6 +25,7 @@ public sealed class CategoryReadService(SalesDbContext db) : ICategoryReadServic
                 category.SortOrder,
                 category.Status.ToString(),
                 db.Products.Count(product => product.CategoryId == category.Id),
+                category.CreatedAt,
                 category.UpdatedAt))
             .ToListAsync(cancellationToken);
     }

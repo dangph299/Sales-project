@@ -201,7 +201,8 @@ public sealed class CachedProductReadServiceTests
 
     private static ProductDto ProductDto(Guid id, bool isActive, bool isDelete)
     {
-        return new ProductDto(id, "SKU", "Keyboard", 100, 100, isActive, 1, DateTimeOffset.UtcNow, isDelete, null, isDelete ? DateTimeOffset.UtcNow : null);
+        var now = DateTimeOffset.UtcNow;
+        return new ProductDto(id, "SKU", "Keyboard", 100, 100, isActive, 1, now, now, isDelete, null, isDelete ? now : null);
     }
 
     private sealed class RecordingProductCache(ProductDto? value = null) : IProductCache
@@ -260,6 +261,20 @@ public sealed class CachedProductReadServiceTests
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException("Search is not used by these tests.");
+        }
+
+        public Task<PagedResult<ProductVariantLookupDto>> SearchVariantsAsync(
+            string? productCode,
+            string? productName,
+            string? sku,
+            string? variantStatus,
+            string? sortBy,
+            string? sortDirection,
+            int page,
+            int pageSize,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException("Variant search is not used by these tests.");
         }
     }
 }

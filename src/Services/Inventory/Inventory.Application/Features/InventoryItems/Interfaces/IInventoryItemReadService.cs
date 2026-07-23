@@ -11,4 +11,12 @@ public interface IInventoryItemReadService
     /// Gets a product's inventory snapshot.
     /// </summary>
     Task<InventorySnapshot?> GetAsync(Guid productId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets inventory snapshots for the requested product variants. Missing inventory rows are
+    /// returned as zero-quantity snapshots and no database rows are created.
+    /// </summary>
+    Task<IReadOnlyCollection<InventorySnapshot>> GetByProductVariantIdsAsync(
+        IReadOnlyCollection<Guid> productVariantIds,
+        CancellationToken cancellationToken = default);
 }

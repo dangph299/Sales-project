@@ -49,6 +49,19 @@ public sealed class InventoryController : ControllerBase
     }
 
     /// <summary>
+    /// Loads current stock levels for a bounded set of product variants.
+    /// </summary>
+    /// <param name="body">Product variant ids to load.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with one snapshot per distinct requested variant id.</returns>
+    [HttpPost("by-variant-ids")]
+    public async Task<IActionResult> GetByVariantIds([FromBody] GetInventoryByVariantIdsRequest? body, CancellationToken ct)
+    {
+        var items = await _sender.Send(new GetInventoryByProductVariantsQuery(body?.ProductVariantIds), ct);
+        return this.ToOkResponse(items);
+    }
+
+    /// <summary>
     /// Loads the inventory reservation associated with a Sales order.
     /// </summary>
     /// <param name="orderId">Sales order.</param>

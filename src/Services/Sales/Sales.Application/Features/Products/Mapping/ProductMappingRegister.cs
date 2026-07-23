@@ -21,6 +21,7 @@ public sealed class ProductMappingRegister : IRegister
                 null,
                 source.IsActive,
                 source.Version,
+                source.CreatedAt,
                 source.UpdatedAt,
                 source.IsDelete,
                 source.DeleteByUser,

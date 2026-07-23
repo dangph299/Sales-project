@@ -53,7 +53,7 @@ Two persisted forms support search without a full scan:
 
 ## Update semantics
 
-`Customer.Update(name, phone, email, address)` always re-applies all four values, but only calls `Touch()` and raises `CustomerUpdatedDomainEvent` when `Name` or `Phone` actually changed. An email/address-only edit therefore does not bump the version — see [../discrepancies.md](../discrepancies.md).
+`Customer.Update(name, phone, email, address)` normalizes all editable values and calls `Touch()` when any of `Name`, `Phone`, `Email`, or `Address` actually changes. A no-op update does not bump `Version` or `UpdatedAt`.
 
 ## Soft delete
 

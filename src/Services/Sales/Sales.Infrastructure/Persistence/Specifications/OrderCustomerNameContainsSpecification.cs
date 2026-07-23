@@ -18,6 +18,10 @@ public sealed class OrderCustomerNameContainsSpecification(string customerNameSe
     public override Expression<Func<Order, bool>> ToExpression()
     {
         var trimmedCustomerNameSearchTerm = customerNameSearchTerm.Trim();
-        return x => EF.Functions.ILike(x.CustomerName, $"%{trimmedCustomerNameSearchTerm}%");
+        // The term is a literal "contains" fragment, so its own LIKE metacharacters must not act as
+        // wildcards: a user typing "%" or "_" is searching for those characters. Only the surrounding
+        // "%" wildcards we add here are wildcards.
+        var escapedCustomerNameSearchTerm = LikePatternEscaper.Escape(trimmedCustomerNameSearchTerm);
+        return x => EF.Functions.ILike(x.CustomerName, $"%{escapedCustomerNameSearchTerm}%", LikePatternEscaper.EscapeCharacter);
     }
 }

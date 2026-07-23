@@ -67,6 +67,34 @@ public sealed class ValidationBehaviorTests
         Assert.Contains(ex.Errors, e => e.PropertyName.EndsWith(nameof(OrderLineInput.DiscountPercent), StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Over_long_order_customer_phone_is_rejected_before_the_handler()
+    {
+        // MediatR resolves the handler only when validation passes, so an over-long phone must be
+        // turned into a ValidationException — mapped to HTTP 400 by the API's exception handling —
+        // rather than reaching SaveChangesAsync and failing the varchar(32) column as a 500. The
+        // save counter proves the write side was never touched.
+        var unitOfWork = new FakeUnitOfWork();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<CreateOrder>());
+        services.AddSalesApplication();
+        services.AddSingleton<IOrderRepository, FakeOrderRepository>();
+        services.AddSingleton<IRepository<Customer>, FakeCustomerRepository>();
+        services.AddSingleton<ICustomerCodeGenerator, FakeCustomerCodeGenerator>();
+        services.AddSingleton<IProductRepository, FakeProductRepository>();
+        services.AddSingleton<IUnitOfWork>(unitOfWork);
+        var mediator = services.BuildServiceProvider().GetRequiredService<IMediator>();
+
+        var ex = await Assert.ThrowsAsync<ValidationException>(() =>
+            mediator.Send(new CreateOrder(
+                new CreateOrderCustomer("0901234567 - please call after five pm", "Nguyen Van A"),
+                [new OrderLineInput(Guid.NewGuid(), 1, 0m)])));
+
+        Assert.Contains(ex.Errors, e => e.PropertyName == "Customer.Phone");
+        Assert.Equal(0, unitOfWork.SaveChangesCount);
+    }
+
     private sealed class FakeOrderRepository : IOrderRepository
     {
         public Task<IReadOnlyCollection<Guid>> FindExpiredCancellableOrderIdsAsync(
@@ -107,7 +135,13 @@ public sealed class ValidationBehaviorTests
 
     private sealed class FakeUnitOfWork : IUnitOfWork
     {
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Task.FromResult(1);
+        public int SaveChangesCount { get; private set; }
+
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            SaveChangesCount++;
+            return Task.FromResult(1);
+        }
     }
 
     private sealed class FakeCustomerCodeGenerator : ICustomerCodeGenerator

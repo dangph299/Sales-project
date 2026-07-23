@@ -168,6 +168,60 @@ public sealed class ReadServiceSpecificationTests
     }
 
     [Fact]
+    public async Task Product_variant_search_pages_variants_instead_of_products()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var first = ProductTestFactory.CreatePublishedProduct("PRD-VPAGE-1", "Variant Page One", 100);
+        var second = ProductTestFactory.CreatePublishedProduct("PRD-VPAGE-2", "Variant Page Two", 100);
+        second.AddVariant(
+            Color.Create(ColorReferenceDataIds.White, "WHT", "White", "#FFFFFF"),
+            Size.Create(SizeReferenceDataIds.Small, "S", "Small", 30),
+            110,
+            EProductVariantStatus.Published);
+        await fixture.SeedAsync(first, second);
+
+        var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        var result = await service.SearchVariantsAsync(null, null, null, null, "sku", "asc", 1, 2);
+
+        Assert.Equal(3, result.Total);
+        Assert.Equal(2, result.Items.Count);
+        Assert.All(result.Items, item => Assert.NotEqual(Guid.Empty, item.ProductVariantId));
+    }
+
+    [Fact]
+    public async Task Product_variant_search_filters_by_product_name()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var match = ProductTestFactory.CreatePublishedProduct("PRD-VFILTER-1", "Needle Shirt", 100);
+        var miss = ProductTestFactory.CreatePublishedProduct("PRD-VFILTER-2", "Other Shirt", 100);
+        await fixture.SeedAsync(match, miss);
+
+        var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        var result = await service.SearchVariantsAsync(null, "Needle", null, null, "sku", "asc", 1, 20);
+
+        Assert.Equal([match.Id], result.Items.Select(x => x.ProductId).ToArray());
+    }
+
+    [Fact]
+    public async Task Product_variant_search_sorts_by_sku_descending()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var first = ProductTestFactory.CreatePublishedProduct("PRD-VSORT-1", "Sort One", 100);
+        var second = ProductTestFactory.CreatePublishedProduct("PRD-VSORT-2", "Sort Two", 100);
+        await fixture.SeedAsync(first, second);
+
+        var service = new ProductReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        var result = await service.SearchVariantsAsync(null, null, null, null, "sku", "desc", 1, 20);
+
+        Assert.Equal(
+            result.Items.OrderByDescending(x => x.Sku).Select(x => x.Sku).ToArray(),
+            result.Items.Select(x => x.Sku).ToArray());
+    }
+
+    [Fact]
     public async Task Customer_get_returns_non_deleted_customer()
     {
         await using var fixture = await SqliteSalesFixture.CreateAsync();
@@ -231,6 +285,68 @@ public sealed class ReadServiceSpecificationTests
         var both = await service.SearchAsync(null, "09", 1, 20);
 
         Assert.Equal(3, both.Items.Count);
+    }
+
+    [Fact]
+    public async Task Customer_phone_search_with_no_digits_returns_no_customers()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var customer = Customer.Create("Nguyen Van A", "0901234567");
+        await fixture.SeedAsync(customer);
+
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        // A term that reduces to no digits is a filter nothing matches, not the absence of a filter:
+        // before the guard, the query fell through to LIKE '%' and returned the whole table.
+        var byLetters = await service.SearchAsync(null, "abc", 1, 20);
+
+        Assert.Empty(byLetters.Items);
+        Assert.Equal(0, byLetters.Total);
+    }
+
+    [Fact]
+    public async Task Customer_phone_search_with_only_symbols_returns_no_customers()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var customer = Customer.Create("Nguyen Van A", "0901234567");
+        await fixture.SeedAsync(customer);
+
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        var bySymbols = await service.SearchAsync(null, " (),.- ", 1, 20);
+
+        Assert.Empty(bySymbols.Items);
+        Assert.Equal(0, bySymbols.Total);
+    }
+
+    [Fact]
+    public async Task Customer_phone_search_matches_a_digit_only_prefix()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var match = Customer.Create("Nguyen Van A", "0901234567");
+        var other = Customer.Create("Tran Thi B", "0912345678");
+        await fixture.SeedAsync(match, other);
+
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        var result = await service.SearchAsync(null, "0901", 1, 20);
+
+        Assert.Equal([match.Id], result.Items.Select(x => x.Id).ToArray());
+    }
+
+    [Fact]
+    public async Task Customer_phone_search_accepts_a_formatted_term_with_valid_digits()
+    {
+        await using var fixture = await SqliteSalesFixture.CreateAsync();
+        var match = Customer.Create("Nguyen Van A", "0901234567");
+        await fixture.SeedAsync(match);
+
+        var service = new CustomerReadService(fixture.CreateContext(), SalesMapperFactory.Create());
+
+        // The punctuation is stripped by normalization, so a formatted prefix still matches.
+        var result = await service.SearchAsync(null, "090-123", 1, 20);
+
+        Assert.Equal([match.Id], result.Items.Select(x => x.Id).ToArray());
     }
 
     // OrderReadService.SearchAsync cannot run on the SQLite fixture: it orders by CreatedAt, and

@@ -16,6 +16,8 @@ export interface ProductVariantResponse {
   size?: SizeResponse | null;
   price: number;
   status: ProductVariantStatus | string;
+  createdAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export interface ProductResponse {
@@ -32,6 +34,7 @@ export interface ProductResponse {
   variants?: ProductVariantResponse[] | null;
   isActive: boolean;
   version: number;
+  createdAt?: string | null;
   updatedAt: string;
   isDelete: boolean;
   deleteByUser?: string | null;
