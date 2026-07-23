@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Application\BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Observability\BuildingBlocks.Observability.csproj" />
     <ProjectReference Include="..\..\..\Shared\BuildingBlocks.Web\BuildingBlocks.Web.csproj" />
   </ItemGroup>
