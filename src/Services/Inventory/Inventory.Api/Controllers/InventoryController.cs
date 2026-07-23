@@ -1,12 +1,15 @@
 using System.Security.Claims;
 using BuildingBlocks.Web.Extensions;
+using Inventory.Api.Extensions;
 using Inventory.Api.Models.Requests;
 using Inventory.Application.Features.InventoryItems.Commands;
+using Inventory.Application.Features.InventoryItems.DTOs;
 using Inventory.Application.Features.InventoryItems.Queries;
 using Inventory.Application.Features.Reservations.Queries;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Inventory.Api.Controllers;
 
@@ -20,14 +23,17 @@ namespace Inventory.Api.Controllers;
 public sealed class InventoryController : ControllerBase
 {
     private readonly ISender _sender;
+    private readonly IOptions<InventorySummaryOptions> _summaryOptions;
 
     /// <summary>
-    /// Initializes the controller with the MediatR sender.
+    /// Initializes the controller with the MediatR sender and inventory summary configuration.
     /// </summary>
     /// <param name="sender">MediatR sender.</param>
-    public InventoryController(ISender sender)
+    /// <param name="summaryOptions">Server-side configuration for the inventory summary endpoint.</param>
+    public InventoryController(ISender sender, IOptions<InventorySummaryOptions> summaryOptions)
     {
         _sender = sender;
+        _summaryOptions = summaryOptions;
     }
 
     /// <summary>
@@ -80,5 +86,20 @@ public sealed class InventoryController : ControllerBase
         var actor = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "system";
         var item = await _sender.Send(new AdjustInventoryCommand(productId, body.Sku, body.QuantityDelta, actor), ct);
         return this.ToOkResponse(item);
+    }
+
+    /// <summary>
+    /// Loads aggregated stock-status counts across tracked inventory items.
+    /// </summary>
+    /// <param name="query">Optional summary inputs, including the low-stock threshold override.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns><c>200 OK</c> with the aggregated summary.</returns>
+    [HttpGet("summary")]
+    public async Task<IActionResult> Summary([FromQuery] InventorySummaryRequest query, CancellationToken ct)
+    {
+        var threshold = query.LowStockThreshold ?? _summaryOptions.Value.LowStockThreshold;
+        var filter = new InventorySummaryFilter(threshold, query.WarehouseId, query.LocationId, query.CompanyId);
+        var summary = await _sender.Send(new GetInventorySummaryQuery(filter), ct);
+        return this.ToOkResponse(summary);
     }
 }
