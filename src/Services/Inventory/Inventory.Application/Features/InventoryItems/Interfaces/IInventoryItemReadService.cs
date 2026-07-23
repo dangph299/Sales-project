@@ -11,4 +11,7 @@ public interface IInventoryItemReadService
     /// Gets a product's inventory snapshot.
     /// </summary>
     Task<InventorySnapshot?> GetAsync(Guid productId, CancellationToken cancellationToken = default);
+
+    /// <summary>Aggregates stock-status counts across all tracked inventory items.</summary>
+    Task<InventorySummary> GetSummaryAsync(InventorySummaryFilter filter, CancellationToken cancellationToken = default);
 }
