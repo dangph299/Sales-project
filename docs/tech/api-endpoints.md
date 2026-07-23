@@ -89,6 +89,7 @@ SignalR hub methods: `SubscribeToOrder(orderId)`, `UnsubscribeFromOrder(orderId)
 
 | Verb | Path | Role | Returns |
 |---|---|---|---|
+| GET | `/api/inventory/summary` | Auth | `InventorySummary { totalItems, totalQuantity, inStock, lowStock, outOfStock, lowStockThreshold }`; optional `lowStockThreshold` query |
 | GET | `/api/inventory/{productId:guid}` | Auth | `InventorySnapshot { productId, sku, available, reserved, version }`, `404` if none |
 | POST | `/api/inventory/by-variant-ids` | Auth | `{ productVariantIds[] }` capped at 100 ids → `InventoryBatchSnapshot { items[] }`; missing inventory rows return zero quantities and do not create rows |
 | GET | `/api/inventory/reservations/{orderId:guid}` | Auth | `ReservationSnapshot { orderId, status, createdAt, lines[] }`, `404` if none |
@@ -97,6 +98,16 @@ SignalR hub methods: `SubscribeToOrder(orderId)`, `UnsubscribeFromOrder(orderId)
 `GET /health` is anonymous and hidden from Swagger.
 
 Note: these endpoints return the payload wrapped in `ApiResponse<T>`, but `404` is a bare `NotFound()` rather than the shared error envelope — see [discrepancies.md](discrepancies.md).
+
+## Dashboard BFF (`http://localhost:5002`)
+
+### `DashboardController` — `api/dashboard` (Auth)
+
+| Verb | Path | Returns |
+|---|---|---|
+| GET | `/api/dashboard` | `DashboardSnapshot { metrics, inventory, recentOrders, orderChart, refreshedAt }` |
+
+The BFF is aggregation-only for the Angular dashboard. It serves `dashboard:snapshot` from Redis when available, falls back to in-memory cache when Redis is unavailable/configured off, and rebuilds synchronously only on cache miss. Its recurring Hangfire job refreshes the same snapshot once per minute by default.
 
 ## Related
 

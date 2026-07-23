@@ -2,10 +2,11 @@
 
 ## What exists
 
-Redis is used by **Sales only**, for exactly two purposes:
+Redis is used by Sales and Dashboard.Bff:
 
 1. a cache-aside read cache for `ProductDto`
 2. a distributed lock for the daily cleanup job
+3. the Dashboard.Bff `dashboard:snapshot` cache
 
 Inventory and AuditLog have no Redis dependency.
 
@@ -36,6 +37,7 @@ ICacheService<T>            Application, generic cache-aside port
 |---|---|---|
 | Product read model | `catalog:product:<guid:N>` | 10 minutes absolute |
 | Cleanup lock | `lock:jobs:sales-cleanup` | 5 minutes |
+| Dashboard snapshot | `dashboard:snapshot` | 5 minutes absolute |
 
 ## Read path
 

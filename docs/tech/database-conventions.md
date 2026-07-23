@@ -7,8 +7,9 @@
 | PostgreSQL `sales` | Sales.Api | `categories`, `products`, `product_variants`, `colors`, `sizes`, `customers`, `orders`, `order_lines`, `refresh_tokens`, ASP.NET Identity tables, `outbox_messages`, `inbox_messages`, 3 code sequences |
 | PostgreSQL `inventory` | Inventory.Api | `inventory_items`, `reservations`, `reservation_lines`, `outbox_messages`, `inbox_messages` |
 | PostgreSQL `hangfire` | Sales.Api | Hangfire job storage |
+| PostgreSQL `dashboard` | Dashboard.Bff | Hangfire job storage for dashboard snapshot refresh |
 | MongoDB `audit` | AuditLog.Worker | `events` collection |
-| Redis | Sales.Api | product read cache, cleanup lock |
+| Redis | Sales.Api, Dashboard.Bff | product read cache, cleanup lock, dashboard snapshot |
 
 Databases are created by `docker/seed/postgres-init.sql`. Provider is Npgsql 10.
 

@@ -17,6 +17,8 @@ src/
       Inventory.Application/  service ports, DTO
       Inventory.Domain/       inventory item, reservation, value objects
       Inventory.Infrastructure/ EF Core, Kafka, outbox/inbox
+    Dashboard/
+      Dashboard.Bff/          BFF cho dashboard: HTTP aggregation, cache, Hangfire refresh
     AuditLog/
       AuditLog.Worker/        worker consume Kafka
       AuditLog.Infrastructure/ Mongo writer, audit document
@@ -51,7 +53,13 @@ flowchart LR
         AuditInfra[AuditLog.Infrastructure]
     end
 
+    subgraph Dashboard[Dashboard BFF]
+        DashboardBff[Dashboard.Bff]
+    end
+
     Shared[Shared BuildingBlocks]
+    DashboardBff -- HTTP --> SalesApi
+    DashboardBff -- HTTP --> InvApi
     SalesInfra --> Kafka[(Kafka)]
     InvInfra --> Kafka
     Kafka --> AuditWorker
@@ -126,6 +134,21 @@ Trách nhiệm:
 - Redis cache.
 - Hangfire jobs.
 - Mongo writer.
+
+### Dashboard.Bff
+
+Trách nhiệm:
+
+- Expose `GET /api/dashboard` cho Angular.
+- Đọc/ghi cache snapshot.
+- Gọi Sales/Inventory APIs qua HTTP typed clients.
+- Refresh snapshot bằng Hangfire.
+
+Không nên:
+
+- Reference `Sales.*` hoặc `Inventory.*` assemblies.
+- Query database của service khác.
+- Chứa business rule hoặc logic gateway tổng quát.
 
 ## 3. Flow: tạo sản phẩm
 

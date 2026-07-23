@@ -79,7 +79,11 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
 
         if (!string.IsNullOrWhiteSpace(name))
         {
-            query = query.Where(x => EF.Functions.ILike(x.Name, $"%{name.Trim()}%"));
+            // The name is a literal "contains" fragment: escape its LIKE metacharacters so a typed
+            // "%" or "_" finds those characters instead of acting as a wildcard.
+            var escapedProductNameSearchTerm = LikePatternEscaper.Escape(name.Trim());
+            query = query.Where(x =>
+                EF.Functions.ILike(x.Name, $"%{escapedProductNameSearchTerm}%", LikePatternEscaper.EscapeCharacter));
         }
 
         if (categoryId.HasValue)
@@ -166,10 +170,12 @@ public sealed class ProductReadService(SalesDbContext db) : IProductReadService
 
         if (!string.IsNullOrWhiteSpace(productName))
         {
-            var pattern = $"%{productName.Trim()}%";
+            // The name is a literal "contains" fragment: escape its LIKE metacharacters so a typed
+            // "%" or "_" finds those characters instead of acting as a wildcard.
+            var pattern = $"%{LikePatternEscaper.Escape(productName.Trim())}%";
             query = db.Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL"
-                ? query.Where(x => EF.Functions.ILike(x.Product.Name, pattern))
-                : query.Where(x => EF.Functions.Like(x.Product.Name, pattern));
+                ? query.Where(x => EF.Functions.ILike(x.Product.Name, pattern, LikePatternEscaper.EscapeCharacter))
+                : query.Where(x => EF.Functions.Like(x.Product.Name, pattern, LikePatternEscaper.EscapeCharacter));
         }
 
         if (!string.IsNullOrWhiteSpace(sku))
