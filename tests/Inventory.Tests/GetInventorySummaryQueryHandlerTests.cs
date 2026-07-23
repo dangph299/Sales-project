@@ -29,6 +29,13 @@ public sealed class GetInventorySummaryQueryHandlerTests
             throw new NotSupportedException();
         }
 
+        public Task<IReadOnlyCollection<InventorySnapshot>> GetByProductVariantIdsAsync(
+            IReadOnlyCollection<Guid> productVariantIds,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
         public Task<InventorySummary> GetSummaryAsync(InventorySummaryFilter filter, CancellationToken cancellationToken = default)
         {
             ReceivedFilter = filter;
