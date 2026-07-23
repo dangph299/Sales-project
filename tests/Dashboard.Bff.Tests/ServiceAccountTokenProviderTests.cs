@@ -91,6 +91,50 @@ public sealed class ServiceAccountTokenProviderTests
         Assert.Equal(2, handler.InvocationCount);
     }
 
+    [Fact]
+    public async Task GetTokenAsync_with_blank_creds_and_dev_fallback_enabled_uses_admin_credentials()
+    {
+        var handler = new FakeHttpMessageHandler(EnvelopeJson);
+        var clock = new FakeClock(DateTimeOffset.Parse("2026-07-23T00:00:00Z"));
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://sales.local") };
+        var options = Microsoft.Extensions.Options.Options.Create(
+            new ServiceAccountOptions { UserName = "", Password = "", AllowAdminDevFallback = true });
+        var provider = new ServiceAccountTokenProvider(
+            httpClient,
+            options,
+            clock,
+            NullLogger<ServiceAccountTokenProvider>.Instance);
+
+        await provider.GetTokenAsync();
+
+        var sentBody = await handler.LastRequestContent!.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(sentBody);
+        Assert.Equal("admin", document.RootElement.GetProperty("userName").GetString());
+        Assert.Equal("Admin123!", document.RootElement.GetProperty("password").GetString());
+    }
+
+    [Fact]
+    public async Task GetTokenAsync_with_configured_creds_ignores_dev_fallback_even_when_enabled()
+    {
+        var handler = new FakeHttpMessageHandler(EnvelopeJson);
+        var clock = new FakeClock(DateTimeOffset.Parse("2026-07-23T00:00:00Z"));
+        var httpClient = new HttpClient(handler) { BaseAddress = new Uri("http://sales.local") };
+        var options = Microsoft.Extensions.Options.Options.Create(
+            new ServiceAccountOptions { UserName = "svc-user", Password = "svc-pass", AllowAdminDevFallback = true });
+        var provider = new ServiceAccountTokenProvider(
+            httpClient,
+            options,
+            clock,
+            NullLogger<ServiceAccountTokenProvider>.Instance);
+
+        await provider.GetTokenAsync();
+
+        var sentBody = await handler.LastRequestContent!.ReadAsStringAsync();
+        using var document = JsonDocument.Parse(sentBody);
+        Assert.Equal("svc-user", document.RootElement.GetProperty("userName").GetString());
+        Assert.Equal("svc-pass", document.RootElement.GetProperty("password").GetString());
+    }
+
     /// <summary>Hand-rolled fake HTTP handler recording invocations and returning a canned response.</summary>
     private sealed class FakeHttpMessageHandler : HttpMessageHandler
     {

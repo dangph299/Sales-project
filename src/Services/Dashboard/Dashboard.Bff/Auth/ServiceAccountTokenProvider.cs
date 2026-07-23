@@ -11,7 +11,7 @@ namespace Dashboard.Bff.Auth;
 /// Logs in as the configured service account and caches the resulting access token until shortly
 /// before it expires, transparently re-logging in as needed.
 /// </summary>
-public sealed class ServiceAccountTokenProvider
+public sealed class ServiceAccountTokenProvider : IServiceTokenProvider
 {
     private static readonly TimeSpan ExpirySafetyMargin = TimeSpan.FromSeconds(60);
 
@@ -68,9 +68,10 @@ public sealed class ServiceAccountTokenProvider
     private async Task<string> LoginAsync(CancellationToken cancellationToken)
     {
         var credentials = _options.Value;
-        _logger.LogInformation("Logging in service account {UserName}", credentials.UserName);
+        var (userName, password) = ResolveCredentials(credentials);
+        _logger.LogInformation("Logging in service account {UserName}", userName);
 
-        var request = new LoginRequest(credentials.UserName, credentials.Password);
+        var request = new LoginRequest(userName, password);
         using var response = await _httpClient.PostAsJsonAsync("/api/auth/login", request, JsonOptions, cancellationToken);
         response.EnsureSuccessStatusCode();
 
@@ -86,6 +87,18 @@ public sealed class ServiceAccountTokenProvider
         _cachedTokenExpiresAt = _clock.UtcNow + TimeSpan.FromSeconds(envelope.Data.ExpiresIn) - ExpirySafetyMargin;
 
         return _cachedToken;
+    }
+
+    private static (string UserName, string Password) ResolveCredentials(ServiceAccountOptions credentials)
+    {
+        if (credentials.AllowAdminDevFallback
+            && string.IsNullOrWhiteSpace(credentials.UserName)
+            && string.IsNullOrWhiteSpace(credentials.Password))
+        {
+            return ("admin", "Admin123!");
+        }
+
+        return (credentials.UserName, credentials.Password);
     }
 
     private sealed record LoginRequest(string UserName, string Password);
