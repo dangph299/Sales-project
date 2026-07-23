@@ -8,7 +8,7 @@ Four different mechanisms run work outside a request. Explain what each is for, 
 
 | Mechanism | Used for | Where |
 |---|---|---|
-| Hangfire recurring jobs | cron-scheduled business work, visible in a dashboard | Sales only |
+| Hangfire recurring jobs | cron-scheduled work, visible in a dashboard | Sales, Dashboard.Bff |
 | `BackgroundService` | continuous loops tied to the host lifetime | both APIs, the worker |
 | Kafka consumers | reacting to another service | both APIs, the worker |
 | Startup tasks | one-time preparation before serving traffic | all hosts |
@@ -88,6 +88,16 @@ public async Task ExecuteAsync(int expirationMinutes, int batchSize, Cancellatio
 ```
 
 The job holds no business logic — it dispatches a command, records metrics, logs. The business rule lives in a handler and is unit-testable without Hangfire, and `IClock` means the time is injectable.
+
+## Hangfire (Dashboard.Bff)
+
+Dashboard.Bff has one recurring job:
+
+| Job id | Class | Default schedule | Queue | Work |
+|---|---|---|---|---|
+| `dashboard:snapshot-refresh` | `DashboardSnapshotRefreshJob` | `* * * * *` | `default` | build and cache `DashboardSnapshot` |
+
+The job is deliberately thin: it calls `IDashboardSnapshotBuilder.BuildAsync`, stores the result through `IDashboardSnapshotCache`, and logs the boundary. It does not contain aggregation logic. The builder is the only component that calls downstream Sales/Inventory HTTP clients.
 
 ### Per-order isolation
 

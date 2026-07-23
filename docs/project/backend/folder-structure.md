@@ -7,6 +7,7 @@ src/
   Services/
     Sales/       Sales.Domain  Sales.Application  Sales.Infrastructure  Sales.Api
     Inventory/   Inventory.Domain  Inventory.Application  Inventory.Infrastructure  Inventory.Api
+    Dashboard/   Dashboard.Bff
     AuditLog/    AuditLog.Infrastructure  AuditLog.Worker
   Shared/
     BuildingBlocks.Domain  BuildingBlocks.Application  BuildingBlocks.Contracts
@@ -73,6 +74,19 @@ Extensions/   Middleware/       Filters/   Realtime/
 Properties/   Program.cs        Dockerfile
 appsettings.json  appsettings.Development.json
 ```
+
+## `Dashboard.Bff`
+
+```
+Aggregation/  Auth/  Caching/  Clients/  Contracts/  Controllers/
+Extensions/   Jobs/  Options/   Program.cs  Dockerfile
+appsettings.json  appsettings.Development.json
+```
+
+- Dashboard.Bff is a lean host, not a four-layer service. Do not add empty Domain, Application, or Infrastructure projects.
+- Aggregation logic belongs only in `Aggregation/DashboardSnapshotBuilder`.
+- Controllers read/write the snapshot cache and delegate rebuilds to the builder.
+- Downstream communication stays HTTP through typed clients; do not reference Sales or Inventory service assemblies.
 
 ## Tests
 

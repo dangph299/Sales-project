@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Explain what each of the 16 projects is for, why the split exists, and how to decide where a new file goes.
+Explain what each project is for, why the split exists, and how to decide where a new file goes.
 
 ## The dependency rule
 
@@ -79,6 +79,14 @@ Notice what Inventory does **not** have: no Redis, no Hangfire, no identity, no 
 
 There is no `AuditLog.Domain` or `AuditLog.Application` — the worker has no business rules, it transforms and stores. Inventing empty layers to be symmetric would be cargo cult.
 
+### Dashboard — the web BFF
+
+| Project | Contains |
+|---|---|
+| `Dashboard.Bff` | lean ASP.NET Core host, `GET /api/dashboard`, typed HTTP clients, snapshot aggregation, Redis/memory cache, Hangfire refresh job |
+
+Dashboard is a Backend For Frontend for `Sales.Web`, not a new bounded context and not an API gateway. It has no empty Domain/Application/Infrastructure projects because it owns no business rules; it aggregates existing Sales and Inventory API responses over HTTP and caches a `DashboardSnapshot`.
+
 ## The shared building blocks
 
 Six projects, split by *what may depend on them*:
@@ -113,6 +121,7 @@ Knowing what was left alone is as useful as knowing what was shared.
 | an EF mapping | `<Service>.Infrastructure` | `Persistence/Configurations/` |
 | a Kafka contract | `BuildingBlocks.Contracts` | `IntegrationEvents/<Context>/` |
 | an HTTP endpoint | `<Service>.Api` | `Controllers/` |
+| a dashboard-only aggregate for the Angular client | `Dashboard.Bff` | `Aggregation/`, `Clients/`, `Caching/`, `Jobs/` |
 | something genuinely reusable and business-free | `BuildingBlocks.*` | pick by dependency ceiling |
 
 ## Solution-wide settings

@@ -166,6 +166,7 @@ Colour is expressed as a **tone**, not an nz colour. `StatusTagComponent` maps t
 ```typescript
 readonly salesBase = signal(localStorage.getItem('salesBase') || '/sales-api');
 readonly inventoryBase = signal(localStorage.getItem('inventoryBase') || '/inventory-api');
+readonly dashboardBase = signal(localStorage.getItem('dashboardBase') || '/dashboard-api');
 ```
 
 Relative paths by default, proxied in development by `proxy.conf.json` (with `ws: true` so the SignalR upgrade works). Overridable at runtime, which is exactly what you want in a manual test client.

@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzInputModule } from 'ng-zorro-antd/input';
@@ -49,6 +50,7 @@ type SortDirection = 'ascend' | 'descend';
 export class InventoryListPageComponent implements OnInit {
   private readonly inventoryApi = inject(InventoryApiService);
   private readonly productLookup = inject(ProductLookupApiService);
+  private readonly route = inject(ActivatedRoute);
   private readonly modal = inject(NzModalService);
   private readonly notification = inject(NzNotificationService);
 
@@ -78,6 +80,7 @@ export class InventoryListPageComponent implements OnInit {
   readonly totalQuantity = totalQuantity;
 
   ngOnInit(): void {
+    this.applyStockFilterFromRoute();
     void this.loadStockRows();
   }
 
@@ -196,6 +199,21 @@ export class InventoryListPageComponent implements OnInit {
 
   stockStateText(row: StockRow): string {
     return stockStateLabels[this.stockState(row)];
+  }
+
+  private applyStockFilterFromRoute(): void {
+    const stock = this.route.snapshot.queryParamMap.get('stock');
+    switch (stock) {
+      case 'in-stock':
+        this.stockStateFilter = 'available';
+        break;
+      case 'low':
+        this.stockStateFilter = 'low';
+        break;
+      case 'out':
+        this.stockStateFilter = 'out';
+        break;
+    }
   }
 
   async adjustInventory(): Promise<void> {

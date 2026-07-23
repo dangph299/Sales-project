@@ -49,6 +49,22 @@
   margin: 0 -4px;
 }
 
+.inventory-overview {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.inventory-metric {
+  color: inherit;
+  display: block;
+  text-decoration: none;
+}
+
+.inventory-metric:first-child {
+  grid-column: 1 / -1;
+}
+
 nz-table {
   color: #344054;
 }
@@ -100,5 +116,9 @@ td strong {
   .quick-actions a {
     justify-content: center;
     width: 100%;
+  }
+
+  .inventory-overview {
+    grid-template-columns: 1fr;
   }
 }

@@ -11,12 +11,9 @@ export interface RecentOrderRow {
   createdAt: string;
 }
 
-/** Dashboard-owned projection of a recent product. */
-export interface RecentProductRow {
-  id: string;
-  productCode: string;
-  productName: string;
+/** Dashboard-owned projection of an order chart point. */
+export interface OrderChartRow {
+  createdAt: string;
+  total: number;
   status: StatusDisplay;
-  minPrice?: number | null;
-  maxPrice?: number | null;
 }

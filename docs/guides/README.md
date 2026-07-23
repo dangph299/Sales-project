@@ -9,7 +9,7 @@ These guides explain. They do not prescribe — for rules that AI assistants and
 | # | Guide | You will learn |
 |---|---|---|
 | 01 | [Project Overview](01-project-overview.md) | what the system does and why it is split into three contexts |
-| 02 | [Solution Structure](02-solution-structure.md) | what each of the 16 projects is for; where a new file goes |
+| 02 | [Solution Structure](02-solution-structure.md) | what each project is for; where a new file goes |
 | 03 | [Request Lifecycle](03-request-lifecycle.md) | one HTTP request from socket to database and back |
 | 04 | [Authentication & Authorization](04-authentication-and-authorization.md) | JWT issuance, refresh rotation, roles, SignalR auth |
 | 05 | [CQRS & the MediatR Pipeline](05-cqrs-and-mediatr.md) | why reads and writes are modelled differently |

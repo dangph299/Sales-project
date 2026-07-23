@@ -2,14 +2,16 @@
 
 ## What exists
 
-Two HTTP APIs, both controller-based ASP.NET Core, both composed by `BuildingBlocks.Web.WebHostRegistration`.
+Three HTTP hosts, all controller-based ASP.NET Core, all composed by `BuildingBlocks.Web.WebHostRegistration`.
 
 | API | Port (compose) | Base | Swagger |
 |---|---|---|---|
 | Sales | 5000 → 8080 | `/api/...` | `/swagger` (Development) |
 | Inventory | 5001 → 8080 | `/api/...` | `/swagger`, `/swagger/v1/swagger.json` |
+| Dashboard.Bff | 5002 → 8080 | `/api/dashboard` | `/swagger` (Development) |
 
 Sales also hosts a SignalR hub at `/hubs/orders` and the Hangfire dashboard at `/hangfire` (loopback only).
+Dashboard.Bff is a dashboard aggregation host, not a general gateway.
 
 ## Why it exists
 

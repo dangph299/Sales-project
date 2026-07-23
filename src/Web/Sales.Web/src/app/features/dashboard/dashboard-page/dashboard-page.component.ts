@@ -13,11 +13,11 @@ import { PageStateComponent } from '../../../shared/components/page-state/page-s
 import { StatusTagComponent } from '../../../shared/components/status-tag/status-tag.component';
 import { DateTimePipe } from '../../../shared/pipes/date-time.pipe';
 import { MoneyPipe } from '../../../shared/pipes/money.pipe';
-import { PriceRangePipe } from '../../../shared/pipes/price-range.pipe';
 import { describeApiError } from '../../../shared/utilities/describe-api-error';
 import { DashboardApiService } from '../api/dashboard-api.service';
 import { DashboardMetrics, emptyDashboardMetrics } from '../models/dashboard-metrics.model';
-import { RecentOrderRow, RecentProductRow } from '../models/dashboard-row.model';
+import { OrderChartRow, RecentOrderRow } from '../models/dashboard-row.model';
+import { InventorySummary, emptyInventorySummary } from '../models/inventory-summary.model';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -32,7 +32,6 @@ import { RecentOrderRow, RecentProductRow } from '../models/dashboard-row.model'
     MetricCardComponent,
     DateTimePipe,
     MoneyPipe,
-    PriceRangePipe,
     NzButtonModule,
     NzCardModule,
     NzIconModule,
@@ -48,9 +47,9 @@ export class DashboardPageComponent implements OnInit {
   readonly loading = signal(false);
   readonly errorMessage = signal('');
   readonly metrics = signal<DashboardMetrics>(emptyDashboardMetrics);
+  readonly inventory = signal<InventorySummary>(emptyInventorySummary);
   readonly recentOrders = signal<RecentOrderRow[]>([]);
-  readonly recentProducts = signal<RecentProductRow[]>([]);
-  readonly chartOrders = signal<RecentOrderRow[]>([]);
+  readonly chartOrders = signal<OrderChartRow[]>([]);
   readonly lastUpdatedAt = signal<Date | null>(null);
 
   readonly lastUpdatedLabel = computed(() => {
@@ -86,10 +85,10 @@ export class DashboardPageComponent implements OnInit {
     try {
       const snapshot = await this.dashboardApi.loadSnapshot();
       this.metrics.set(snapshot.metrics);
+      this.inventory.set(snapshot.inventory);
       this.recentOrders.set(snapshot.recentOrders);
-      this.recentProducts.set(snapshot.recentProducts);
       this.chartOrders.set(snapshot.chartOrders);
-      this.lastUpdatedAt.set(new Date());
+      this.lastUpdatedAt.set(new Date(snapshot.refreshedAt));
     } catch (error) {
       this.errorMessage.set(describeApiError(error));
     } finally {
@@ -97,7 +96,7 @@ export class DashboardPageComponent implements OnInit {
     }
   }
 
-  private toRevenueTrend(orders: RecentOrderRow[]): DashboardChartPoint[] {
+  private toRevenueTrend(orders: OrderChartRow[]): DashboardChartPoint[] {
     const today = new Date();
     return Array.from({ length: 7 }, (_, index) => {
       const date = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (6 - index));
@@ -112,7 +111,7 @@ export class DashboardPageComponent implements OnInit {
     });
   }
 
-  private toOrdersByStatus(orders: RecentOrderRow[]): DashboardChartPoint[] {
+  private toOrdersByStatus(orders: OrderChartRow[]): DashboardChartPoint[] {
     const statusTotals = orders.reduce<Record<string, DashboardChartPoint>>((totals, order) => {
       const label = order.status.label;
       totals[label] = totals[label] || { label, value: 0, tone: order.status.tone };

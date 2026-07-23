@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Explain the one cache in this system, why it is a decorator rather than a call in a handler, and why invalidation is the hard half.
+Explain the Sales product cache, why it is a decorator rather than a call in a handler, and why invalidation is the hard half. Dashboard.Bff also has a separate snapshot cache, described at the end.
 
 ## What is cached
 
-Exactly one thing: `ProductDto` for `GET /api/products/{id}`, in Sales only. Redis also holds a distributed lock for the cleanup job.
+Sales caches exactly one thing: `ProductDto` for `GET /api/products/{id}`. Redis also holds a distributed lock for the cleanup job.
 
 That is a deliberately small footprint. A cache is a second copy of your data, and every copy is a chance to be wrong.
 
@@ -78,6 +78,12 @@ public abstract class CacheService<T> : ICacheService<T>
 `ProductCache` supplies `"catalog:product"` and `value => value.Id`. A new cache is about ten lines.
 
 The port (`ICacheService<T>` → `IProductCache`) lives in Application; only the implementation knows about Redis. Application never sees `IDistributedCache`.
+
+## Dashboard snapshot cache
+
+Dashboard.Bff caches the aggregated `DashboardSnapshot` under `dashboard:snapshot`. The BFF has no Application layer, so the port is service-local: `IDashboardSnapshotCache`, implemented by `RedisDashboardSnapshotCache` over `IDistributedCache` with an in-memory fallback for local/dev scenarios.
+
+The endpoint reads the cache first and rebuilds synchronously only on a miss. `DashboardSnapshotRefreshJob` normally refreshes the same key every minute.
 
 ## Invalidation
 

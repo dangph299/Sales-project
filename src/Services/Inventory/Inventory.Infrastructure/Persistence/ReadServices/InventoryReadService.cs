@@ -53,4 +53,26 @@ public sealed class InventoryReadService(InventoryDbContext db, IMapper mapper)
             .SingleOrDefaultAsync(x => x.OrderId == orderId, cancellationToken);
         return reservation is null ? null : mapper.Map<ReservationSnapshot>(reservation);
     }
+
+    /// <inheritdoc/>
+    public async Task<InventorySummary> GetSummaryAsync(
+        InventorySummaryFilter filter, CancellationToken cancellationToken = default)
+    {
+        var threshold = filter.LowStockThreshold;
+        var agg = await db.Items.AsNoTracking()
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalItems = g.Count(),
+                TotalQuantity = (long)g.Sum(x => x.Available),
+                InStock = g.Count(x => x.Available > threshold),
+                LowStock = g.Count(x => x.Available > 0 && x.Available <= threshold),
+                OutOfStock = g.Count(x => x.Available == 0)
+            })
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return new InventorySummary(
+            agg?.TotalItems ?? 0, agg?.TotalQuantity ?? 0,
+            agg?.InStock ?? 0, agg?.LowStock ?? 0, agg?.OutOfStock ?? 0, threshold);
+    }
 }

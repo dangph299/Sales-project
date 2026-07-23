@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { PagedResult } from '../../../../core/api/paged-result.model';
 import { ProductLookupApiService } from '../../../common/api/product-lookup-api.service';
 import { ProductVariantPageResponse } from '../../../common/contracts/product-lookup.response';
@@ -11,23 +12,24 @@ describe('InventoryListPageComponent stock rows', () => {
   let fixture: ComponentFixture<InventoryListPageComponent>;
   let productLookup: FakeProductLookupApiService;
   let inventoryApi: FakeInventoryApiService;
+  let routeStub: ReturnType<typeof route>;
 
   beforeEach(async () => {
     productLookup = new FakeProductLookupApiService();
     inventoryApi = new FakeInventoryApiService();
+    routeStub = route({});
 
     await TestBed.configureTestingModule({
       imports: [InventoryListPageComponent],
       providers: [
         provideNoopAnimations(),
         { provide: ProductLookupApiService, useValue: productLookup },
-        { provide: InventoryApiService, useValue: inventoryApi }
+        { provide: InventoryApiService, useValue: inventoryApi },
+        { provide: ActivatedRoute, useValue: routeStub }
       ]
     }).compileComponents();
 
-    fixture = TestBed.createComponent(InventoryListPageComponent);
-    fixture.detectChanges();
-    await fixture.whenStable();
+    await createComponent();
   });
 
   afterEach(() => {
@@ -138,7 +140,41 @@ describe('InventoryListPageComponent stock rows', () => {
     expect(rows.find(row => row.variant.id === 'v-2')?.inventory?.available).toBe(8);
     expect(rows.find(row => row.variant.id === 'v-1')?.inventory?.available).toBe(0);
   });
+
+  it('applies the in-stock deep-link filter during initialization', async () => {
+    await createComponent({ stock: 'in-stock' });
+
+    expect(fixture.componentInstance.stockStateFilter).toBe('available');
+  });
+
+  it('applies the low-stock deep-link filter during initialization', async () => {
+    await createComponent({ stock: 'low' });
+
+    expect(fixture.componentInstance.stockStateFilter).toBe('low');
+  });
+
+  it('applies the out-of-stock deep-link filter during initialization', async () => {
+    await createComponent({ stock: 'out' });
+
+    expect(fixture.componentInstance.stockStateFilter).toBe('out');
+  });
+
+  async function createComponent(queryParams: Record<string, string> = {}): Promise<void> {
+    fixture?.destroy();
+    routeStub.snapshot.queryParamMap = convertToParamMap(queryParams);
+    fixture = TestBed.createComponent(InventoryListPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+  }
 });
+
+function route(queryParams: Record<string, string>) {
+  return {
+    snapshot: {
+      queryParamMap: convertToParamMap(queryParams)
+    }
+  };
+}
 
 class FakeProductLookupApiService {
   lastFilters: { sortBy?: string; sortDirection?: string; page?: number; pageSize?: number } | null = null;

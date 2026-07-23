@@ -9,6 +9,7 @@ import {
   ApiOutline,
   AppstoreOutline,
   CheckCircleOutline,
+  CloseCircleOutline,
   DatabaseOutline,
   DashboardOutline,
   DollarOutline,
@@ -27,7 +28,8 @@ import {
   TagsOutline,
   TeamOutline,
   UserAddOutline,
-  UserOutline
+  UserOutline,
+  WarningOutline
 } from '@ant-design/icons-angular/icons';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
@@ -42,6 +44,7 @@ export const appConfig: ApplicationConfig = {
       ApiOutline,
       AppstoreOutline,
       CheckCircleOutline,
+      CloseCircleOutline,
       DatabaseOutline,
       DashboardOutline,
       DollarOutline,
@@ -60,7 +63,8 @@ export const appConfig: ApplicationConfig = {
       TagsOutline,
       TeamOutline,
       UserAddOutline,
-      UserOutline
+      UserOutline,
+      WarningOutline
     ]),
     importProvidersFrom(FormsModule, ReactiveFormsModule)
   ]

@@ -8,16 +8,6 @@ const orderStatusDisplays: Readonly<Record<string, StatusDisplay>> = {
   InventoryRejected: { label: 'Inventory rejected', tone: 'danger' }
 };
 
-const productStatusDisplays: Readonly<Record<string, StatusDisplay>> = {
-  Draft: { label: 'Draft', tone: 'neutral' },
-  Published: { label: 'Published', tone: 'success' },
-  Discontinued: { label: 'Discontinued', tone: 'warning' }
-};
-
 export function dashboardOrderStatusDisplay(status: string | null | undefined): StatusDisplay {
   return toStatusDisplay(status, orderStatusDisplays);
-}
-
-export function dashboardProductStatusDisplay(status: string | null | undefined): StatusDisplay {
-  return toStatusDisplay(status, productStatusDisplays);
 }

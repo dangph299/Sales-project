@@ -19,4 +19,7 @@ public interface IInventoryItemReadService
     Task<IReadOnlyCollection<InventorySnapshot>> GetByProductVariantIdsAsync(
         IReadOnlyCollection<Guid> productVariantIds,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Aggregates stock-status counts across all tracked inventory items.</summary>
+    Task<InventorySummary> GetSummaryAsync(InventorySummaryFilter filter, CancellationToken cancellationToken = default);
 }

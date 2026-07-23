@@ -7,8 +7,9 @@
 | PostgreSQL `sales` | Sales | catalog, customers, orders, identity, outbox, inbox |
 | PostgreSQL `inventory` | Inventory | inventory items, reservations, outbox, inbox |
 | PostgreSQL `hangfire` | Sales | Hangfire job storage |
+| PostgreSQL `dashboard` | Dashboard.Bff | Hangfire job storage for snapshot refresh |
 | MongoDB `audit` | AuditLog | `events` collection of audit documents |
-| Redis | Sales | product read cache, cleanup distributed lock |
+| Redis | Sales, Dashboard.Bff | product read cache, cleanup distributed lock, dashboard snapshot |
 
 - One database per bounded context. Never query another context's database.
 - Connection strings come from `ConnectionStrings:<Name>`. Never hardcode one.

@@ -18,6 +18,7 @@ Every registration in the solution, by host.
 | `AddSalesApplication()` / `AddSalesInfrastructure(configuration)` | Sales |
 | `AddInventoryApplication()` / `AddInventoryInfrastructure(configuration)` | Inventory |
 | `AddAuditLogInfrastructure(configuration)` / `AddAuditLogWorker(configuration)` | AuditLog |
+| `AddDashboardBff(builder)` | Dashboard.Bff |
 
 ## Shared
 
@@ -116,6 +117,29 @@ AddAuditLogWorker(configuration)
   -> KafkaFlow consumer group audit-mongodb-v3 on sales.audit.v1 + inventory.audit.v1
   -> MongoStartupService, KafkaBusService                               (hosted)
 ```
+
+## Dashboard.Bff
+
+```
+AddBuildingBlocksLogging("dashboard-bff")
+AddBuildingBlocksWeb(...)   // JWT, ProblemDetails, Swagger, request logging, observability
+IHttpContextAccessor
+DownstreamOptions, ServiceAccountOptions, DashboardCacheOptions,
+DashboardRefreshJobOptions, DashboardInventoryOptions                  options, ValidateOnStart
+IClock -> SystemClock                                                   singleton (TryAdd)
+ICallerTokenAccessor -> CallerTokenAccessor                             scoped
+IServiceTokenProvider -> ServiceAccountTokenProvider                    singleton
+DownstreamAuthDelegatingHandler                                         transient
+ISalesClient -> SalesClient                                             typed HttpClient + resilience
+IInventoryClient -> InventoryClient                                     typed HttpClient + resilience
+IDashboardSnapshotBuilder -> DashboardSnapshotBuilder                   scoped
+IDashboardSnapshotCache -> RedisDashboardSnapshotCache                  scoped when Redis configured
+IDashboardSnapshotCache -> MemoryDashboardSnapshotCache                 scoped fallback
+DashboardSnapshotRefreshJob                                             scoped
+Hangfire server + recurring job registration                            when ConnectionStrings:Hangfire exists
+```
+
+Dashboard.Bff intentionally references only shared BuildingBlocks projects. It does not register MediatR or service-layer dependencies because its only business behavior is HTTP aggregation for the web dashboard.
 
 ## Lifetime rules
 

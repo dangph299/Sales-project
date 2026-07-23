@@ -181,6 +181,35 @@ services:
       postgres: { condition: service_healthy }
       kafka-init: { condition: service_completed_successfully }
 
+  dashboard-bff:
+    mem_limit: 512m
+    build:
+      context: ..
+      dockerfile: src/Services/Dashboard/Dashboard.Bff/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__Redis: redis:6379
+      ConnectionStrings__Hangfire: Host=postgres;Database=dashboard;Username=postgres;Password=postgres
+      Downstream__SalesBaseUrl: http://sales-api:8080
+      Downstream__InventoryBaseUrl: http://inventory-api:8080
+      ServiceAccount__AllowAdminDevFallback: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: dashboard-bff
+    ports: ["5002:8080"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      sales-api: { condition: service_healthy }
+      inventory-api: { condition: service_healthy }
+
   audit-worker:
     mem_limit: 512m
     build:

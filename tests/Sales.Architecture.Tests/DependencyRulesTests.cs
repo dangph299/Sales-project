@@ -194,4 +194,18 @@ public sealed class DependencyRulesTests
 
         Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
     }
+
+    [Fact]
+    public void DashboardBff_DoesNotReferenceServiceAssemblies()
+    {
+        var bff = typeof(Dashboard.Bff.Contracts.DashboardSnapshot).Assembly;
+
+        var referenced = bff.GetReferencedAssemblies().Select(a => a.Name).ToArray();
+        string[] forbidden =
+        [
+            "Sales.Application", "Sales.Infrastructure", "Sales.Domain",
+            "Inventory.Application", "Inventory.Infrastructure", "Inventory.Domain"
+        ];
+        Assert.Empty(referenced.Intersect(forbidden));
+    }
 }
