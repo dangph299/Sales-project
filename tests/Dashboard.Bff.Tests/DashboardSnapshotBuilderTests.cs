@@ -137,12 +137,16 @@ public sealed class DashboardSnapshotBuilderTests
             // Every caller waits for all others to arrive before any is allowed to proceed.
             // If the production code awaits sequentially instead of fanning out, this will
             // deadlock/timeout because fewer than 9 callers will ever be in-flight at once.
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-            await using var registration = cts.Token.Register(() =>
-                throw new TimeoutException(
-                    $"Only {Volatile.Read(ref _arrivedCount)} of {expectedConcurrentCallers} downstream calls were in-flight simultaneously."));
-
-            await _allArrived.Task;
+            // Race the "all arrived" signal against a timeout and fail deterministically on
+            // the awaiting thread (via Assert.Fail) rather than throwing from a
+            // CancellationToken.Register callback on a background timer thread, which would
+            // surface as an unhandled/unobserved exception instead of a normal test failure.
+            var completed = await Task.WhenAny(_allArrived.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+            if (completed != _allArrived.Task)
+            {
+                Assert.Fail(
+                    $"Only {Volatile.Read(ref _arrivedCount)} of {expectedConcurrentCallers} downstream calls were in-flight simultaneously before the timeout elapsed — concurrency regression (sequential awaits?) suspected.");
+            }
         }
     }
 
