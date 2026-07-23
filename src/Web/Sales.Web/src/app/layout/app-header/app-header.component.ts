@@ -70,8 +70,16 @@ export class AppHeaderComponent {
     }
   }
 
-  async refreshToken(): Promise<void> {
-    await this.login();
+  refreshToken(): void {
+    this.authenticating.set(true);
+    this.errorMessageChange.emit('');
+    this.auth.refreshAccessToken().subscribe({
+      next: () => this.authenticating.set(false),
+      error: error => {
+        this.errorMessageChange.emit(this.describeError(error));
+        this.authenticating.set(false);
+      }
+    });
   }
 
   logout(): void {

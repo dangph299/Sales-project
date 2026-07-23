@@ -1,7 +1,6 @@
 import { HttpClient, HttpHeaders, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { SessionService } from '../auth/session.service';
 import { ApiClientError, ApiResponseReader } from './api-client-result';
 import { ApiResult } from './api-result.model';
 import { PagedResult } from './paged-result.model';
@@ -20,7 +19,6 @@ export type QueryParameters = Record<string, string | number | boolean | undefin
 @Injectable({ providedIn: 'root' })
 export class ApiClientService {
   private readonly http = inject(HttpClient);
-  private readonly session = inject(SessionService);
 
   get<T>(baseUrl: string, path: string, parameters?: QueryParameters): Promise<T> {
     return this.send<T>(firstValueFrom(this.http.get(this.url(baseUrl, path), this.options(parameters))));
@@ -108,7 +106,7 @@ export class ApiClientService {
     params?: HttpParams;
     responseType: 'text';
   } {
-    let headers = this.authHeaders();
+    let headers = new HttpHeaders();
     if (etag) {
       headers = headers.set('If-Match', etag);
     }
@@ -130,11 +128,6 @@ export class ApiClientService {
     }
 
     return options;
-  }
-
-  private authHeaders(): HttpHeaders {
-    const token = this.session.accessToken();
-    return token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : new HttpHeaders();
   }
 
   private buildParams(parameters?: QueryParameters): HttpParams | null {

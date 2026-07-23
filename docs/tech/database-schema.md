@@ -44,7 +44,7 @@ erDiagram
 No foreign key to `product_variants` — the line is a point-in-time snapshot.
 
 ### `refresh_tokens`
-`Id` PK · `UserId` · `TokenHash` (unique, SHA-256 hex) · `ExpiresAt` · `RevokedAt?`
+`Id` PK · `UserId` (indexed) · `TokenHash` (unique, SHA-256 hex) · `ExpiresAt` · `CreatedAt` · `RevokedAt?` · `ReplacedByTokenId?` (indexed) · `CreatedByIp?`
 
 ### Identity tables
 Standard `IdentityDbContext<ApplicationUser, IdentityRole<Guid>, Guid>` set: `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`, `AspNetUserClaims`, `AspNetUserLogins`, `AspNetUserTokens`, `AspNetRoleClaims`. Roles seeded: `Admin`, `Sales`, `Warehouse`.

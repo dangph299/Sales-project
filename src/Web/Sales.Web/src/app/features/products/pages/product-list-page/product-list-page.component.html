@@ -57,7 +57,7 @@
         <th>Code</th>
         <th>Name</th>
         <th>Category</th>
-        <th>Variants</th>
+        <th>Variants (Published/Total)</th>
         <th>Price range</th>
         <th>Updated</th>
         <th class="actions-column">Actions</th>
@@ -72,7 +72,7 @@
         <td>{{ product.productCode || product.sku }}</td>
         <td>{{ product.name }}</td>
         <td>{{ product.category?.name || '-' }}</td>
-        <td>{{ product.variants?.length || 0 }} / {{ publishedVariantCount(product) }} published</td>
+        <td>{{ publishedVariantCount(product) }} / {{ product.variants?.length || 0 }}</td>
         <td>{{ product.minPrice | priceRange: product.maxPrice }}</td>
         <td>{{ product.updatedAt | dateTime }}</td>
         <td class="actions-column">

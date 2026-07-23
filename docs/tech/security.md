@@ -14,13 +14,15 @@ Only `Sales.Api/Controllers/AuthController.cs` issues tokens.
 |---|---|
 | Algorithm | HMAC-SHA256 (`SymmetricSecurityKey`) |
 | Access token lifetime | 30 minutes (`expiresIn: 1800`) |
-| Claims | `sub` = user id, `unique_name` = username, one `role` claim per role |
+| Claims | `jti` = token id, `sub` = user id, `unique_name` = username, one `role` claim per role |
 | Refresh token | 48 random bytes, base64 |
 | Refresh lifetime | 7 days |
 | Refresh storage | SHA-256 hex of the token in `refresh_tokens.TokenHash` (unique index) — the raw token is never persisted |
-| Refresh rotation | single-use: the presented token is revoked (`RevokedAt`) and a new pair is issued |
+| Refresh rotation | single-use: the presented token is revoked (`RevokedAt`), linked to the replacement (`ReplacedByTokenId`), and a new pair is issued |
 
-`POST /api/auth/refresh` only accepts a token that is unrevoked and unexpired; anything else is `401`.
+`POST /api/auth/refresh-token` only accepts a token that is unrevoked and unexpired; `/api/auth/refresh` remains a backward-compatible alias. A reused revoked token is treated as token theft: the API revokes still-active refresh tokens for the same user and returns `401`.
+
+The Angular client attaches bearer tokens through `authInterceptor`. On a `401` from a non-auth endpoint, the interceptor calls `AuthApiService.refreshAccessToken()`, retries the failed request once with the new access token, and shares one in-flight refresh request across concurrent failures to avoid refresh-token rotation conflicts. If refresh fails, `AuthApiService` clears `SessionService`, shows a session-expired notification, and navigates back to the dashboard login surface.
 
 ### SignalR
 

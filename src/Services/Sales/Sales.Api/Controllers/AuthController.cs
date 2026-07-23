@@ -55,13 +55,13 @@ public sealed class AuthController : ControllerBase
     public async Task<IActionResult> Login([FromBody] LoginRequest body, CancellationToken ct)
     {
         var user = await _users.FindByNameAsync(body.UserName);
-        if (user is null || !await _users.CheckPasswordAsync(user, body.Password))
+        if (user is null || !await IsActiveAsync(user) || !await _users.CheckPasswordAsync(user, body.Password))
         {
             return Unauthorized();
         }
 
         var token = await IssueTokenAsync(user, ct);
-        return this.ToOkResponse(token);
+        return this.ToOkResponse(token.Response);
     }
 
     /// <summary>
@@ -72,37 +72,50 @@ public sealed class AuthController : ControllerBase
     /// <param name="ct">Cancellation token.</param>
     /// <returns><c>200 OK</c> with the newly issued tokens, or <c>401 Unauthorized</c> if the refresh token is missing, expired, revoked, or does not match a known user.</returns>
     [HttpPost("refresh")]
+    [HttpPost("refresh-token")]
     public async Task<IActionResult> Refresh([FromBody] RefreshRequest body, CancellationToken ct)
     {
         var tokenHash = Hash(body.RefreshToken);
-        var stored = await (
-            from refreshToken in _db.RefreshTokens
-            where refreshToken.TokenHash == tokenHash &&
-                  refreshToken.RevokedAt == null &&
-                  refreshToken.ExpiresAt > _clock.UtcNow
-            select refreshToken).SingleOrDefaultAsync(ct);
+        var stored = await _db.RefreshTokens.SingleOrDefaultAsync(
+            refreshToken => refreshToken.TokenHash == tokenHash,
+            ct);
 
         if (stored is null)
         {
             return Unauthorized();
         }
 
-        stored.RevokedAt = _clock.UtcNow;
-        var user = await _users.FindByIdAsync(stored.UserId.ToString());
-        if (user is null)
+        if (stored.RevokedAt is not null)
+        {
+            await RevokeActiveRefreshTokensAsync(stored.UserId, ct);
+            return Unauthorized();
+        }
+
+        var now = _clock.UtcNow;
+        if (stored.ExpiresAt <= now)
         {
             return Unauthorized();
         }
 
-        var token = await IssueTokenAsync(user, ct);
-        return this.ToOkResponse(token);
+        var user = await _users.FindByIdAsync(stored.UserId.ToString());
+        if (user is null || !await IsActiveAsync(user))
+        {
+            return Unauthorized();
+        }
+
+        stored.RevokedAt = now;
+        var token = await IssueTokenAsync(user, ct, save: false);
+        stored.ReplacedByTokenId = token.RefreshTokenId;
+        await _db.SaveChangesAsync(ct);
+        return this.ToOkResponse(token.Response);
     }
 
-    private async Task<TokenResponse> IssueTokenAsync(ApplicationUser user, CancellationToken ct)
+    private async Task<IssuedToken> IssueTokenAsync(ApplicationUser user, CancellationToken ct, bool save = true)
     {
         var now = _clock.UtcNow;
         var claims = new List<Claim>
         {
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.UniqueName, user.UserName!)
         };
@@ -124,23 +137,53 @@ public sealed class AuthController : ControllerBase
             credentials);
 
         var refresh = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+        var refreshTokenId = Guid.NewGuid();
         _db.RefreshTokens.Add(new RefreshToken
         {
-            Id = Guid.NewGuid(),
+            Id = refreshTokenId,
             UserId = user.Id,
             TokenHash = Hash(refresh),
-            ExpiresAt = now.AddDays(7)
+            ExpiresAt = now.AddDays(7),
+            CreatedAt = now,
+            CreatedByIp = HttpContext.Connection.RemoteIpAddress?.ToString()
         });
-        await _db.SaveChangesAsync(ct);
+        if (save)
+        {
+            await _db.SaveChangesAsync(ct);
+        }
 
-        return new TokenResponse(
-            new JwtSecurityTokenHandler().WriteToken(jwt),
-            1800,
-            refresh);
+        return new IssuedToken(
+            refreshTokenId,
+            new TokenResponse(
+                new JwtSecurityTokenHandler().WriteToken(jwt),
+                1800,
+                refresh));
+    }
+
+    private async Task<bool> IsActiveAsync(ApplicationUser user)
+    {
+        return !await _users.IsLockedOutAsync(user);
+    }
+
+    private async Task RevokeActiveRefreshTokensAsync(Guid userId, CancellationToken ct)
+    {
+        var now = _clock.UtcNow;
+        var tokens = await _db.RefreshTokens
+            .Where(token => token.UserId == userId && token.RevokedAt == null)
+            .ToListAsync(ct);
+
+        foreach (var token in tokens.Where(token => token.ExpiresAt > now))
+        {
+            token.RevokedAt = now;
+        }
+
+        await _db.SaveChangesAsync(ct);
     }
 
     private static string Hash(string token)
     {
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(token)));
     }
+
+    private sealed record IssuedToken(Guid RefreshTokenId, TokenResponse Response);
 }

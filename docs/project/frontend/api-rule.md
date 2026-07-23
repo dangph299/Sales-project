@@ -67,8 +67,10 @@ Rules:
 
 ## Auth
 
-- The bearer token is attached by `ApiClientService` from `SessionService`. Never set an `Authorization` header anywhere else.
-- Only `AuthApiService` writes tokens (`session.setTokens`).
+- The bearer token is attached by `authInterceptor` from `SessionService`. Never set an `Authorization` header anywhere else.
+- `ApiClientService` stays token-agnostic; it builds request shape and reads API responses only.
+- Only `AuthApiService` writes tokens (`session.setTokens`) and owns refresh-token retry coordination.
+- The auth interceptor may retry a `401` once after `AuthApiService.refreshAccessToken()` succeeds. It must skip auth endpoints to avoid refresh loops.
 
 ## Related
 

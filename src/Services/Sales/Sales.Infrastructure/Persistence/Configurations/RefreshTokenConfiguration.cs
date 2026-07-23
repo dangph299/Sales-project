@@ -14,5 +14,9 @@ public sealed class RefreshTokenConfiguration : IEntityTypeConfiguration<Refresh
         entity.ToTable("refresh_tokens");
         entity.HasKey(x => x.Id);
         entity.HasIndex(x => x.TokenHash).IsUnique();
+        entity.HasIndex(x => x.UserId);
+        entity.HasIndex(x => x.ReplacedByTokenId);
+        entity.Property(x => x.TokenHash).HasMaxLength(64);
+        entity.Property(x => x.CreatedByIp).HasMaxLength(45);
     }
 }

@@ -9,9 +9,10 @@ Every endpoint that exists today. Roles are the `[Authorize]` requirement. "Auth
 | Verb | Path | Body | Returns |
 |---|---|---|---|
 | POST | `/api/auth/login` | `LoginRequest { userName, password }` | `200` `TokenResponse { accessToken, expiresIn: 1800, refreshToken }`, `401` on bad credentials |
-| POST | `/api/auth/refresh` | `RefreshRequest { refreshToken }` | `200` new token pair (old refresh token revoked), `401` if missing/expired/revoked |
+| POST | `/api/auth/refresh-token` | `RefreshRequest { refreshToken }` | `200` new token pair (old refresh token revoked and linked to replacement), `401` if missing/expired/revoked/reused |
+| POST | `/api/auth/refresh` | `RefreshRequest { refreshToken }` | Backward-compatible alias for `/api/auth/refresh-token` |
 
-`Sales.Api/Controllers/AuthController.cs`. Access token lifetime 30 min, refresh 7 days, refresh stored as SHA-256 hex.
+`Sales.Api/Controllers/AuthController.cs`. Access token lifetime 30 min, refresh 7 days, refresh stored as SHA-256 hex. Refresh tokens are single-use; reuse of a revoked token revokes still-active refresh tokens for that user.
 
 ### `CustomersController` — `api/customers` (Admin, Sales)
 

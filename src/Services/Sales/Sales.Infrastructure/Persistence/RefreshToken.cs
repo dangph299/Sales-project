@@ -27,7 +27,22 @@ public sealed class RefreshToken
     public DateTimeOffset ExpiresAt { get; set; }
 
     /// <summary>
+    /// Gets or sets the UTC instant this token was issued.
+    /// </summary>
+    public DateTimeOffset CreatedAt { get; set; }
+
+    /// <summary>
     /// Gets or sets the UTC instant this token was revoked, or <see langword="null"/> if it has not been revoked.
     /// </summary>
     public DateTimeOffset? RevokedAt { get; set; }
+
+    /// <summary>
+    /// Gets or sets the refresh token that replaced this token during rotation.
+    /// </summary>
+    public Guid? ReplacedByTokenId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the IP address that requested this token, when available.
+    /// </summary>
+    public string? CreatedByIp { get; set; }
 }

@@ -38,7 +38,8 @@ All lazy-loaded from `app.routes.ts`; `''` and `**` redirect to `dashboard`.
 | `ApiClientService` | the only class touching `HttpClient`; headers, params, response reading, `ApiClientError` |
 | `ApiResponseReader` | parses `ApiResponse<T>` / `ApiErrorResponse` into `ApiClientResult<T>` for every status branch |
 | `SessionService` | access/refresh token signals, persisted in `localStorage`, `isAuthenticated` computed |
-| `AuthApiService` | login/logout; the only writer of session tokens |
+| `AuthApiService` | login/logout/refresh; the only writer of session tokens and owner of refresh retry coordination |
+| `authInterceptor` | attaches bearer tokens, refreshes once after non-auth `401` responses, retries pending requests with the new token |
 | `ApiEndpointConfigurationService` | `salesBase()` / `inventoryBase()`, defaulting to `/sales-api` and `/inventory-api` |
 | `SignalrConnectionService` | hub-agnostic connection lifecycle, state signal, event dispatch, resubscribe callbacks |
 | `HealthApiService` | status-bar health probe |

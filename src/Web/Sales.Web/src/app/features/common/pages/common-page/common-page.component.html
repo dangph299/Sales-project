@@ -16,7 +16,7 @@
 
 <section class="content-grid" *ngIf="!loading() && !errorMessage()">
   <nz-card nzTitle="Color List" [nzExtra]="colorCount">
-    <ng-template #colorCount>{{ colors().length }} colors</ng-template>
+    <ng-template #colorCount></ng-template>
 
     <nz-table #colorTable [nzData]="colors()" [nzShowPagination]="false" nzSize="small">
       <thead>
@@ -39,7 +39,7 @@
   </nz-card>
 
   <nz-card nzTitle="Size List" [nzExtra]="sizeNote">
-    <ng-template #sizeNote>Sorted by SortOrder</ng-template>
+    <ng-template #sizeNote></ng-template>
 
     <nz-table #sizeTable [nzData]="sizes()" [nzShowPagination]="false" nzSize="small">
       <thead>
