@@ -1,5 +1,6 @@
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web;
+using Dashboard.Bff.Options;
 
 namespace Dashboard.Bff.Extensions;
 
@@ -31,6 +32,52 @@ public static class DashboardBffServiceCollectionExtensions
         });
 
         builder.Services.AddHttpContextAccessor();
+
+        builder.Services.AddOptions<DownstreamOptions>()
+            .Bind(builder.Configuration.GetSection(DownstreamOptions.SectionName))
+            .Validate(
+                o => Uri.TryCreate(o.SalesBaseUrl, UriKind.Absolute, out _),
+                "Downstream:SalesBaseUrl must be a non-empty absolute URI")
+            .Validate(
+                o => Uri.TryCreate(o.InventoryBaseUrl, UriKind.Absolute, out _),
+                "Downstream:InventoryBaseUrl must be a non-empty absolute URI")
+            .ValidateOnStart();
+
+        var isDevelopment = builder.Environment.IsDevelopment();
+        var serviceAccountOptionsBuilder = builder.Services.AddOptions<ServiceAccountOptions>()
+            .Bind(builder.Configuration.GetSection(ServiceAccountOptions.SectionName));
+
+        if (isDevelopment)
+        {
+            serviceAccountOptionsBuilder.Validate(
+                o => o.AllowAdminDevFallback || (!string.IsNullOrWhiteSpace(o.UserName) && !string.IsNullOrWhiteSpace(o.Password)),
+                "ServiceAccount:UserName/Password must be set unless ServiceAccount:AllowAdminDevFallback is true");
+        }
+        else
+        {
+            serviceAccountOptionsBuilder.Validate(
+                o => !string.IsNullOrWhiteSpace(o.UserName) && !string.IsNullOrWhiteSpace(o.Password),
+                "ServiceAccount:UserName and ServiceAccount:Password are required outside Development");
+        }
+
+        serviceAccountOptionsBuilder.ValidateOnStart();
+
+        builder.Services.AddOptions<DashboardCacheOptions>()
+            .Bind(builder.Configuration.GetSection(DashboardCacheOptions.SectionName))
+            .Validate(o => o.TtlSeconds > 0, "Dashboard:Cache:TtlSeconds must be greater than 0")
+            .Validate(o => !string.IsNullOrWhiteSpace(o.Key), "Dashboard:Cache:Key must be non-empty")
+            .ValidateOnStart();
+
+        // TODO(Phase 6): validate cron syntax via shared Hangfire helper
+        builder.Services.AddOptions<DashboardRefreshJobOptions>()
+            .Bind(builder.Configuration.GetSection(DashboardRefreshJobOptions.SectionName))
+            .Validate(
+                o => !o.Enabled || !string.IsNullOrWhiteSpace(o.Cron),
+                "Dashboard:RefreshJob:Cron must be non-empty when Dashboard:RefreshJob:Enabled is true")
+            .Validate(
+                o => !o.Enabled || !string.IsNullOrWhiteSpace(o.Queue),
+                "Dashboard:RefreshJob:Queue must be non-empty when Dashboard:RefreshJob:Enabled is true")
+            .ValidateOnStart();
 
         return builder;
     }
