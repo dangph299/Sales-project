@@ -5,10 +5,11 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzSkeletonModule } from 'ng-zorro-antd/skeleton';
-import { NzTableModule } from 'ng-zorro-antd/table';
 import { DashboardChartComponent, DashboardChartPoint } from '../components/dashboard-chart/dashboard-chart.component';
 import { DashboardSectionComponent } from '../components/dashboard-section/dashboard-section.component';
 import { MetricCardComponent } from '../components/metric-card/metric-card.component';
+import { DataTableComponent } from '../../../shared/components/data-table/data-table.component';
+import { TableCellTemplateDirective } from '../../../shared/components/data-table/table-cell-template.directive';
 import { PageStateComponent } from '../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../shared/components/status-tag/status-tag.component';
 import { DateTimePipe } from '../../../shared/pipes/date-time.pipe';
@@ -18,6 +19,7 @@ import { DashboardApiService } from '../api/dashboard-api.service';
 import { DashboardMetrics, emptyDashboardMetrics } from '../models/dashboard-metrics.model';
 import { OrderChartRow, RecentOrderRow } from '../models/dashboard-row.model';
 import { InventorySummary, emptyInventorySummary } from '../models/inventory-summary.model';
+import { recentOrderColumns } from './dashboard-page.columns';
 
 @Component({
   selector: 'app-dashboard-page',
@@ -25,6 +27,8 @@ import { InventorySummary, emptyInventorySummary } from '../models/inventory-sum
   imports: [
     CommonModule,
     RouterLink,
+    DataTableComponent,
+    TableCellTemplateDirective,
     PageStateComponent,
     StatusTagComponent,
     DashboardChartComponent,
@@ -35,8 +39,7 @@ import { InventorySummary, emptyInventorySummary } from '../models/inventory-sum
     NzButtonModule,
     NzCardModule,
     NzIconModule,
-    NzSkeletonModule,
-    NzTableModule
+    NzSkeletonModule
   ],
   templateUrl: './dashboard-page.component.html',
   styleUrl: './dashboard-page.component.scss'
@@ -74,6 +77,7 @@ export class DashboardPageComponent implements OnInit {
 
   readonly revenueTrend = computed<DashboardChartPoint[]>(() => this.toRevenueTrend(this.chartOrders()));
   readonly ordersByStatus = computed<DashboardChartPoint[]>(() => this.toOrdersByStatus(this.chartOrders()));
+  readonly recentOrderColumns = recentOrderColumns;
 
   ngOnInit(): void {
     void this.load();

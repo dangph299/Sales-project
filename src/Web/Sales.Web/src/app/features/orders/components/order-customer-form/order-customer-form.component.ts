@@ -1,16 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject, signal } from '@angular/core';
+import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NzAutocompleteModule, NzOptionSelectionChange } from 'ng-zorro-antd/auto-complete';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { Subject, debounceTime, defer, distinctUntilChanged, finalize, from, switchMap, takeUntil } from 'rxjs';
+import { AutocompleteComponent } from '../../../../shared/components/autocomplete/autocomplete.component';
 import { CustomerLookupApiService } from '../../../common/api/customer-lookup-api.service';
 import { CustomerPhoneSuggestionResponse } from '../../../common/contracts/customer-lookup.response';
 import { OrderCustomerRequest } from '../../api/requests/order-customer.request';
-
-/** How long to wait after the last keystroke before asking the server for suggestions. */
-const suggestionDebounceMs = 300;
 
 /** Validation messages shown under the fields, keyed by field. */
 export interface OrderCustomerFormErrors {
@@ -36,10 +32,10 @@ export interface OrderCustomerFormErrors {
 @Component({
   selector: 'app-order-customer-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzAutocompleteModule, NzFormModule, NzInputModule],
+  imports: [CommonModule, FormsModule, AutocompleteComponent, NzFormModule, NzInputModule],
   templateUrl: './order-customer-form.component.html'
 })
-export class OrderCustomerFormComponent implements OnInit, OnDestroy {
+export class OrderCustomerFormComponent {
   private readonly customerLookup = inject(CustomerLookupApiService);
 
   @Input({ required: true }) customer!: OrderCustomerRequest;
@@ -52,43 +48,24 @@ export class OrderCustomerFormComponent implements OnInit, OnDestroy {
   @Output() customerChange = new EventEmitter<OrderCustomerRequest>();
 
   readonly suggestions = signal<CustomerPhoneSuggestionResponse[]>([]);
-  readonly searching = signal(false);
   readonly suggestionErrorMessage = signal('');
+  readonly searching = signal(false);
 
-  private readonly phoneSearchTerms = new Subject<string>();
-  private readonly destroyed = new Subject<void>();
+  readonly phoneSuggestionSearch = (term: string): Promise<CustomerPhoneSuggestionResponse[]> => this.loadSuggestions(term);
+  readonly displayPhoneSuggestion = (suggestion: CustomerPhoneSuggestionResponse | string | null): string => {
+    if (!suggestion) {
+      return '';
+    }
 
-  ngOnInit(): void {
-    this.phoneSearchTerms
-      .pipe(
-        debounceTime(suggestionDebounceMs),
-        distinctUntilChanged(),
-        // The loading flag is raised inside switchMap, not before distinctUntilChanged: a repeated
-        // term is dropped here and must not start a request nor a spinner. defer runs the factory
-        // only when the inner observable is subscribed — that is, after switchMap has torn down any
-        // previous request — so raising the flag there cannot be undone by the outgoing request's
-        // finalize. finalize then lowers it on success, error, and the switchMap cancellation a newer
-        // term triggers, so the flag can never stick on.
-        switchMap(customerPhoneSearchTerm =>
-          defer(() => {
-            this.searching.set(true);
-            return from(this.loadSuggestions(customerPhoneSearchTerm));
-          }).pipe(finalize(() => this.searching.set(false)))),
-        takeUntil(this.destroyed))
-      .subscribe(suggestions => this.suggestions.set(suggestions));
-  }
-
-  ngOnDestroy(): void {
-    this.destroyed.next();
-    this.destroyed.complete();
-  }
+    return typeof suggestion === 'string' ? suggestion : suggestion.phone;
+  };
 
   /**
    * True when the user has typed a usable phone number that matched no existing
    * customer. Deliberately not an error: the backend will create the customer.
    */
   isNewCustomer(): boolean {
-    if (!this.showNewCustomerHint || this.searching()) {
+    if (!this.showNewCustomerHint) {
       return false;
     }
 
@@ -100,14 +77,18 @@ export class OrderCustomerFormComponent implements OnInit, OnDestroy {
     return !this.suggestions().some(suggestion => this.digitsOf(suggestion.phone) === normalizedCustomerPhone);
   }
 
-  searchByPhone(customerPhoneSearchTerm: string): void {
-    this.phoneSearchTerms.next(customerPhoneSearchTerm);
-  }
-
   /** Typing in the phone box both edits the snapshot and drives the suggestions. */
   changePhone(customerPhone: string): void {
+    if (!customerPhone.trim()) {
+      this.suggestions.set([]);
+      this.suggestionErrorMessage.set('');
+    }
+
     this.emitChange({ ...this.customer, phone: customerPhone });
-    this.searchByPhone(customerPhone);
+  }
+
+  changePhoneValue(value: string | CustomerPhoneSuggestionResponse | null): void {
+    this.changePhone(typeof value === 'string' ? value : value?.phone ?? '');
   }
 
   changeName(customerName: string): void {
@@ -127,12 +108,7 @@ export class OrderCustomerFormComponent implements OnInit, OnDestroy {
    * afterwards — picking a customer is a shortcut, not a commitment to their
    * current details.
    */
-  selectSuggestion(suggestion: CustomerPhoneSuggestionResponse, selection: NzOptionSelectionChange): void {
-    // Options also report themselves when they are merely highlighted or reset.
-    if (!selection.isUserInput) {
-      return;
-    }
-
+  selectSuggestion(suggestion: CustomerPhoneSuggestionResponse): void {
     this.emitChange({
       name: suggestion.name,
       phone: suggestion.phone,
@@ -149,12 +125,14 @@ export class OrderCustomerFormComponent implements OnInit, OnDestroy {
 
     try {
       const suggestions = await this.customerLookup.suggestByPhone(customerPhoneSearchTerm);
+      this.suggestions.set(suggestions);
       this.suggestionErrorMessage.set('');
       return suggestions;
     } catch {
       // A failed lookup must not block the form: the user can still type the
       // details in full and let the backend sort the customer out on submit.
       this.suggestionErrorMessage.set('Could not load customer suggestions.');
+      this.suggestions.set([]);
       return [];
     }
   }

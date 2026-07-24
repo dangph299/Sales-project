@@ -10,10 +10,14 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzNotificationService } from 'ng-zorro-antd/notification';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTableModule } from 'ng-zorro-antd/table';
+import { DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
+import { TableCellTemplateDirective } from '../../../../shared/components/data-table/table-cell-template.directive';
+import { DropdownComponent } from '../../../../shared/components/dropdown/dropdown.component';
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../../shared/components/status-tag/status-tag.component';
+import { FocusFirstRequiredDirective } from '../../../../shared/directives/focus-first-required.directive';
+import { TablePageChange, TableSort, TableSortDirection } from '../../../../shared/models/table.model';
 import { DateTimePipe } from '../../../../shared/pipes/date-time.pipe';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { confirmAction } from '../../../../shared/utilities/confirm-action';
@@ -38,6 +42,7 @@ import { CartLine, cartGrandTotal, normalizeQuantity } from '../../models/cart-l
 import { OrderStatusChangedNotification } from '../../models/order-status-changed.model';
 import { OrderRealtimeService } from '../../services/order-realtime.service';
 import { productLookupStatusDisplay } from '@features/common/constants/product-lookup-status';
+import { OrderProductOption, orderListColumns, orderProductOptionColumns } from './order-list.columns';
 
 const orderListRefreshDelayMs = 500;
 const orderDetailRefreshDelayMs = 300;
@@ -57,12 +62,16 @@ function emptyOrderCustomer(): OrderCustomerRequest {
   imports: [
     CommonModule,
     FormsModule,
+    DataTableComponent,
+    TableCellTemplateDirective,
+    DropdownComponent,
     PageStateComponent,
     StatusTagComponent,
     OrderLineEditorComponent,
     OrderCustomerFormComponent,
     DateTimePipe,
     MoneyPipe,
+    FocusFirstRequiredDirective,
     NzButtonModule,
     NzCardModule,
     NzDescriptionsModule,
@@ -71,7 +80,6 @@ function emptyOrderCustomer(): OrderCustomerRequest {
     NzInputModule,
     NzMenuModule,
     NzModalModule,
-    NzSelectModule,
     NzTableModule
   ],
   templateUrl: './order-list-page.component.html',
@@ -98,6 +106,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   readonly currentEtag = signal<string | null>(null);
   readonly reservationText = signal('');
   readonly orderModalOpen = signal(false);
+  readonly orderCreateFocusTrigger = signal(0);
   readonly modalMode = signal<'create' | 'edit' | 'view'>('create');
   readonly formDirty = signal(false);
   readonly customerFormErrors = signal<OrderCustomerFormErrors>({});
@@ -118,6 +127,8 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   pageSize = 20;
   readonly sortKey = signal<OrderSortKey>('updatedAt');
   readonly sortDirection = signal<SortDirection>('desc');
+  readonly tableColumns = orderListColumns;
+  readonly productOptionColumns = orderProductOptionColumns;
 
   readonly statusDisplay = orderStatusDisplay;
   readonly orderStatuses: { value: OrderStatus; label: string }[] = [
@@ -145,6 +156,10 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   // with total() and hide matches the server did find.
   readonly displayedOrders = computed(() =>
     [...this.orders()].sort((left, right) => this.compareOrders(left, right)));
+  readonly tableSort = computed<TableSort>(() => ({
+    key: this.sortKey(),
+    direction: this.toTableSortDirection(this.sortDirection())
+  }));
 
   private currentSubscribedOrderId: string | null = null;
   private removeStatusChangedHandler: (() => void) | null = null;
@@ -260,7 +275,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     this.customerFormErrors.set({});
   }
 
-  sellableVariants(): { product: ProductLookupResponse; variant: ProductVariantLookupResponse }[] {
+  sellableVariants(): OrderProductOption[] {
     return this.products().flatMap(product => (product.variants ?? [])
       .filter(variant => this.canOrderVariant(variant))
       .map(variant => ({ product, variant })));
@@ -323,22 +338,15 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     await this.loadOrders();
   }
 
-  sortBy(key: OrderSortKey): void {
-    if (this.sortKey() === key) {
-      this.sortDirection.set(this.sortDirection() === 'asc' ? 'desc' : 'asc');
-      return;
-    }
-
-    this.sortKey.set(key);
-    this.sortDirection.set('asc');
+  async changeTablePage(page: TablePageChange): Promise<void> {
+    this.pageIndex = page.pageIndex;
+    this.pageSize = page.pageSize;
+    await this.loadOrders();
   }
 
-  sortIndicator(key: OrderSortKey): string {
-    if (this.sortKey() !== key) {
-      return '';
-    }
-
-    return this.sortDirection() === 'asc' ? '↑' : '↓';
+  changeTableSort(sort: TableSort): void {
+    this.sortKey.set(sort.key as OrderSortKey);
+    this.sortDirection.set(this.fromTableSortDirection(sort.direction));
   }
 
   orderNumber(order: OrderResponse): string {
@@ -392,6 +400,12 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     this.customerFormErrors.set({});
     this.formDirty.set(false);
     this.orderModalOpen.set(true);
+  }
+
+  triggerOrderCreateFocus(): void {
+    if (this.orderModalOpen() && this.modalMode() === 'create') {
+      this.orderCreateFocusTrigger.update(value => value + 1);
+    }
   }
 
   async closeOrderModal(): Promise<void> {
@@ -829,6 +843,14 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     }
 
     return String(leftValue).localeCompare(String(rightValue)) * direction;
+  }
+
+  private toTableSortDirection(direction: SortDirection): TableSortDirection {
+    return direction === 'asc' ? 'ascend' : 'descend';
+  }
+
+  private fromTableSortDirection(direction: TableSortDirection): SortDirection {
+    return direction === 'ascend' ? 'asc' : 'desc';
   }
 
   private sortValue(order: OrderResponse, key: OrderSortKey): string | number {

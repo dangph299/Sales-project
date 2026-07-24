@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, Output, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
-import { NzSelectModule } from 'ng-zorro-antd/select';
+import { DropdownComponent } from '../../../../shared/components/dropdown/dropdown.component';
+import { SelectOption } from '../../../../shared/models/select-option.model';
 import { ValidationError } from '../../../../core/api/api-error.model';
 import { CommonStore } from '../../../common/services/common-store.service';
 import { ProductFormModel } from '../../models/product-form.model';
@@ -12,7 +13,7 @@ import { ProductFormModel } from '../../models/product-form.model';
 @Component({
   selector: 'app-product-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, NzButtonModule, NzFormModule, NzInputModule, NzSelectModule],
+  imports: [CommonModule, FormsModule, DropdownComponent, NzButtonModule, NzFormModule, NzInputModule],
   templateUrl: './product-form.component.html',
   styleUrl: './product-form.component.scss'
 })
@@ -32,7 +33,8 @@ export class ProductFormComponent {
   @Output() cancel = new EventEmitter<void>();
 
   /** Backend-loaded categories, labelled `CODE - Name`. */
-  readonly categoryOptions = this.common.categoryOptions;
+  readonly categoryOptions = computed<SelectOption<string>[]>(() =>
+    this.common.categoryOptions().map(category => ({ value: category.id, label: category.label })));
 
   submit(): void {
     this.save.emit({ ...this.model });

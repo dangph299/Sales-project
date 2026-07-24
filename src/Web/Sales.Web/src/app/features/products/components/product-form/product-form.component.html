@@ -20,22 +20,15 @@
     </nz-form-control>
   </nz-form-item>
 
-  <nz-form-item>
-    <nz-form-label nzRequired>Category</nz-form-label>
-    <nz-form-control>
-      <nz-select
-        name="productCategoryId"
-        [(ngModel)]="model.categoryId"
-        nzShowSearch
-        nzPlaceHolder="Select a category"
-        required>
-        <nz-option
-          *ngFor="let category of categoryOptions()"
-          [nzValue]="category.id"
-          [nzLabel]="category.label"></nz-option>
-      </nz-select>
-    </nz-form-control>
-  </nz-form-item>
+  <app-dropdown
+    label="Category"
+    name="productCategoryId"
+    [(ngModel)]="model.categoryId"
+    [options]="categoryOptions()"
+    [required]="true"
+    [searchable]="true"
+    placeholder="Select a category">
+  </app-dropdown>
 
   <div class="form-actions">
     <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="saving">

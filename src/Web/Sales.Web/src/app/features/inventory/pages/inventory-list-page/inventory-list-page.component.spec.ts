@@ -79,14 +79,11 @@ describe('InventoryListPageComponent stock rows', () => {
     expect(fixture.componentInstance.pageIndex).toBe(1);
   });
 
-  it('sends sorting to the server and reverses on a second click', async () => {
+  it('sends sorting to the server', async () => {
     productLookup.variants = productWithVariants();
     await fixture.componentInstance.loadStockRows();
 
-    fixture.componentInstance.sortBy('color');
-    await fixture.whenStable();
-
-    fixture.componentInstance.sortBy('color');
+    fixture.componentInstance.changeTableSort({ key: 'color', direction: 'descend' });
     await fixture.whenStable();
 
     expect(productLookup.lastFilters?.sortBy).toBe('color');
@@ -94,17 +91,16 @@ describe('InventoryListPageComponent stock rows', () => {
   });
 
   it('marks only the column being sorted', async () => {
-    fixture.componentInstance.sortBy('size');
+    fixture.componentInstance.changeTableSort({ key: 'size', direction: 'ascend' });
 
-    expect(fixture.componentInstance.sortIndicator('size')).toBe('↑');
-    expect(fixture.componentInstance.sortIndicator('sku')).toBe('');
+    expect(fixture.componentInstance.tableSort()).toEqual({ key: 'size', direction: 'ascend' });
   });
 
   it('sorts variants missing a colour or size without dropping them', async () => {
     productLookup.variants = productWithUnsetColour();
     await fixture.componentInstance.loadStockRows();
 
-    fixture.componentInstance.sortBy('color');
+    fixture.componentInstance.changeTableSort({ key: 'color', direction: 'ascend' });
 
     expect(fixture.componentInstance.filteredRows().length).toBe(2);
   });

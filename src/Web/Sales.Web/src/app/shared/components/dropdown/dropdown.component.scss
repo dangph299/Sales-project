@@ -1,0 +1,17 @@
+:host {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+}
+
+nz-select {
+  width: 100%;
+}
+
+.dropdown-field {
+  color: #637083;
+  display: flex;
+  flex-direction: column;
+  font-size: .82rem;
+  gap: 4px;
+}

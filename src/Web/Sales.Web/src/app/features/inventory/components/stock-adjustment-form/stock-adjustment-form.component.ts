@@ -7,9 +7,10 @@ import { NzDescriptionsModule } from 'ng-zorro-antd/descriptions';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
-import { StockAdjustmentFormModel } from '../../models/stock-adjustment-form.model';
+import { DropdownComponent } from '../../../../shared/components/dropdown/dropdown.component';
+import { SelectOption } from '../../../../shared/models/select-option.model';
+import { StockAdjustmentFormModel, StockAdjustmentOperation } from '../../models/stock-adjustment-form.model';
 import { StockRow, canAdjustStock } from '../../models/stock-row.model';
 
 @Component({
@@ -18,14 +19,14 @@ import { StockRow, canAdjustStock } from '../../models/stock-row.model';
   imports: [
     CommonModule,
     FormsModule,
+    DropdownComponent,
     MoneyPipe,
     NzAlertModule,
     NzButtonModule,
     NzDescriptionsModule,
     NzFormModule,
     NzInputModule,
-    NzInputNumberModule,
-    NzSelectModule
+    NzInputNumberModule
   ],
   templateUrl: './stock-adjustment-form.component.html',
   styleUrl: './stock-adjustment-form.component.scss'
@@ -37,6 +38,11 @@ export class StockAdjustmentFormComponent {
   @Input() errorMessage = '';
 
   @Output() apply = new EventEmitter<void>();
+
+  readonly operationOptions: SelectOption<StockAdjustmentOperation>[] = [
+    { value: 'receive', label: 'Receive Stock' },
+    { value: 'adjust', label: 'Adjust Stock' }
+  ];
 
   get canAdjust(): boolean {
     return canAdjustStock(this.row);

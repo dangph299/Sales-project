@@ -49,16 +49,13 @@
     </nz-form-control>
   </nz-form-item>
 
-  <nz-form-item>
-    <nz-form-label>Status</nz-form-label>
-    <nz-form-control>
-      <nz-select name="categoryStatus" [(ngModel)]="model.status" [nzDisabled]="!editing">
-        <nz-option nzValue="Draft" nzLabel="Draft"></nz-option>
-        <nz-option nzValue="Published" nzLabel="Published"></nz-option>
-        <nz-option nzValue="Archived" nzLabel="Archived"></nz-option>
-      </nz-select>
-    </nz-form-control>
-  </nz-form-item>
+  <app-dropdown
+    label="Status"
+    name="categoryStatus"
+    [(ngModel)]="model.status"
+    [options]="statusOptions"
+    [disabled]="!editing">
+  </app-dropdown>
 
   <div class="form-actions">
     <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="saving">

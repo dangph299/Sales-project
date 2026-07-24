@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
@@ -9,12 +9,16 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzNotificationService } from 'ng-zorro-antd/notification';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzTableModule } from 'ng-zorro-antd/table';
 import { ApiClientError } from '../../../../core/api/api-client-result';
 import { ValidationError } from '../../../../core/api/api-error.model';
+import { DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
+import { TableCellTemplateDirective } from '../../../../shared/components/data-table/table-cell-template.directive';
+import { DropdownComponent } from '../../../../shared/components/dropdown/dropdown.component';
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../../shared/components/status-tag/status-tag.component';
+import { SelectOption } from '../../../../shared/models/select-option.model';
+import { TablePageChange } from '../../../../shared/models/table.model';
+import { FocusFirstRequiredDirective } from '../../../../shared/directives/focus-first-required.directive';
 import { DateTimePipe } from '../../../../shared/pipes/date-time.pipe';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { PriceRangePipe } from '../../../../shared/pipes/price-range.pipe';
@@ -30,6 +34,7 @@ import { ProductStatus } from '../../constants/product-status';
 import { ProductVariantStatus, productVariantStatusDisplay } from '../../constants/product-variant-status';
 import { ProductFormModel, emptyProductForm } from '../../models/product-form.model';
 import { ProductVariantFormModel, emptyProductVariantForm } from '../../models/product-variant-form.model';
+import { productListColumns, productVariantListColumns } from './product-list.columns';
 
 @Component({
   selector: 'app-product-list-page',
@@ -37,6 +42,9 @@ import { ProductVariantFormModel, emptyProductVariantForm } from '../../models/p
   imports: [
     CommonModule,
     FormsModule,
+    DataTableComponent,
+    TableCellTemplateDirective,
+    DropdownComponent,
     PageStateComponent,
     StatusTagComponent,
     ProductFormComponent,
@@ -44,15 +52,14 @@ import { ProductVariantFormModel, emptyProductVariantForm } from '../../models/p
     DateTimePipe,
     MoneyPipe,
     PriceRangePipe,
+    FocusFirstRequiredDirective,
     NzButtonModule,
     NzCardModule,
     NzDropDownModule,
     NzEmptyModule,
     NzInputModule,
     NzMenuModule,
-    NzModalModule,
-    NzSelectModule,
-    NzTableModule
+    NzModalModule
   ],
   templateUrl: './product-list-page.component.html',
   styleUrl: './product-list-page.component.scss'
@@ -66,6 +73,14 @@ export class ProductListPageComponent implements OnInit {
 
   readonly colors = this.common.colors;
   readonly sizes = this.common.sizes;
+  readonly colorFilterOptions = computed<SelectOption<string>[]>(() => [
+    { value: '', label: 'All' },
+    ...this.colors().map(color => ({ value: color.id, label: color.code }))
+  ]);
+  readonly sizeFilterOptions = computed<SelectOption<string>[]>(() => [
+    { value: '', label: 'All' },
+    ...this.sizes().map(size => ({ value: size.id, label: size.code }))
+  ]);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -80,18 +95,25 @@ export class ProductListPageComponent implements OnInit {
   /** The grid is read-only; editing happens in these modals, opened by an explicit action. */
   readonly productModalOpen = signal(false);
   readonly variantModalOpen = signal(false);
+  readonly productCreateFocusTrigger = signal(0);
+  readonly variantCreateFocusTrigger = signal(0);
 
   productCodeFilter = '';
   nameFilter = '';
   skuFilter = '';
   colorFilter = '';
   sizeFilter = '';
+  pageIndex = 1;
+  pageSize = 20;
+  readonly pageSizeOptions = [10, 20, 50];
 
   productForm: ProductFormModel = emptyProductForm();
   variantForm: ProductVariantFormModel = emptyProductVariantForm();
 
   readonly variantStatusDisplay = productVariantStatusDisplay;
   readonly variantStatusOptions = signal<ProductVariantStatus[]>(['Draft', 'Published']);
+  readonly tableColumns = productListColumns;
+  readonly variantTableColumns = productVariantListColumns;
 
   async ngOnInit(): Promise<void> {
     await this.common.ensureLoaded();
@@ -109,9 +131,15 @@ export class ProductListPageComponent implements OnInit {
         status: '',
         colorId: this.colorFilter,
         sizeId: this.sizeFilter,
-        page: 1,
-        pageSize: 20
+        page: this.pageIndex,
+        pageSize: this.pageSize
       });
+      if (page.items.length === 0 && page.total > 0 && this.pageIndex > 1) {
+        this.pageIndex = Math.max(1, Math.ceil(page.total / this.pageSize));
+        await this.loadProducts();
+        return;
+      }
+
       this.products.set(page.items);
       this.total.set(page.total);
       this.reselectAfterReload();
@@ -120,6 +148,17 @@ export class ProductListPageComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async searchProducts(): Promise<void> {
+    this.pageIndex = 1;
+    await this.loadProducts();
+  }
+
+  async changeTablePage(page: TablePageChange): Promise<void> {
+    this.pageIndex = page.pageIndex;
+    this.pageSize = page.pageSize;
+    await this.loadProducts();
   }
 
   /** Row click only changes which product's variants are shown — it never opens an editor. */
@@ -164,6 +203,12 @@ export class ProductListPageComponent implements OnInit {
     this.productModalOpen.set(false);
     this.validationErrors.set([]);
     this.mutationErrorMessage.set('');
+  }
+
+  triggerProductCreateFocus(): void {
+    if (this.productModalOpen() && !this.selectedProduct()) {
+      this.productCreateFocusTrigger.update(value => value + 1);
+    }
   }
 
   openCreateVariant(): void {
@@ -215,6 +260,12 @@ export class ProductListPageComponent implements OnInit {
     this.selectedVariant.set(null);
     this.validationErrors.set([]);
     this.mutationErrorMessage.set('');
+  }
+
+  triggerVariantCreateFocus(): void {
+    if (this.variantModalOpen() && !this.selectedVariant()) {
+      this.variantCreateFocusTrigger.update(value => value + 1);
+    }
   }
 
   async saveProduct(form = this.productForm): Promise<void> {

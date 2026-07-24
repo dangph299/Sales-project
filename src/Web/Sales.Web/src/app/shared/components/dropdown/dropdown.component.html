@@ -1,0 +1,45 @@
+<ng-template #selectControl>
+  <nz-select
+    [attr.name]="name || null"
+    [style.width]="controlWidth || null"
+    [ngModel]="value"
+    [compareWith]="compareWith"
+    [nzPlaceHolder]="placeholder"
+    [nzDisabled]="disabled || readonly"
+    [nzLoading]="loading"
+    [nzAllowClear]="clearable"
+    [nzShowSearch]="searchable"
+    [attr.aria-required]="required"
+    (ngModelChange)="changeValue($event)"
+    (nzBlur)="markTouched()">
+    <nz-option
+      *ngFor="let option of options"
+      [nzValue]="option.value"
+      [nzLabel]="option.label"
+      [nzDisabled]="option.disabled"
+      [nzCustomContent]="!!optionTemplate">
+      <ng-container *ngIf="optionTemplate; else plainOption">
+        <ng-container *ngTemplateOutlet="optionTemplate.template; context: { $implicit: option, option: option }"></ng-container>
+      </ng-container>
+      <ng-template #plainOption>{{ option.label }}</ng-template>
+    </nz-option>
+  </nz-select>
+</ng-template>
+
+<ng-container [ngSwitch]="presentation">
+  <nz-form-item *ngSwitchCase="'form'">
+    <nz-form-label *ngIf="label" [nzRequired]="required">{{ label }}</nz-form-label>
+    <nz-form-control [nzErrorTip]="errorMessage">
+      <ng-container *ngTemplateOutlet="selectControl"></ng-container>
+    </nz-form-control>
+  </nz-form-item>
+
+  <div *ngSwitchCase="'toolbar'" class="dropdown-field">
+    <span *ngIf="label">{{ label }}</span>
+    <ng-container *ngTemplateOutlet="selectControl"></ng-container>
+  </div>
+
+  <ng-container *ngSwitchDefault>
+    <ng-container *ngTemplateOutlet="selectControl"></ng-container>
+  </ng-container>
+</ng-container>

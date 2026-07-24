@@ -9,13 +9,16 @@ import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzMenuModule } from 'ng-zorro-antd/menu';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
 import { NzNotificationService } from 'ng-zorro-antd/notification';
-import { NzTableModule } from 'ng-zorro-antd/table';
 import { ApiClientError, ApiResponseReader } from '../../../../core/api/api-client-result';
 import { ValidationError } from '../../../../core/api/api-error.model';
+import { DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
+import { TableCellTemplateDirective } from '../../../../shared/components/data-table/table-cell-template.directive';
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../../shared/components/status-tag/status-tag.component';
 import { CompactTextPipe } from '../../../../shared/pipes/compact-text.pipe';
 import { DateTimePipe } from '../../../../shared/pipes/date-time.pipe';
+import { TablePageChange, TableSort } from '../../../../shared/models/table.model';
+import { FocusFirstRequiredDirective } from '../../../../shared/directives/focus-first-required.directive';
 import { confirmAction } from '../../../../shared/utilities/confirm-action';
 import { describeApiError } from '../../../../shared/utilities/describe-api-error';
 import { CustomerApiService } from '../../api/customer-api.service';
@@ -23,6 +26,7 @@ import { CustomerResponse } from '../../api/responses/customer.response';
 import { CustomerFormComponent } from '../../components/customer-form/customer-form.component';
 import { CustomerStatus, customerStatusDisplay } from '../../constants/customer-status';
 import { CustomerFormModel, emptyCustomerForm } from '../../models/customer-form.model';
+import { customerListColumns } from './customer-list.columns';
 
 type CustomerSortKey = 'customerCode' | 'name' | 'phone' | 'status' | 'address' | 'updatedAt';
 type SortDirection = 'ascend' | 'descend' | null;
@@ -33,19 +37,21 @@ type SortDirection = 'ascend' | 'descend' | null;
   imports: [
     CommonModule,
     FormsModule,
+    DataTableComponent,
+    TableCellTemplateDirective,
     PageStateComponent,
     StatusTagComponent,
     CustomerFormComponent,
     CompactTextPipe,
     DateTimePipe,
+    FocusFirstRequiredDirective,
     NzButtonModule,
     NzCardModule,
     NzDescriptionsModule,
     NzDropDownModule,
     NzInputModule,
     NzMenuModule,
-    NzModalModule,
-    NzTableModule
+    NzModalModule
   ],
   templateUrl: './customer-list-page.component.html',
   styleUrl: './customer-list-page.component.scss'
@@ -64,9 +70,11 @@ export class CustomerListPageComponent implements OnInit {
   readonly selectedCustomer = signal<CustomerResponse | null>(null);
   readonly validationErrors = signal<ValidationError[]>([]);
   readonly customerModalOpen = signal(false);
+  readonly customerCreateFocusTrigger = signal(0);
   readonly detailModalOpen = signal(false);
   readonly sortKey = signal<CustomerSortKey>('updatedAt');
   readonly sortDirection = signal<SortDirection>('descend');
+  readonly tableColumns = customerListColumns;
 
   searchName = '';
   searchPhone = '';
@@ -78,6 +86,7 @@ export class CustomerListPageComponent implements OnInit {
   readonly statusDisplay = customerStatusDisplay;
   readonly modalTitle = computed(() => this.selectedCustomer() ? 'Edit Customer' : 'Add Customer');
   readonly sortedCustomers = computed(() => this.sortCustomers(this.customers()));
+  readonly tableSort = computed<TableSort>(() => ({ key: this.sortKey(), direction: this.sortDirection() }));
 
   ngOnInit(): void {
     void this.loadCustomers();
@@ -143,6 +152,12 @@ export class CustomerListPageComponent implements OnInit {
     this.customerModalOpen.set(true);
   }
 
+  triggerCustomerCreateFocus(): void {
+    if (this.customerModalOpen() && !this.selectedCustomer()) {
+      this.customerCreateFocusTrigger.update(value => value + 1);
+    }
+  }
+
   closeCustomerModal(): void {
     if (this.saving()) {
       return;
@@ -181,22 +196,15 @@ export class CustomerListPageComponent implements OnInit {
     void this.loadCustomers();
   }
 
-  sortBy(key: CustomerSortKey): void {
-    if (this.sortKey() !== key) {
-      this.sortKey.set(key);
-      this.sortDirection.set('ascend');
-      return;
-    }
-
-    this.sortDirection.set(this.sortDirection() === 'ascend' ? 'descend' : 'ascend');
+  changeTablePage(page: TablePageChange): void {
+    this.pageIndex = page.pageIndex;
+    this.pageSize = page.pageSize;
+    void this.loadCustomers();
   }
 
-  sortIndicator(key: CustomerSortKey): string {
-    if (this.sortKey() !== key) {
-      return '';
-    }
-
-    return this.sortDirection() === 'ascend' ? '↑' : '↓';
+  changeTableSort(sort: TableSort): void {
+    this.sortKey.set(sort.key as CustomerSortKey);
+    this.sortDirection.set(sort.direction);
   }
 
   async saveCustomer(): Promise<void> {

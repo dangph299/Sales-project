@@ -18,42 +18,31 @@
   <nz-card nzTitle="Color List" [nzExtra]="colorCount">
     <ng-template #colorCount></ng-template>
 
-    <nz-table #colorTable [nzData]="colors()" [nzShowPagination]="false" nzSize="small">
-      <thead>
-        <tr>
-          <th>Preview</th>
-          <th>Code</th>
-          <th>Name</th>
-          <th>Hex</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let color of colorTable.data">
-          <td><span class="color-swatch" [style.background]="color.hexCode || '#ffffff'"></span></td>
-          <td>{{ color.code }}</td>
-          <td>{{ color.name }}</td>
-          <td>{{ color.hexCode || '-' }}</td>
-        </tr>
-      </tbody>
-    </nz-table>
+    <app-data-table
+      [showCard]="false"
+      [columns]="colorColumns"
+      [rows]="colors()"
+      [total]="colors().length"
+      [empty]="colors().length === 0"
+      emptyTitle="No colors"
+      emptyText="The Sales API returned no colors.">
+      <ng-template appTableCell="preview" let-color>
+        <span class="color-swatch" [style.background]="color.hexCode || '#ffffff'"></span>
+      </ng-template>
+    </app-data-table>
   </nz-card>
 
   <nz-card nzTitle="Size List" [nzExtra]="sizeNote">
     <ng-template #sizeNote></ng-template>
 
-    <nz-table #sizeTable [nzData]="sizes()" [nzShowPagination]="false" nzSize="small">
-      <thead>
-        <tr>
-          <th>Code</th>
-          <th>Name</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let size of sizeTable.data">
-          <td>{{ size.code }}</td>
-          <td>{{ size.name }}</td>
-        </tr>
-      </tbody>
-    </nz-table>
+    <app-data-table
+      [showCard]="false"
+      [columns]="sizeColumns"
+      [rows]="sizes()"
+      [total]="sizes().length"
+      [empty]="sizes().length === 0"
+      emptyTitle="No sizes"
+      emptyText="The Sales API returned no sizes.">
+    </app-data-table>
   </nz-card>
 </section>

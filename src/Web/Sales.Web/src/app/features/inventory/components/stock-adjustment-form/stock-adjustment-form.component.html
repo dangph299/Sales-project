@@ -13,15 +13,12 @@
     nzShowIcon
     [nzMessage]="errorMessage"></nz-alert>
 
-  <nz-form-item>
-    <nz-form-label>Operation</nz-form-label>
-    <nz-form-control>
-      <nz-select name="adjustmentOperation" [(ngModel)]="model.operation">
-        <nz-option nzValue="receive" nzLabel="Receive Stock"></nz-option>
-        <nz-option nzValue="adjust" nzLabel="Adjust Stock"></nz-option>
-      </nz-select>
-    </nz-form-control>
-  </nz-form-item>
+  <app-dropdown
+    label="Operation"
+    name="adjustmentOperation"
+    [(ngModel)]="model.operation"
+    [options]="operationOptions">
+  </app-dropdown>
 
   <nz-form-item>
     <nz-form-label nzRequired>Adjustment quantity</nz-form-label>

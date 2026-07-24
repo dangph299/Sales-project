@@ -116,39 +116,25 @@
     <app-dashboard-section title="Recent Orders">
       <a section-extra routerLink="/orders">View all</a>
 
-      <div class="table-wrap" *ngIf="recentOrders().length > 0">
-        <nz-table
-          #orderTable
-          [nzData]="recentOrders()"
-          [nzShowPagination]="false"
-          nzSize="middle">
-          <thead>
-            <tr>
-              <th>Order Number</th>
-              <th>Customer</th>
-              <th>Status</th>
-              <th>Total Qty</th>
-              <th>Total Amount</th>
-              <th>Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let order of orderTable.data">
-              <td><strong>{{ order.orderCode }}</strong></td>
-              <td>{{ order.customerName }}</td>
-              <td><app-status-tag [display]="order.status"></app-status-tag></td>
-              <td>{{ order.totalQuantity }}</td>
-              <td>{{ order.total | money }}</td>
-              <td>{{ order.createdAt | dateTime }}</td>
-            </tr>
-          </tbody>
-        </nz-table>
+      <div class="table-wrap">
+        <app-data-table
+          [showCard]="false"
+          size="middle"
+          [columns]="recentOrderColumns"
+          [rows]="recentOrders()"
+          [total]="recentOrders().length"
+          [empty]="recentOrders().length === 0"
+          emptyTitle="No recent orders"
+          emptyText="Create your first order.">
+          <ng-template appTableCell="orderCode" let-order>
+            <strong>{{ order.orderCode }}</strong>
+          </ng-template>
+          <ng-template appTableCell="status" let-order>
+            <app-status-tag [display]="order.status"></app-status-tag>
+          </ng-template>
+        </app-data-table>
       </div>
 
-      <app-page-state
-        [empty]="recentOrders().length === 0"
-        emptyTitle="No recent orders"
-        emptyText="Create your first order."></app-page-state>
     </app-dashboard-section>
 
     <app-dashboard-section title="Inventory Overview">
