@@ -41,7 +41,7 @@ public sealed class CreateOrderHandler(
     /// <exception cref="DomainException">Thrown when the phone number resolves to a customer that cannot order, the customer details are invalid, or the requested lines are empty or contain a repeated product.</exception>
     public async Task<OrderDto> Handle(CreateOrder request, CancellationToken cancellationToken)
     {
-        var normalizedCustomerPhone = CustomerPhoneNormalizer.Normalize(request.Customer.Phone);
+        var normalizedCustomerPhone = PhoneNumberNormalizer.Normalize(request.Customer.Phone);
         var orderLineItems = await productRepository.Materialize(request.Lines, cancellationToken);
 
         try

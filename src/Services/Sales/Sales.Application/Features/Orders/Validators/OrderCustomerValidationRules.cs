@@ -24,7 +24,7 @@ internal static class OrderCustomerValidationRules
     /// </summary>
     /// <remarks>
     /// A pre-check that turns the rule into a readable field error.
-    /// <see cref="CustomerPhoneNormalizer.Normalize"/> enforces the digit rule in the domain and
+    /// <see cref="PhoneNumberNormalizer.Normalize"/> enforces the digit rule in the domain and
     /// remains the correctness boundary. The 32-character cap matches the stored column
     /// (see OrderConfiguration): a value can carry a valid digit count yet still be too long to
     /// persist once its formatting is included, and without this rule that reaches the database as a
@@ -35,7 +35,7 @@ internal static class OrderCustomerValidationRules
         return rule.NotEmpty()
             .MaximumLength(32)
             .WithMessage("Phone must be at most 32 characters.")
-            .Must(CustomerPhoneNormalizer.HasPersistableDigitCount)
+            .Must(PhoneNumberNormalizer.HasPersistableDigitCount)
             .WithMessage("Phone must contain 9 to 15 digits.");
     }
 

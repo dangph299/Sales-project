@@ -9,7 +9,7 @@ public interface ICustomerRepository : IRepository<Customer>
     /// <summary>
     /// Finds the live customer holding a normalized phone number.
     /// </summary>
-    /// <param name="normalizedCustomerPhone">Phone number already normalized via <see cref="CustomerPhoneNormalizer.Normalize"/>.</param>
+    /// <param name="normalizedCustomerPhone">Phone number already normalized via <see cref="PhoneNumberNormalizer.Normalize"/>.</param>
     /// <returns>Customer, or <see langword="null"/> when no live customer holds that number.</returns>
     Task<Customer?> FindByNormalizedPhoneAsync(string normalizedCustomerPhone, CancellationToken cancellationToken = default);
 
@@ -22,6 +22,6 @@ public interface ICustomerRepository : IRepository<Customer>
     /// The lock is released when the surrounding transaction commits or rolls back; the caller does
     /// not release it.
     /// </remarks>
-    /// <param name="normalizedCustomerPhone">Phone number already normalized via <see cref="CustomerPhoneNormalizer.Normalize"/>.</param>
+    /// <param name="normalizedCustomerPhone">Phone number already normalized via <see cref="PhoneNumberNormalizer.Normalize"/>.</param>
     Task AcquireNormalizedPhoneLockAsync(string normalizedCustomerPhone, CancellationToken cancellationToken = default);
 }

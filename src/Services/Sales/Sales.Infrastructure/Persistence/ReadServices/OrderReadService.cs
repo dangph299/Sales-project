@@ -1,3 +1,4 @@
+using BuildingBlocks.Domain.PhoneNumbers;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Sales.Application.Features.Orders.DTOs;
@@ -49,7 +50,7 @@ public sealed class OrderReadService(SalesDbContext db, IMapper mapper) : IOrder
         // Normalized here rather than by the caller: the client sends the phone exactly as the user
         // typed it and never has to know about the normalized or reversed columns. A term with no
         // digits at all is rejected by SearchOrdersValidator before reaching this point.
-        var normalizedCustomerPhoneSearchTerm = CustomerPhoneNormalizer.NormalizeSearchTerm(customerPhone);
+        var normalizedCustomerPhoneSearchTerm = PhoneNumberNormalizer.NormalizeSearchTerm(customerPhone);
         if (normalizedCustomerPhoneSearchTerm.Length > 0)
         {
             spec = Compose(spec, new OrderCustomerPhoneMatchesSpecification(normalizedCustomerPhoneSearchTerm));

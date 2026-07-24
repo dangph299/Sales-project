@@ -41,11 +41,11 @@ public sealed record OrderCustomerPhone
     /// <exception cref="DomainException">Thrown when <paramref name="customerPhone"/> is empty or whitespace, or does not contain 9 to 15 digits.</exception>
     public static OrderCustomerPhone Create(string customerPhone)
     {
-        var normalizedCustomerPhone = CustomerPhoneNormalizer.Normalize(customerPhone);
+        var normalizedCustomerPhone = PhoneNumberNormalizer.Normalize(customerPhone);
 
         return new OrderCustomerPhone(
             customerPhone.Trim(),
             normalizedCustomerPhone,
-            CustomerPhoneNormalizer.Reverse(normalizedCustomerPhone));
+            PhoneNumberNormalizer.Reverse(normalizedCustomerPhone));
     }
 }

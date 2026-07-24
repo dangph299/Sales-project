@@ -1,6 +1,6 @@
 namespace Sales.Domain.Tests;
 
-public sealed class CustomerPhoneNormalizerTests
+public sealed class PhoneNumberNormalizerTests
 {
     [Theory]
     [InlineData("090 123 4567", "0901234567")]
@@ -10,7 +10,7 @@ public sealed class CustomerPhoneNormalizerTests
     [InlineData("(+84) 901 234 567", "84901234567")]
     public void Normalize_strips_every_non_digit(string customerPhone, string expectedNormalizedCustomerPhone)
     {
-        Assert.Equal(expectedNormalizedCustomerPhone, CustomerPhoneNormalizer.Normalize(customerPhone));
+        Assert.Equal(expectedNormalizedCustomerPhone, PhoneNumberNormalizer.Normalize(customerPhone));
     }
 
     [Theory]
@@ -18,7 +18,7 @@ public sealed class CustomerPhoneNormalizerTests
     [InlineData("090-123-4")]
     public void Normalize_rejects_fewer_than_nine_digits(string customerPhone)
     {
-        Assert.Throws<DomainException>(() => CustomerPhoneNormalizer.Normalize(customerPhone));
+        Assert.Throws<DomainException>(() => PhoneNumberNormalizer.Normalize(customerPhone));
     }
 
     [Theory]
@@ -26,7 +26,7 @@ public sealed class CustomerPhoneNormalizerTests
     [InlineData("0901 2345 6789 0123")]
     public void Normalize_rejects_more_than_fifteen_digits(string customerPhone)
     {
-        Assert.Throws<DomainException>(() => CustomerPhoneNormalizer.Normalize(customerPhone));
+        Assert.Throws<DomainException>(() => PhoneNumberNormalizer.Normalize(customerPhone));
     }
 
     [Theory]
@@ -35,7 +35,7 @@ public sealed class CustomerPhoneNormalizerTests
     [InlineData(null)]
     public void Normalize_rejects_a_missing_value(string? customerPhone)
     {
-        Assert.Throws<DomainException>(() => CustomerPhoneNormalizer.Normalize(customerPhone!));
+        Assert.Throws<DomainException>(() => PhoneNumberNormalizer.Normalize(customerPhone!));
     }
 
     [Theory]
@@ -48,7 +48,7 @@ public sealed class CustomerPhoneNormalizerTests
     {
         Assert.Equal(
             expectedNormalizedCustomerPhoneSearchTerm,
-            CustomerPhoneNormalizer.NormalizeSearchTerm(customerPhoneSearchTerm));
+            PhoneNumberNormalizer.NormalizeSearchTerm(customerPhoneSearchTerm));
     }
 
     [Theory]
@@ -59,7 +59,7 @@ public sealed class CustomerPhoneNormalizerTests
     [InlineData("---")]
     public void NormalizeSearchTerm_returns_empty_when_the_term_holds_no_digit(string? customerPhoneSearchTerm)
     {
-        Assert.Equal(string.Empty, CustomerPhoneNormalizer.NormalizeSearchTerm(customerPhoneSearchTerm));
+        Assert.Equal(string.Empty, PhoneNumberNormalizer.NormalizeSearchTerm(customerPhoneSearchTerm));
     }
 
     [Theory]
@@ -70,7 +70,7 @@ public sealed class CustomerPhoneNormalizerTests
         string normalizedCustomerPhone,
         string expectedReversedCustomerPhone)
     {
-        Assert.Equal(expectedReversedCustomerPhone, CustomerPhoneNormalizer.Reverse(normalizedCustomerPhone));
+        Assert.Equal(expectedReversedCustomerPhone, PhoneNumberNormalizer.Reverse(normalizedCustomerPhone));
     }
 
     [Theory]
@@ -78,7 +78,7 @@ public sealed class CustomerPhoneNormalizerTests
     [InlineData("090 123 4567")]
     public void Reverse_rejects_a_value_that_was_not_normalized_first(string normalizedCustomerPhone)
     {
-        Assert.Throws<ArgumentException>(() => CustomerPhoneNormalizer.Reverse(normalizedCustomerPhone));
+        Assert.Throws<ArgumentException>(() => PhoneNumberNormalizer.Reverse(normalizedCustomerPhone));
     }
 
     [Theory]
@@ -91,6 +91,6 @@ public sealed class CustomerPhoneNormalizerTests
         string? customerPhone,
         bool expectedResult)
     {
-        Assert.Equal(expectedResult, CustomerPhoneNormalizer.HasPersistableDigitCount(customerPhone));
+        Assert.Equal(expectedResult, PhoneNumberNormalizer.HasPersistableDigitCount(customerPhone));
     }
 }

@@ -239,7 +239,7 @@ public sealed class OrderTests
         Assert.Equal("0912345678", order.NormalizedCustomerPhone);
         Assert.Equal("8765432190", order.ReversedCustomerPhone);
         Assert.Equal(
-            CustomerPhoneNormalizer.Reverse(order.NormalizedCustomerPhone),
+            PhoneNumberNormalizer.Reverse(order.NormalizedCustomerPhone),
             order.ReversedCustomerPhone);
     }
 
