@@ -1,0 +1,63 @@
+:host {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.sort-header {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: 4px;
+  padding: 0;
+  text-align: left;
+}
+
+.sort-header:disabled {
+  cursor: not-allowed;
+}
+
+.sort-header--right {
+  justify-content: flex-end;
+  width: 100%;
+}
+
+.number-column {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.center-column,
+.actions-column {
+  text-align: center;
+}
+
+.actions-column {
+  white-space: nowrap;
+}
+
+.actions {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.selectable {
+  cursor: pointer;
+}
+
+.nowrap-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wrap-cell {
+  white-space: normal;
+}

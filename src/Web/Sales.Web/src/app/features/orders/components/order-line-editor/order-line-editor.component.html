@@ -1,71 +1,49 @@
-<app-page-state
+<app-data-table
+  class="order-lines-table"
+  [showCard]="false"
+  [columns]="tableColumns"
+  [rows]="lines"
+  [rowKey]="rowIdentity"
+  [total]="lines.length"
   [empty]="lines.length === 0"
   emptyTitle="The cart is empty"
-  emptyText="Select a Normal customer and orderable product variants to create an order."></app-page-state>
-
-<nz-table
-  #lineTable
-  *ngIf="lines.length > 0"
-  class="order-lines-table"
-  [nzData]="lines"
-  [nzShowPagination]="false"
-  nzSize="small"
-  [nzScroll]="{ x: '860px' }">
-  <thead>
-    <tr>
-      <th>Product</th>
-      <th>SKU</th>
-      <th>Color</th>
-      <th>Size</th>
-      <th class="number-column">Unit price</th>
-      <th class="number-column">Quantity</th>
-      <th class="number-column">Discount %</th>
-      <th class="number-column">Line total</th>
-      <th></th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr *ngFor="let line of lineTable.data">
-      <td>{{ line.product.name }}</td>
-      <td>{{ line.variant.sku }}</td>
-      <td>{{ line.variant.color?.name || '-' }}</td>
-      <td>{{ line.variant.size?.code || '-' }}</td>
-      <td class="number-column">{{ line.variant.price | money }}</td>
-      <td class="number-column">
-        <nz-input-number
-          class="line-number-input"
-          [ngModel]="line.quantity"
-          (ngModelChange)="changeQuantity(line.variant.id, $event)"
-          [nzDisabled]="readonly || saving"
-          [nzMin]="1"
-          nzSize="small"></nz-input-number>
-      </td>
-      <td class="number-column">
-        <nz-input-number
-          class="line-number-input"
-          [ngModel]="line.discountPercent"
-          (ngModelChange)="changeDiscount(line.variant.id, $event)"
-          [nzDisabled]="readonly || saving"
-          [nzMin]="0"
-          [nzMax]="100"
-          nzSize="small"></nz-input-number>
-      </td>
-      <td class="number-column line-total">{{ lineTotal(line) | money }}</td>
-      <td class="line-action-column">
-        <button
-          *ngIf="!readonly"
-          nz-button
-          nzDanger
-          nzSize="small"
-          type="button"
-          (click)="removeLine(line.variant.id)"
-          [disabled]="saving">
-          Delete
-        </button>
-      </td>
-    </tr>
-  </tbody>
-</nz-table>
+  emptyText="Select a Normal customer and orderable product variants to create an order."
+  scrollX="860px">
+  <ng-template appTableCell="quantity" let-line>
+    <nz-input-number
+      class="line-number-input"
+      [ngModel]="line.quantity"
+      (ngModelChange)="changeQuantity(line.variant.id, $event)"
+      [nzDisabled]="readonly || saving"
+      [nzMin]="1"
+      nzSize="small"></nz-input-number>
+  </ng-template>
+  <ng-template appTableCell="discountPercent" let-line>
+    <nz-input-number
+      class="line-number-input"
+      [ngModel]="line.discountPercent"
+      (ngModelChange)="changeDiscount(line.variant.id, $event)"
+      [nzDisabled]="readonly || saving"
+      [nzMin]="0"
+      [nzMax]="100"
+      nzSize="small"></nz-input-number>
+  </ng-template>
+  <ng-template appTableCell="lineTotal" let-line>
+    <span class="line-total">{{ lineTotal(line) | money }}</span>
+  </ng-template>
+  <ng-template appTableCell="actions" let-line>
+    <button
+      *ngIf="!readonly"
+      nz-button
+      nzDanger
+      nzSize="small"
+      type="button"
+      (click)="removeLine(line.variant.id)"
+      [disabled]="saving">
+      Delete
+    </button>
+  </ng-template>
+</app-data-table>
 
 <section class="summary-strip" *ngIf="showSummary && lines.length > 0">
   <span>Subtotal: {{ subtotal | money }}</span>

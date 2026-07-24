@@ -12,3 +12,24 @@ export const productVariantStatusDisplays: Readonly<Record<ProductVariantStatus,
 export function productVariantStatusDisplay(status: string | null | undefined): StatusDisplay {
   return toStatusDisplay(status, productVariantStatusDisplays);
 }
+
+/** Statuses a variant may move to next, including staying put. */
+export function allowedProductVariantStatusTransitions(status: ProductVariantStatus): ProductVariantStatus[] {
+  switch (status) {
+    case 'Draft':
+      return ['Draft', 'Published'];
+    case 'Published':
+      return ['Published', 'Discontinued'];
+    case 'Discontinued':
+      return ['Discontinued', 'Published'];
+    default:
+      return ['Draft', 'Published'];
+  }
+}
+
+export function coerceProductVariantStatus(
+  status: ProductVariantStatus,
+  options: readonly ProductVariantStatus[]
+): ProductVariantStatus {
+  return options.includes(status) ? status : options[0];
+}

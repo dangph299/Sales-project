@@ -13,86 +13,79 @@
 <section class="toolbar">
   <label>
     Product code
-    <input nz-input name="productCodeFilter" [(ngModel)]="productCodeFilter" (keyup.enter)="loadProducts()" placeholder="Search by product code">
+    <input nz-input name="productCodeFilter" [(ngModel)]="productCodeFilter" (keyup.enter)="searchProducts()" placeholder="Search by product code">
   </label>
   <label>
     Name
-    <input nz-input name="productNameFilter" [(ngModel)]="nameFilter" (keyup.enter)="loadProducts()" placeholder="Search by name">
+    <input nz-input name="productNameFilter" [(ngModel)]="nameFilter" (keyup.enter)="searchProducts()" placeholder="Search by name">
   </label>
   <label>
     SKU
-    <input nz-input name="skuFilter" [(ngModel)]="skuFilter" (keyup.enter)="loadProducts()" placeholder="Search by SKU">
+    <input nz-input name="skuFilter" [(ngModel)]="skuFilter" (keyup.enter)="searchProducts()" placeholder="Search by SKU">
   </label>
-  <div class="filter-field">
-    <span>Color</span>
-    <nz-select name="colorFilter" [(ngModel)]="colorFilter" style="width: 150px" (ngModelChange)="loadProducts()">
-      <nz-option nzValue="" nzLabel="All"></nz-option>
-      <nz-option *ngFor="let color of colors()" [nzValue]="color.id" [nzLabel]="color.code"></nz-option>
-    </nz-select>
-  </div>
-  <div class="filter-field">
-    <span>Size</span>
-    <nz-select name="sizeFilter" [(ngModel)]="sizeFilter" style="width: 150px" (ngModelChange)="loadProducts()">
-      <nz-option nzValue="" nzLabel="All"></nz-option>
-      <nz-option *ngFor="let size of sizes()" [nzValue]="size.id" [nzLabel]="size.code"></nz-option>
-    </nz-select>
-  </div>
-  <button nz-button nzType="primary" type="button" (click)="loadProducts()">Search</button>
+  <app-dropdown
+    class="filter-field"
+    label="Color"
+    name="colorFilter"
+    presentation="toolbar"
+    controlWidth="150px"
+    [(ngModel)]="colorFilter"
+    [options]="colorFilterOptions()"
+    (ngModelChange)="searchProducts()">
+  </app-dropdown>
+  <app-dropdown
+    class="filter-field"
+    label="Size"
+    name="sizeFilter"
+    presentation="toolbar"
+    controlWidth="150px"
+    [(ngModel)]="sizeFilter"
+    [options]="sizeFilterOptions()"
+    (ngModelChange)="searchProducts()">
+  </app-dropdown>
+  <button nz-button nzType="primary" type="button" (click)="searchProducts()">Search</button>
 </section>
 
-<app-page-state
+<app-data-table
+  title="Product List"
+  [columns]="tableColumns"
+  [rows]="products()"
   [loading]="loading()"
   [errorMessage]="errorMessage()"
   [empty]="products().length === 0"
   emptyTitle="No products found"
   emptyText="Create a product, add variants, then publish the variants that can be sold."
-  (retry)="loadProducts()"></app-page-state>
-
-<nz-card *ngIf="!loading() && products().length > 0" nzTitle="Product List" [nzExtra]="recordCount">
-  <ng-template #recordCount>{{ total() }} records</ng-template>
-
-  <nz-table #productTable [nzData]="products()" [nzShowPagination]="false" nzSize="small">
-    <thead>
-      <tr>
-        <th>Code</th>
-        <th>Name</th>
-        <th>Category</th>
-        <th>Variants (Published/Total)</th>
-        <th>Price range</th>
-        <th>Updated</th>
-        <th class="actions-column">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr
-        *ngFor="let product of productTable.data"
-        class="selectable"
-        [class.ant-table-row-selected]="selectedProduct()?.id === product.id"
-        (click)="viewProduct(product)">
-        <td>{{ product.productCode || product.sku }}</td>
-        <td>{{ product.name }}</td>
-        <td>{{ product.category?.name || '-' }}</td>
-        <td>{{ publishedVariantCount(product) }} / {{ product.variants?.length || 0 }}</td>
-        <td>{{ product.minPrice | priceRange: product.maxPrice }}</td>
-        <td>{{ product.updatedAt | dateTime }}</td>
-        <td class="actions-column">
-          <div class="actions" (click)="$event.stopPropagation()">
-            <button nz-button nzSize="small" type="button" (click)="openEditProduct(product)">Edit</button>
-            <button
-              nz-button
-              nzDanger
-              nzSize="small"
-              type="button"
-              [disabled]="!canDeleteProduct(product)"
-              (click)="deleteProduct(product)">
-              Delete
-            </button>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </nz-table>
-</nz-card>
+  [total]="total()"
+  [pageIndex]="pageIndex"
+  [pageSize]="pageSize"
+  [pageSizeOptions]="pageSizeOptions"
+  [showPagination]="true"
+  [clickableRows]="true"
+  [selectedRowKey]="selectedProduct()?.id || ''"
+  (retry)="loadProducts()"
+  (pageChanged)="changeTablePage($event)"
+  (rowClicked)="viewProduct($event)">
+  <ng-template appTableCell="variants" let-product>
+    {{ publishedVariantCount(product) }} / {{ product.variants?.length || 0 }}
+  </ng-template>
+  <ng-template appTableCell="priceRange" let-product>
+    {{ product.minPrice | priceRange: product.maxPrice }}
+  </ng-template>
+  <ng-template appTableCell="actions" let-product>
+    <div class="actions" (click)="$event.stopPropagation()">
+      <button nz-button nzSize="small" type="button" (click)="openEditProduct(product)">Edit</button>
+      <button
+        nz-button
+        nzDanger
+        nzSize="small"
+        type="button"
+        [disabled]="!canDeleteProduct(product)"
+        (click)="deleteProduct(product)">
+        Delete
+      </button>
+    </div>
+  </ng-template>
+</app-data-table>
 
 <nz-card
   *ngIf="selectedProduct() as product"
@@ -111,116 +104,104 @@
     </button>
   </ng-template>
 
-  <nz-table
-    *ngIf="(product.variants || []).length > 0; else noVariants"
-    #variantTable
-    [nzData]="product.variants || []"
-    [nzShowPagination]="false"
-    nzSize="small">
-    <thead>
-      <tr>
-        <th>SKU</th>
-        <th>Color</th>
-        <th>Size</th>
-        <th>Price</th>
-        <th>Status</th>
-        <th class="actions-column">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let variant of variantTable.data">
-        <td class="mono">{{ variant.sku }}</td>
-        <td>
-          <span class="swatch" [style.background]="variant.color?.hexCode || 'transparent'"></span>
-          {{ variant.color?.code || '-' }}
-          <span class="muted">{{ variant.color?.name || '' }}</span>
-        </td>
-        <td>{{ variant.size?.code || '-' }}</td>
-        <td>{{ variant.price | money }}</td>
-        <td><app-status-tag [display]="variantStatusDisplay(variant.status)"></app-status-tag></td>
-        <td class="actions-column">
-          <div class="actions">
-            <button nz-button nzSize="small" type="button" (click)="openEditVariant(variant)">Edit</button>
-            <button
-              nz-button
-              nzDanger
-              nzSize="small"
-              type="button"
-              [disabled]="!canDeleteVariant(variant)"
-              (click)="deleteVariant(variant)">
-              Delete
-            </button>
-            <button
-              nz-button
-              nzSize="small"
-              nz-dropdown
-              [nzDropdownMenu]="variantMoreMenu"
-              type="button">
-              More
-            </button>
-          </div>
-          <nz-dropdown-menu #variantMoreMenu="nzDropdownMenu">
-            <ul nz-menu>
-              <li
-                nz-menu-item
-                (click)="changeVariantStatus(variant, 'Published')"
-                [nzDisabled]="variant.status === 'Published'">
-                Publish
-              </li>
-              <li
-                nz-menu-item
-                (click)="changeVariantStatus(variant, 'Discontinued')"
-                [nzDisabled]="variant.status !== 'Published'">
-                Discontinue
-              </li>
-            </ul>
-          </nz-dropdown-menu>
-        </td>
-      </tr>
-    </tbody>
-  </nz-table>
-
-  <ng-template #noVariants>
-    <nz-empty nzNotFoundContent="This product has no variants yet. Add one before publishing."></nz-empty>
-  </ng-template>
+  <app-data-table
+    [showCard]="false"
+    [columns]="variantTableColumns"
+    [rows]="product.variants || []"
+    [total]="product.variants?.length || 0"
+    [showPagination]="false"
+    [empty]="(product.variants || []).length === 0"
+    emptyTitle="This product has no variants yet."
+    emptyText="Add one before publishing.">
+    <ng-template appTableCell="color" let-variant>
+      <span class="swatch" [style.background]="variant.color?.hexCode || 'transparent'"></span>
+      {{ variant.color?.code || '-' }}
+      <span class="muted">{{ variant.color?.name || '' }}</span>
+    </ng-template>
+    <ng-template appTableCell="status" let-variant>
+      <app-status-tag [display]="variantStatusDisplay(variant.status)"></app-status-tag>
+    </ng-template>
+    <ng-template appTableCell="actions" let-variant>
+      <div class="actions">
+        <button nz-button nzSize="small" type="button" (click)="openEditVariant(variant)">Edit</button>
+        <button
+          nz-button
+          nzDanger
+          nzSize="small"
+          type="button"
+          [disabled]="!canDeleteVariant(variant)"
+          (click)="deleteVariant(variant)">
+          Delete
+        </button>
+        <button
+          nz-button
+          nzSize="small"
+          nz-dropdown
+          [nzDropdownMenu]="variantMoreMenu"
+          type="button">
+          More
+        </button>
+      </div>
+      <nz-dropdown-menu #variantMoreMenu="nzDropdownMenu">
+        <ul nz-menu>
+          <li
+            nz-menu-item
+            (click)="changeVariantStatus(variant, 'Published')"
+            [nzDisabled]="variant.status === 'Published'">
+            Publish
+          </li>
+          <li
+            nz-menu-item
+            (click)="changeVariantStatus(variant, 'Discontinued')"
+            [nzDisabled]="variant.status !== 'Published'">
+            Discontinue
+          </li>
+        </ul>
+      </nz-dropdown-menu>
+    </ng-template>
+  </app-data-table>
 </nz-card>
 
-<nz-modal
-  [nzVisible]="productModalOpen()"
-  [nzTitle]="selectedProduct() ? 'Edit Product' : 'New Product'"
-  [nzFooter]="null"
-  [nzWidth]="640"
-  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
-  (nzOnCancel)="closeProductModal()">
-  <ng-container *nzModalContent>
-    <app-product-form
-      [model]="productForm"
-      [validationErrors]="validationErrors()"
-      [errorMessage]="mutationErrorMessage()"
-      [saving]="saving()"
-      [editing]="!!selectedProduct()"
-      [assignedCode]="selectedProduct()?.productCode || ''"
-      (save)="saveProduct($event)"
-      (cancel)="closeProductModal()"></app-product-form>
-  </ng-container>
-</nz-modal>
+<app-form-dialog
+  [title]="selectedProduct() ? 'Edit Product' : 'New Product'"
+  [open]="productModalOpen()"
+  [saving]="saving()"
+  [saveDisabled]="false"
+  [saveText]="selectedProduct() ? 'Save product' : 'Create product'"
+  [width]="640"
+  [bodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (afterOpen)="triggerProductCreateFocus()"
+  (save)="saveProduct()"
+  (cancel)="closeProductModal()">
+  <app-product-form
+    [appFocusFirstRequired]="!selectedProduct()"
+    [focusFirstRequiredTrigger]="productCreateFocusTrigger()"
+    [model]="productForm"
+    [validationErrors]="validationErrors()"
+    [errorMessage]="mutationErrorMessage()"
+    [editing]="!!selectedProduct()"
+    [assignedCode]="selectedProduct()?.productCode || ''"
+    (save)="saveProduct($event)"></app-product-form>
+</app-form-dialog>
 
-<nz-modal
-  [nzVisible]="variantModalOpen()"
-  [nzTitle]="selectedVariant() ? 'Edit Variant' : 'Add Variant'"
-  [nzFooter]="null"
-  [nzWidth]="720"
-  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
-  (nzOnCancel)="closeVariantModal()">
-  <ng-container *nzModalContent>
-    <app-product-variant-form
-      [model]="variantForm"
-      [productCode]="(selectedProduct()?.productCode || selectedProduct()?.sku) || ''"
-      [saving]="saving()"
-      [errorMessage]="mutationErrorMessage()"
-      [editing]="!!selectedVariant()"
-      [statusOptions]="variantStatusOptions()"
-      (save)="saveVariant()"
-      (cancel)="closeVariantModal()"></app-product-variant-form>
-  </ng-container>
-</nz-modal>
+<app-form-dialog
+  [title]="selectedVariant() ? 'Edit Variant' : 'Add Variant'"
+  [open]="variantModalOpen()"
+  [saving]="saving()"
+  [saveDisabled]="false"
+  [saveText]="selectedVariant() ? 'Save variant' : 'Add variant'"
+  [width]="720"
+  [bodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (afterOpen)="triggerVariantCreateFocus()"
+  (save)="saveVariant()"
+  (cancel)="closeVariantModal()">
+  <app-product-variant-form
+    [appFocusFirstRequired]="!selectedVariant()"
+    [focusFirstRequiredTrigger]="variantCreateFocusTrigger()"
+    [model]="variantForm"
+    [productCode]="(selectedProduct()?.productCode || selectedProduct()?.sku) || ''"
+    [errorMessage]="mutationErrorMessage()"
+    [editing]="!!selectedVariant()"
+    [statusOptions]="variantStatusOptions()"
+    (save)="saveVariant()"></app-product-variant-form>
+</app-form-dialog>

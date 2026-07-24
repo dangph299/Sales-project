@@ -1,17 +1,21 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
-import { NzNotificationService } from 'ng-zorro-antd/notification';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
+import { DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
+import { TableCellTemplateDirective } from '../../../../shared/components/data-table/table-cell-template.directive';
+import { DropdownComponent } from '../../../../shared/components/dropdown/dropdown.component';
+import { FormDialogComponent } from '../../../../shared/components/form-dialog/form-dialog.component';
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../../shared/components/status-tag/status-tag.component';
+import { ApiNotifierService } from '../../../../shared/services/api-notifier.service';
+import { TablePageChange, TableSort } from '../../../../shared/models/table.model';
+import { ListQueryController } from '../../../../shared/utilities/list-query-controller';
 import { confirmAction } from '../../../../shared/utilities/confirm-action';
 import { describeApiError } from '../../../../shared/utilities/describe-api-error';
 import { ProductLookupApiService } from '../../../common/api/product-lookup-api.service';
@@ -22,7 +26,8 @@ import { InventoryResponse } from '../../api/responses/inventory.response';
 import { StockAdjustmentFormComponent } from '../../components/stock-adjustment-form/stock-adjustment-form.component';
 import { StockState, lowStockThreshold, stockStateLabels, stockStateOf } from '../../constants/stock-state';
 import { StockAdjustmentFormModel, emptyStockAdjustmentForm } from '../../models/stock-adjustment-form.model';
-import { StockRow, totalQuantity } from '../../models/stock-row.model';
+import { StockRow, canAdjustStock, totalQuantity } from '../../models/stock-row.model';
+import { inventoryListColumns } from './inventory-list.columns';
 
 type StockSortKey = 'sku' | 'product' | 'color' | 'size' | 'status';
 type SortDirection = 'ascend' | 'descend';
@@ -33,6 +38,10 @@ type SortDirection = 'ascend' | 'descend';
   imports: [
     CommonModule,
     FormsModule,
+    DataTableComponent,
+    TableCellTemplateDirective,
+    DropdownComponent,
+    FormDialogComponent,
     PageStateComponent,
     StatusTagComponent,
     StockAdjustmentFormComponent,
@@ -40,8 +49,6 @@ type SortDirection = 'ascend' | 'descend';
     NzCardModule,
     NzInputModule,
     NzModalModule,
-    NzSelectModule,
-    NzTableModule,
     NzTagModule
   ],
   templateUrl: './inventory-list-page.component.html',
@@ -52,10 +59,16 @@ export class InventoryListPageComponent implements OnInit {
   private readonly productLookup = inject(ProductLookupApiService);
   private readonly route = inject(ActivatedRoute);
   private readonly modal = inject(NzModalService);
-  private readonly notification = inject(NzNotificationService);
+  private readonly apiNotifier = inject(ApiNotifierService);
+
+  private readonly query = new ListQueryController<{ sku: string; name: string }>({
+    pageIndex: 1,
+    pageSize: 20,
+    filters: { sku: '', name: '' }
+  });
 
   readonly lowStockThreshold = lowStockThreshold;
-  readonly loading = signal(false);
+  readonly loading = this.query.loading;
   readonly saving = signal(false);
   readonly errorMessage = signal('');
   readonly mutationErrorMessage = signal('');
@@ -68,16 +81,31 @@ export class InventoryListPageComponent implements OnInit {
   skuFilter = '';
   nameFilter = '';
   stockStateFilter: StockState | '' = '';
-  pageIndex = 1;
-  pageSize = 20;
   readonly pageSizeOptions = [10, 20, 50];
+  readonly stockStateOptions: { value: StockState | ''; label: string }[] = [
+    { value: '', label: 'All' },
+    { value: 'available', label: 'Available' },
+    { value: 'low', label: 'Low stock' },
+    { value: 'out', label: 'Out of stock' }
+  ];
   adjustmentForm: StockAdjustmentFormModel = emptyStockAdjustmentForm();
 
   readonly sortKey = signal<StockSortKey>('sku');
   readonly sortDirection = signal<SortDirection>('ascend');
+  readonly tableColumns = inventoryListColumns;
 
   readonly statusDisplay = productLookupStatusDisplay;
   readonly totalQuantity = totalQuantity;
+  readonly tableSort = computed<TableSort>(() => ({ key: this.sortKey(), direction: this.sortDirection() }));
+  readonly rowIdentity = (row: StockRow): string => row.variant.id;
+
+  get pageIndex(): number {
+    return this.query.state().pageIndex;
+  }
+
+  get pageSize(): number {
+    return this.query.state().pageSize;
+  }
 
   ngOnInit(): void {
     this.applyStockFilterFromRoute();
@@ -85,22 +113,24 @@ export class InventoryListPageComponent implements OnInit {
   }
 
   async loadStockRows(): Promise<void> {
-    this.loading.set(true);
     this.errorMessage.set('');
     try {
-      const page = await this.productLookup.searchVariants({
-        sku: this.skuFilter,
-        productName: this.nameFilter,
+      const page = await this.query.run(state => this.productLookup.searchVariants({
+        sku: state.filters.sku,
+        productName: state.filters.name,
         sortBy: this.sortKey(),
         sortDirection: this.sortDirection(),
-        page: this.pageIndex,
-        pageSize: this.pageSize
-      });
+        page: state.pageIndex,
+        pageSize: state.pageSize
+      }));
+      if (!page) {
+        return;
+      }
 
       // Deleting the last products on the final page leaves the pager past the end, which would
       // otherwise show an empty grid with no way back.
       if (page.items.length === 0 && page.total > 0 && this.pageIndex > 1) {
-        this.pageIndex = Math.max(1, Math.ceil(page.total / this.pageSize));
+        this.query.setPage(Math.max(1, Math.ceil(page.total / this.pageSize)));
         await this.loadStockRows();
         return;
       }
@@ -119,25 +149,17 @@ export class InventoryListPageComponent implements OnInit {
       this.selectedRow.set(rows[0] ?? null);
     } catch (error) {
       this.errorMessage.set(describeApiError(error));
-    } finally {
-      this.loading.set(false);
     }
   }
 
   search(): void {
-    this.pageIndex = 1;
+    this.query.setFilters({ sku: this.skuFilter, name: this.nameFilter });
     void this.loadStockRows();
   }
 
-  changePage(pageIndex: number): void {
-    this.pageIndex = pageIndex;
-    void this.loadStockRows();
-  }
-
-  changePageSize(pageSize: number): void {
-    this.pageSize = pageSize;
-    this.pageIndex = 1;
-    void this.loadStockRows();
+  async changeTablePage(page: TablePageChange): Promise<void> {
+    this.query.setPage(page.pageIndex, page.pageSize);
+    await this.loadStockRows();
   }
 
   filteredRows(): StockRow[] {
@@ -146,30 +168,26 @@ export class InventoryListPageComponent implements OnInit {
       : this.stockRows().filter(row => this.stockState(row) === this.stockStateFilter);
   }
 
-  sortBy(key: StockSortKey): void {
-    if (this.sortKey() !== key) {
-      this.sortKey.set(key);
+  changeTableSort(sort: TableSort): void {
+    if (!sort.direction) {
+      this.sortKey.set('sku');
       this.sortDirection.set('ascend');
-      this.pageIndex = 1;
-      void this.loadStockRows();
-      return;
+    } else {
+      this.sortKey.set(sort.key as StockSortKey);
+      this.sortDirection.set(sort.direction);
     }
 
-    this.sortDirection.set(this.sortDirection() === 'ascend' ? 'descend' : 'ascend');
-    this.pageIndex = 1;
+    this.query.setPage(1);
     void this.loadStockRows();
-  }
-
-  sortIndicator(key: StockSortKey): string {
-    if (this.sortKey() !== key) {
-      return '';
-    }
-
-    return this.sortDirection() === 'ascend' ? '\u2191' : '\u2193';
   }
 
   selectRow(row: StockRow): void {
     this.selectedRow.set(row);
+  }
+
+  canAdjustSelected(): boolean {
+    const row = this.selectedRow();
+    return !!row && canAdjustStock(row);
   }
 
   openAdjustment(row: StockRow): void {
@@ -249,9 +267,7 @@ export class InventoryListPageComponent implements OnInit {
       this.adjustmentForm = emptyStockAdjustmentForm();
       this.mutationErrorMessage.set('');
     } catch (error) {
-      const message = describeApiError(error);
-      this.mutationErrorMessage.set(message);
-      this.notification.error('Adjust Inventory Failed', message);
+      this.mutationErrorMessage.set(this.apiNotifier.error('Adjust Inventory Failed', error));
     } finally {
       this.saving.set(false);
     }

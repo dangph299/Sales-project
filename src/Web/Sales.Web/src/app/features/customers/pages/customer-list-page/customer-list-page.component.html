@@ -37,104 +37,55 @@
   </div>
 </section>
 
-<app-page-state
+<app-data-table
+  title="Customer List"
+  [columns]="tableColumns"
+  [rows]="sortedCustomers()"
   [loading]="loading()"
   [errorMessage]="customerModalOpen() ? '' : errorMessage()"
   [empty]="!loading() && !errorMessage() && customers().length === 0"
   emptyTitle="No customers found"
   emptyText="Create a customer or adjust the filters."
-  (retry)="loadCustomers()"></app-page-state>
-
-<nz-card
-  *ngIf="!loading() && (customerModalOpen() || !errorMessage()) && customers().length > 0"
-  nzTitle="Customer List"
-  [nzExtra]="recordCount">
-  <ng-template #recordCount>{{ total() }} records</ng-template>
-
-  <nz-table
-    #customerTable
-    [nzData]="sortedCustomers()"
-    [nzFrontPagination]="false"
-    [nzShowPagination]="true"
-    [nzTotal]="total()"
-    [nzPageIndex]="pageIndex"
-    [nzPageSize]="pageSize"
-    [nzPageSizeOptions]="pageSizeOptions"
-    [nzShowSizeChanger]="true"
-    [nzShowTotal]="totalTemplate"
-    nzSize="small"
-    (nzPageIndexChange)="changePage($event)"
-    (nzPageSizeChange)="changePageSize($event)">
-    <thead>
-      <tr>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('customerCode')">
-            Code <span>{{ sortIndicator('customerCode') }}</span>
-          </button>
-        </th>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('name')">
-            Name <span>{{ sortIndicator('name') }}</span>
-          </button>
-        </th>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('phone')">
-            Phone <span>{{ sortIndicator('phone') }}</span>
-          </button>
-        </th>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('status')">
-            Status <span>{{ sortIndicator('status') }}</span>
-          </button>
-        </th>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('address')">
-            Address <span>{{ sortIndicator('address') }}</span>
-          </button>
-        </th>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('updatedAt')">
-            Updated <span>{{ sortIndicator('updatedAt') }}</span>
-          </button>
-        </th>
-        <th class="actions-column" style="text-align: center;width: 120px;">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr
-        *ngFor="let customer of customerTable.data"
-        class="selectable"
-        [class.ant-table-row-selected]="selectedCustomer()?.id === customer.id && detailModalOpen()"
-        (click)="selectCustomer(customer)">
-        <td>{{ customer.customerCode || '-' }}</td>
-        <td>{{ customer.name }}</td>
-        <td>{{ customer.phone }}</td>
-        <td><app-status-tag [display]="statusDisplay(customer.status)"></app-status-tag></td>
-        <td>{{ customer.address | compactText }}</td>
-        <td>{{ customer.updatedAt | dateTime }}</td>
-        <td class="actions-column">
-          <div class="actions" (click)="$event.stopPropagation()">
-            <button nz-button nzSize="small" type="button" (click)="openEditCustomer(customer)">Edit</button>
-            <button nz-button nzSize="small" nz-dropdown [nzDropdownMenu]="customerMoreMenu" type="button">More</button>
-          </div>
-          <nz-dropdown-menu #customerMoreMenu="nzDropdownMenu">
-            <ul nz-menu>
-              <li
-                nz-menu-item
-                *ngFor="let status of lifecycleActions(customer)"
-                (click)="changeCustomerStatus(customer, status)">
-                {{ status === 'Normal' ? 'Set Normal' : status }}
-              </li>
-              <li nz-menu-divider></li>
-              <li nz-menu-item nzDanger (click)="deleteCustomer(customer)">Delete</li>
-            </ul>
-          </nz-dropdown-menu>
-        </td>
-      </tr>
-    </tbody>
-  </nz-table>
-  <ng-template #totalTemplate let-total>Total {{ total }} records</ng-template>
-</nz-card>
+  [total]="total()"
+  [pageIndex]="pageIndex"
+  [pageSize]="pageSize"
+  [pageSizeOptions]="pageSizeOptions"
+  [showPagination]="true"
+  [sort]="tableSort()"
+  [clickableRows]="true"
+  [selectedRowKey]="selectedCustomer()?.id || ''"
+  (retry)="loadCustomers()"
+  (pageChanged)="changeTablePage($event)"
+  (sortChanged)="changeTableSort($event)"
+  (rowClicked)="selectCustomer($event)">
+  <ng-template appTableCell="customerCode" let-customer>
+    {{ customer.customerCode || '-' }}
+  </ng-template>
+  <ng-template appTableCell="status" let-customer>
+    <app-status-tag [display]="statusDisplay(customer.status)"></app-status-tag>
+  </ng-template>
+  <ng-template appTableCell="address" let-customer>
+    {{ customer.address | compactText }}
+  </ng-template>
+  <ng-template appTableCell="actions" let-customer>
+    <div class="actions" (click)="$event.stopPropagation()">
+      <button nz-button nzSize="small" type="button" (click)="openEditCustomer(customer)">Edit</button>
+      <button nz-button nzSize="small" nz-dropdown [nzDropdownMenu]="customerMoreMenu" type="button">More</button>
+    </div>
+    <nz-dropdown-menu #customerMoreMenu="nzDropdownMenu">
+      <ul nz-menu>
+        <li
+          nz-menu-item
+          *ngFor="let status of lifecycleActions(customer)"
+          (click)="changeCustomerStatus(customer, status)">
+          {{ status === 'Normal' ? 'Set Normal' : status }}
+        </li>
+        <li nz-menu-divider></li>
+        <li nz-menu-item nzDanger (click)="deleteCustomer(customer)">Delete</li>
+      </ul>
+    </nz-dropdown-menu>
+  </ng-template>
+</app-data-table>
 
 <nz-modal
   [nzVisible]="detailModalOpen()"
@@ -189,20 +140,21 @@
   </nz-dropdown-menu>
 </nz-modal>
 
-<nz-modal
-  [nzVisible]="customerModalOpen()"
-  [nzTitle]="modalTitle()"
-  [nzFooter]="null"
-  [nzWidth]="640"
-  (nzOnCancel)="closeCustomerModal()">
-  <ng-container *nzModalContent>
-    <app-customer-form
-      [model]="customerForm"
-      [validationErrors]="validationErrors()"
-      [errorMessage]="mutationErrorMessage()"
-      [saving]="saving()"
-      [editing]="!!selectedCustomer()"
-      (save)="saveCustomer()"
-      (cancel)="closeCustomerModal()"></app-customer-form>
-  </ng-container>
-</nz-modal>
+<app-form-dialog
+  [title]="modalTitle()"
+  [open]="customerModalOpen()"
+  [saving]="saving()"
+  [saveDisabled]="false"
+  [saveText]="selectedCustomer() ? 'Save changes' : 'Create customer'"
+  [width]="640"
+  (afterOpen)="triggerCustomerCreateFocus()"
+  (save)="saveCustomer()"
+  (cancel)="closeCustomerModal()">
+  <app-customer-form
+    [appFocusFirstRequired]="!selectedCustomer()"
+    [focusFirstRequiredTrigger]="customerCreateFocusTrigger()"
+    [model]="customerForm"
+    [validationErrors]="validationErrors()"
+    [errorMessage]="mutationErrorMessage()"
+    (save)="saveCustomer()"></app-customer-form>
+</app-form-dialog>

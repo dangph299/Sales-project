@@ -1,0 +1,114 @@
+<ng-template #stateContent>
+  <app-page-state
+    *ngIf="shouldShowState()"
+    [loading]="loading"
+    [errorMessage]="errorMessage"
+    [empty]="!loading && !errorMessage && shouldShowState()"
+    [emptyTitle]="emptyTitle"
+    [emptyText]="emptyText"
+    (retry)="retry.emit()"></app-page-state>
+</ng-template>
+
+<ng-template #tableContent>
+  <nz-table
+    *ngIf="shouldShowTable()"
+    [ngClass]="tableClass"
+    [attr.role]="tableRole"
+    [nzData]="rows"
+    [nzFrontPagination]="frontPagination"
+    [nzShowPagination]="showPagination"
+    [nzTotal]="total"
+    [nzPageIndex]="pageIndex"
+    [nzPageSize]="pageSize"
+    [nzPageSizeOptions]="pageSizeOptions"
+    [nzShowSizeChanger]="showSizeChanger"
+    [nzShowTotal]="totalTemplate"
+    [nzScroll]="{ x: scrollX || null, y: scrollY || null }"
+    [nzSize]="size"
+    (nzPageIndexChange)="changePageIndex($event)"
+    (nzPageSizeChange)="changePageSize($event)">
+    <thead>
+      <tr>
+        <th
+          *ngFor="let column of visibleColumns()"
+          [nzWidth]="width(column)"
+          [style.min-width]="column.minWidth"
+          [style.max-width]="column.maxWidth"
+          [ngClass]="headerClass(column)"
+          [attr.aria-sort]="ariaSort(column)">
+          <button
+            *ngIf="column.sortable; else plainHeader"
+            class="sort-header"
+            [class.sort-header--right]="column.align === 'right'"
+            type="button"
+            [disabled]="loading"
+            (click)="changeSort(column)">
+            {{ column.header }} <span>{{ sortIndicator(column) }}</span>
+          </button>
+          <ng-template #plainHeader>{{ column.header }}</ng-template>
+        </th>
+        <th *ngIf="actions.length > 0" class="actions-column" nzWidth="150px">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr
+        *ngFor="let row of rows"
+        [class.selectable]="clickableRows"
+        [class.ant-table-row-selected]="selectedRowKey && rowIdentity(row) === selectedRowKey"
+        [ngClass]="rowClass(row)"
+        [attr.aria-level]="rowAriaLevel(row)"
+        [attr.aria-expanded]="rowAriaExpanded(row)"
+        (click)="emitRow(row)">
+        <td
+          *ngFor="let column of visibleColumns()"
+          [style.max-width]="column.maxWidth"
+          [ngClass]="cellClass(row, column)"
+          [attr.title]="column.tooltip ? column.tooltip(row) : null">
+          <ng-container *ngIf="templateFor(column) as cellTemplate; else defaultCell">
+            <ng-container
+              *ngTemplateOutlet="cellTemplate; context: { $implicit: row, row: row, column: column, value: value(row, column) }">
+            </ng-container>
+          </ng-container>
+
+          <ng-template #defaultCell>
+            <ng-container [ngSwitch]="column.type">
+              <span *ngSwitchCase="'currency'">{{ numberValue(row, column) | money }}</span>
+              <span *ngSwitchCase="'dateTime'">{{ textValue(row, column) | dateTime }}</span>
+              <span *ngSwitchCase="'boolean'">{{ value(row, column) ? 'Yes' : 'No' }}</span>
+              <span *ngSwitchDefault>{{ textValue(row, column) }}</span>
+            </ng-container>
+          </ng-template>
+        </td>
+        <td *ngIf="actions.length > 0" class="actions-column">
+          <div class="actions" (click)="$event.stopPropagation()">
+            <ng-container *ngFor="let action of visibleActions(row)">
+              <button
+                nz-button
+                nzSize="small"
+                type="button"
+                [nzDanger]="action.danger"
+                [disabled]="action.disabled ? action.disabled(row) : false"
+                (click)="emitAction(action, row, $event)">
+                {{ action.label }}
+              </button>
+            </ng-container>
+          </div>
+        </td>
+      </tr>
+    </tbody>
+  </nz-table>
+  <ng-template #totalTemplate let-total>Total {{ total }} {{ recordLabel }}</ng-template>
+</ng-template>
+
+<ng-container *ngIf="showCard; else unframedTable">
+  <ng-container *ngTemplateOutlet="stateContent"></ng-container>
+  <nz-card *ngIf="shouldShowTable()" [ngClass]="cardClass" [nzTitle]="title" [nzExtra]="recordCount">
+    <ng-template #recordCount>{{ cardExtra() }}</ng-template>
+    <ng-container *ngTemplateOutlet="tableContent"></ng-container>
+  </nz-card>
+</ng-container>
+
+<ng-template #unframedTable>
+  <ng-container *ngTemplateOutlet="stateContent"></ng-container>
+  <ng-container *ngTemplateOutlet="tableContent"></ng-container>
+</ng-template>

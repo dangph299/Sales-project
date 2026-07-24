@@ -1,46 +1,25 @@
 <form nz-form nzLayout="vertical" (ngSubmit)="submit()">
-  <nz-form-item *ngIf="editing">
-    <nz-form-label>Product code</nz-form-label>
-    <nz-form-control>
-      <input nz-input name="productCode" [ngModel]="assignedCode" disabled>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field *ngIf="editing" label="Product code">
+    <input nz-input name="productCode" [ngModel]="assignedCode" disabled>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label nzRequired>Name</nz-form-label>
-    <nz-form-control>
-      <input nz-input name="productName" [(ngModel)]="model.name" required>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Name" [required]="true">
+    <input nz-input name="productName" [(ngModel)]="model.name" required>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label>Description</nz-form-label>
-    <nz-form-control>
-      <textarea nz-input name="productDescription" rows="3" [(ngModel)]="model.description"></textarea>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Description">
+    <textarea nz-input name="productDescription" rows="3" [(ngModel)]="model.description"></textarea>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label nzRequired>Category</nz-form-label>
-    <nz-form-control>
-      <nz-select
-        name="productCategoryId"
-        [(ngModel)]="model.categoryId"
-        nzShowSearch
-        nzPlaceHolder="Select a category"
-        required>
-        <nz-option
-          *ngFor="let category of categoryOptions()"
-          [nzValue]="category.id"
-          [nzLabel]="category.label"></nz-option>
-      </nz-select>
-    </nz-form-control>
-  </nz-form-item>
+  <app-dropdown
+    label="Category"
+    name="productCategoryId"
+    [(ngModel)]="model.categoryId"
+    [options]="categoryOptions()"
+    [required]="true"
+    [searchable]="true"
+    placeholder="Select a category">
+  </app-dropdown>
 
-  <div class="form-actions">
-    <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="saving">
-      {{ editing ? 'Save product' : 'Create product' }}
-    </button>
-    <button nz-button type="button" (click)="cancel.emit()" [disabled]="saving">Cancel</button>
-  </div>
+  <button type="submit" hidden aria-hidden="true"></button>
 </form>

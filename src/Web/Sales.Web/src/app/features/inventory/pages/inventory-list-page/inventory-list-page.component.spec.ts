@@ -44,15 +44,13 @@ describe('InventoryListPageComponent stock rows', () => {
   });
 
   it('asks the server for the requested page instead of only the first', async () => {
-    fixture.componentInstance.changePage(3);
-    await fixture.whenStable();
+    await fixture.componentInstance.changeTablePage({ pageIndex: 3, pageSize: fixture.componentInstance.pageSize });
 
     expect(productLookup.lastFilters?.page).toBe(3);
   });
 
   it('returns to the first page when the filters change', async () => {
-    fixture.componentInstance.changePage(3);
-    await fixture.whenStable();
+    await fixture.componentInstance.changeTablePage({ pageIndex: 3, pageSize: fixture.componentInstance.pageSize });
 
     fixture.componentInstance.search();
     await fixture.whenStable();
@@ -72,21 +70,17 @@ describe('InventoryListPageComponent stock rows', () => {
   it('steps back to the last populated page when the current one has gone', async () => {
     productLookup.variants = [];
     productLookup.total = 20;
-    fixture.componentInstance.pageIndex = 5;
 
-    await fixture.componentInstance.loadStockRows();
+    await fixture.componentInstance.changeTablePage({ pageIndex: 5, pageSize: fixture.componentInstance.pageSize });
 
     expect(fixture.componentInstance.pageIndex).toBe(1);
   });
 
-  it('sends sorting to the server and reverses on a second click', async () => {
+  it('sends sorting to the server', async () => {
     productLookup.variants = productWithVariants();
     await fixture.componentInstance.loadStockRows();
 
-    fixture.componentInstance.sortBy('color');
-    await fixture.whenStable();
-
-    fixture.componentInstance.sortBy('color');
+    fixture.componentInstance.changeTableSort({ key: 'color', direction: 'descend' });
     await fixture.whenStable();
 
     expect(productLookup.lastFilters?.sortBy).toBe('color');
@@ -94,17 +88,16 @@ describe('InventoryListPageComponent stock rows', () => {
   });
 
   it('marks only the column being sorted', async () => {
-    fixture.componentInstance.sortBy('size');
+    fixture.componentInstance.changeTableSort({ key: 'size', direction: 'ascend' });
 
-    expect(fixture.componentInstance.sortIndicator('size')).toBe('↑');
-    expect(fixture.componentInstance.sortIndicator('sku')).toBe('');
+    expect(fixture.componentInstance.tableSort()).toEqual({ key: 'size', direction: 'ascend' });
   });
 
   it('sorts variants missing a colour or size without dropping them', async () => {
     productLookup.variants = productWithUnsetColour();
     await fixture.componentInstance.loadStockRows();
 
-    fixture.componentInstance.sortBy('color');
+    fixture.componentInstance.changeTableSort({ key: 'color', direction: 'ascend' });
 
     expect(fixture.componentInstance.filteredRows().length).toBe(2);
   });

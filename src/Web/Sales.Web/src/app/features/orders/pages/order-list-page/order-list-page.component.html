@@ -41,17 +41,17 @@
       placeholder="Search by customer phone">
   </label>
 
-  <div class="filter-field">
-    <span>Status</span>
-    <nz-select
-      name="orderStatusFilter"
-      [ngModel]="statusFilter"
-      (ngModelChange)="changeStatusFilter($event)"
-      nzAllowClear
-      nzPlaceHolder="All statuses">
-      <nz-option *ngFor="let status of orderStatuses" [nzValue]="status.value" [nzLabel]="status.label"></nz-option>
-    </nz-select>
-  </div>
+  <app-dropdown
+    class="filter-field"
+    label="Status"
+    name="orderStatusFilter"
+    presentation="toolbar"
+    [ngModel]="statusFilter"
+    [options]="orderStatuses"
+    [clearable]="true"
+    placeholder="All statuses"
+    (ngModelChange)="changeStatusFilter($event)">
+  </app-dropdown>
 
   <label>
     From
@@ -69,117 +69,58 @@
   </div>
 </section>
 
-<app-page-state
+<app-data-table
+  title="Order List"
+  [columns]="tableColumns"
+  [rows]="displayedOrders()"
   [loading]="loading()"
   [errorMessage]="errorMessage()"
   [empty]="!loading() && displayedOrders().length === 0"
   emptyTitle="No orders found"
   emptyText="Create an order or adjust the filters."
-  (retry)="loadOrders()"></app-page-state>
-
-<nz-card
-  *ngIf="!loading() && displayedOrders().length > 0"
-  nzTitle="Order List"
-  [nzExtra]="recordCount">
-  <ng-template #recordCount>{{ total() }} records</ng-template>
-
-  <nz-table
-    #orderTable
-    [nzData]="displayedOrders()"
-    [nzFrontPagination]="false"
-    [nzShowPagination]="true"
-    [nzTotal]="total()"
-    [nzPageIndex]="pageIndex"
-    [nzPageSize]="pageSize"
-    [nzPageSizeOptions]="pageSizeOptions"
-    [nzShowSizeChanger]="true"
-    [nzShowTotal]="totalTemplate"
-    [nzScroll]="{ x: '1175px' }"
-    nzSize="small"
-    (nzPageIndexChange)="changePage($event)"
-    (nzPageSizeChange)="changePageSize($event)">
-    <thead>
-      <tr>
-        <th nzWidth="130px">
-          <button class="sort-header" type="button" (click)="sortBy('orderNumber')">
-            Order Number <span>{{ sortIndicator('orderNumber') }}</span>
-          </button>
-        </th>
-        <th nzWidth="180px">
-          <button class="sort-header" type="button" (click)="sortBy('customer')">
-            Customer <span>{{ sortIndicator('customer') }}</span>
-          </button>
-        </th>
-        <th nzWidth="130px">
-          <button class="sort-header" type="button" (click)="sortBy('phone')">
-            Phone <span>{{ sortIndicator('phone') }}</span>
-          </button>
-        </th>
-        <th nzWidth="145px">
-          <button class="sort-header" type="button" (click)="sortBy('createdAt')">
-            Order Date <span>{{ sortIndicator('createdAt') }}</span>
-          </button>
-        </th>
-        <th class="number-column" nzWidth="125px">
-          <button class="sort-header sort-header--right" type="button" (click)="sortBy('total')">
-            Total Amount <span>{{ sortIndicator('total') }}</span>
-          </button>
-        </th>
-        <th nzWidth="140px">
-          <button class="sort-header" type="button" (click)="sortBy('status')">
-            Status <span>{{ sortIndicator('status') }}</span>
-          </button>
-        </th>
-        <th nzWidth="145px">
-          <button class="sort-header" type="button" (click)="sortBy('updatedAt')">
-            Last Updated <span>{{ sortIndicator('updatedAt') }}</span>
-          </button>
-        </th>
-        <th class="actions-column" nzWidth="180px">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr *ngFor="let order of orderTable.data">
-        <td>
-          <button class="order-number-link" type="button" (click)="openEditOrder(order)">
-            {{ orderNumber(order) }}
-          </button>
-        </td>
-        <td class="truncate-cell" [title]="order.customerName">{{ order.customerName }}</td>
-        <td class="nowrap-cell">{{ order.customerPhone }}</td>
-        <td class="nowrap-cell">{{ order.createdAt | dateTime }}</td>
-        <td class="number-column">{{ order.total | money }}</td>
-        <td class="nowrap-cell"><app-status-tag [display]="statusDisplay(order.status)"></app-status-tag></td>
-        <td class="nowrap-cell">{{ order.updatedAt | dateTime }}</td>
-        <td class="actions-column">
-          <div class="actions">
-            <button nz-button nzSize="small" type="button" (click)="openEditOrder(order)">
-              {{ canEditOrder(order) ? 'Edit' : 'View' }}
-            </button>
-            <button
-              nz-button
-              nzDanger
-              nzSize="small"
-              type="button"
-              (click)="deleteOrder(order)"
-              [disabled]="!canCancelOrder(order)">
-              Delete
-            </button>
-            <button nz-button nzSize="small" nz-dropdown [nzDropdownMenu]="orderMoreMenu" type="button">More</button>
-          </div>
-          <nz-dropdown-menu #orderMoreMenu="nzDropdownMenu">
-            <ul nz-menu>
-              <li nz-menu-item (click)="confirmRowOrder(order)" [nzDisabled]="order.status !== 'Draft'">Confirm</li>
-              <li nz-menu-item (click)="undoConfirmRowOrder(order)" [nzDisabled]="order.status !== 'Confirmed'">Undo Confirm</li>
-              <li nz-menu-item (click)="loadRowReservation(order)">Load Reservation</li>
-            </ul>
-          </nz-dropdown-menu>
-        </td>
-      </tr>
-    </tbody>
-  </nz-table>
-  <ng-template #totalTemplate let-total>Total {{ total }} records</ng-template>
-</nz-card>
+  [total]="total()"
+  [pageIndex]="pageIndex"
+  [pageSize]="pageSize"
+  [pageSizeOptions]="pageSizeOptions"
+  [showPagination]="true"
+  [sort]="tableSort()"
+  scrollX="1175px"
+  (retry)="loadOrders()"
+  (pageChanged)="changeTablePage($event)"
+  (sortChanged)="changeTableSort($event)">
+  <ng-template appTableCell="orderNumber" let-order>
+    <button class="order-number-link" type="button" (click)="openEditOrder(order)">
+      {{ orderNumber(order) }}
+    </button>
+  </ng-template>
+  <ng-template appTableCell="status" let-order>
+    <app-status-tag [display]="statusDisplay(order.status)"></app-status-tag>
+  </ng-template>
+  <ng-template appTableCell="actions" let-order>
+    <div class="actions">
+      <button nz-button nzSize="small" type="button" (click)="openEditOrder(order)">
+        {{ canEditOrder(order) ? 'Edit' : 'View' }}
+      </button>
+      <button
+        nz-button
+        nzDanger
+        nzSize="small"
+        type="button"
+        (click)="deleteOrder(order)"
+        [disabled]="!canCancelOrder(order)">
+        Delete
+      </button>
+      <button nz-button nzSize="small" nz-dropdown [nzDropdownMenu]="orderMoreMenu" type="button">More</button>
+    </div>
+    <nz-dropdown-menu #orderMoreMenu="nzDropdownMenu">
+      <ul nz-menu>
+        <li nz-menu-item (click)="confirmRowOrder(order)" [nzDisabled]="order.status !== 'Draft'">Confirm</li>
+        <li nz-menu-item (click)="undoConfirmRowOrder(order)" [nzDisabled]="order.status !== 'Confirmed'">Undo Confirm</li>
+        <li nz-menu-item (click)="loadRowReservation(order)">Load Reservation</li>
+      </ul>
+    </nz-dropdown-menu>
+  </ng-template>
+</app-data-table>
 
 <nz-card class="realtime-card" nzSize="small" *ngIf="currentOrder() as order">
   <div class="summary-strip">
@@ -200,9 +141,13 @@
   [nzWidth]="1040"
   [nzMaskClosable]="false"
   [nzBodyStyle]="{ 'max-height': 'calc(100vh - 210px)', 'overflow-y': 'auto' }"
+  (nzAfterOpen)="triggerOrderCreateFocus()"
   (nzOnCancel)="closeOrderModal()">
   <ng-container *nzModalContent>
-    <section class="order-form-layout">
+    <section
+      class="order-form-layout"
+      [appFocusFirstRequired]="modalMode() === 'create'"
+      [focusFirstRequiredTrigger]="orderCreateFocusTrigger()">
       <nz-card nzSize="small" nzTitle="Order Information" *ngIf="modalMode() === 'edit'">
         <div nz-form nzLayout="vertical" class="form-grid two">
           <nz-form-item>
@@ -251,42 +196,28 @@
           <button nz-button nzType="primary" type="button" (click)="loadProducts()">Search</button>
         </section>
 
-        <nz-table
-          #variantTable
-          [nzData]="sellableVariants()"
-          [nzShowPagination]="false"
-          [nzScroll]="{ y: '220px' }"
-          nzSize="small">
-          <thead>
-            <tr>
-              <th>SKU</th>
-              <th>Product</th>
-              <th>Status</th>
-              <th class="number-column">Price</th>
-              <th class="actions-column"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let option of variantTable.data">
-              <td>{{ option.variant.sku }}</td>
-              <td>{{ option.product.name }}</td>
-              <td>
-                <app-status-tag [display]="productStatusDisplay(option.variant.status)"></app-status-tag>
-              </td>
-              <td class="number-column">{{ option.variant.price | money }}</td>
-              <td class="actions-column">
-                <button
-                  nz-button
-                  nzSize="small"
-                  type="button"
-                  (click)="addCartLine(option.product, option.variant)"
-                  [disabled]="saving()">
-                  Add
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </nz-table>
+        <app-data-table
+          [showCard]="false"
+          [columns]="productOptionColumns"
+          [rows]="sellableVariants()"
+          [total]="sellableVariants().length"
+          [showPagination]="false"
+          [showTableWhenEmpty]="true"
+          scrollY="220px">
+          <ng-template appTableCell="status" let-option>
+            <app-status-tag [display]="productStatusDisplay(option.variant.status)"></app-status-tag>
+          </ng-template>
+          <ng-template appTableCell="actions" let-option>
+            <button
+              nz-button
+              nzSize="small"
+              type="button"
+              (click)="addCartLine(option.product, option.variant)"
+              [disabled]="saving()">
+              Add
+            </button>
+          </ng-template>
+        </app-data-table>
       </nz-card>
 
       <nz-card nzSize="small" nzTitle="Order Lines" [nzExtra]="lineCount">

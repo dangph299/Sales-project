@@ -7,16 +7,21 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
-import { NzNotificationService } from 'ng-zorro-antd/notification';
-import { NzSelectModule } from 'ng-zorro-antd/select';
-import { NzTableModule } from 'ng-zorro-antd/table';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { ApiClientError, ApiResponseReader } from '../../../../core/api/api-client-result';
 import { ValidationError } from '../../../../core/api/api-error.model';
+import { DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
+import { TableCellTemplateDirective } from '../../../../shared/components/data-table/table-cell-template.directive';
+import { DropdownComponent } from '../../../../shared/components/dropdown/dropdown.component';
+import { FormDialogComponent } from '../../../../shared/components/form-dialog/form-dialog.component';
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../../shared/components/status-tag/status-tag.component';
+import { FocusFirstRequiredDirective } from '../../../../shared/directives/focus-first-required.directive';
+import { TablePageChange } from '../../../../shared/models/table.model';
 import { DateTimePipe } from '../../../../shared/pipes/date-time.pipe';
+import { ApiNotifierService } from '../../../../shared/services/api-notifier.service';
+import { ConfirmDeleteService } from '../../../../shared/services/confirm-delete.service';
 import { describeApiError } from '../../../../shared/utilities/describe-api-error';
 import { CategoryCodes } from '../../../common/constants/category-codes';
 import { CategoryApiService } from '../../api/category-api.service';
@@ -27,6 +32,7 @@ import { toParentSelectorNodes } from '../../mappers/category-parent-options.map
 import { buildCategoryTree, filterCategoryTree, flattenVisibleCategoryTree } from '../../mappers/category-tree.mapper';
 import { CategoryFormModel, emptyCategoryForm } from '../../models/category-form.model';
 import { CategoryTreeNode } from '../../models/category-tree-node.model';
+import { categoryHierarchyColumns } from './category-hierarchy.columns';
 
 @Component({
   selector: 'app-category-hierarchy-page',
@@ -34,18 +40,21 @@ import { CategoryTreeNode } from '../../models/category-tree-node.model';
   imports: [
     CommonModule,
     FormsModule,
+    DataTableComponent,
+    TableCellTemplateDirective,
+    DropdownComponent,
+    FormDialogComponent,
     PageStateComponent,
     StatusTagComponent,
     CategoryFormComponent,
     DateTimePipe,
+    FocusFirstRequiredDirective,
     NzAlertModule,
     NzButtonModule,
     NzCardModule,
     NzIconModule,
     NzInputModule,
     NzModalModule,
-    NzSelectModule,
-    NzTableModule,
     NzTagModule,
     NzToolTipModule
   ],
@@ -55,7 +64,8 @@ import { CategoryTreeNode } from '../../models/category-tree-node.model';
 export class CategoryHierarchyPageComponent implements OnInit {
   private readonly categoryApi = inject(CategoryApiService);
   private readonly modal = inject(NzModalService);
-  private readonly notification = inject(NzNotificationService);
+  private readonly apiNotifier = inject(ApiNotifierService);
+  private readonly confirmDelete = inject(ConfirmDeleteService);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -66,15 +76,30 @@ export class CategoryHierarchyPageComponent implements OnInit {
   readonly expandedCategoryIds = signal<ReadonlySet<string>>(new Set());
   readonly categories = signal<CategoryResponse[]>([]);
   readonly categoryModalOpen = signal(false);
+  readonly categoryCreateFocusTrigger = signal(0);
 
   readonly searchText = signal('');
   readonly statusFilter = signal('');
   readonly rootFilter = signal('');
   readonly hasChildrenFilter = signal('');
   readonly hasProductsFilter = signal('');
+  pageIndex = 1;
+  pageSize = 20;
+  readonly pageSizeOptions = [10, 20, 50];
   categoryForm: CategoryFormModel = emptyCategoryForm();
 
   readonly statusDisplay = categoryStatusDisplay;
+  readonly tableColumns = categoryHierarchyColumns;
+  readonly statusOptions = [
+    { value: '', label: 'All' },
+    { value: 'Draft', label: 'Draft' },
+    { value: 'Published', label: 'Published' },
+    { value: 'Archived', label: 'Archived' }
+  ];
+  readonly rowIdentity = (node: CategoryTreeNode): string => node.id;
+  readonly rowClass = (node: CategoryTreeNode): string => node.isContextOnly ? 'context-row' : '';
+  readonly rowAriaLevel = (node: CategoryTreeNode): number => node.level + 1;
+  readonly rowAriaExpanded = (node: CategoryTreeNode): boolean | null => node.hasChildren ? node.isExpanded : null;
 
   readonly treeResult = computed(() => buildCategoryTree(this.categories(), this.expandedCategoryIds()));
   readonly treeDiagnostics = computed(() => this.treeResult().diagnostics);
@@ -141,6 +166,36 @@ export class CategoryHierarchyPageComponent implements OnInit {
     this.rootFilter.set('');
     this.hasChildrenFilter.set('');
     this.hasProductsFilter.set('');
+    this.pageIndex = 1;
+  }
+
+  changeSearchText(searchText: string): void {
+    this.searchText.set(searchText);
+    this.pageIndex = 1;
+  }
+
+  changeStatusFilter(status: string): void {
+    this.statusFilter.set(status);
+    this.pageIndex = 1;
+  }
+
+  changeTablePage(page: TablePageChange): void {
+    this.pageIndex = page.pageIndex;
+    this.pageSize = page.pageSize;
+  }
+
+  pagedVisibleRows(): CategoryTreeNode[] {
+    const start = (this.effectivePageIndex() - 1) * this.pageSize;
+    return this.visibleRows().slice(start, start + this.pageSize);
+  }
+
+  visibleRowTotal(): number {
+    return this.visibleRows().length;
+  }
+
+  effectivePageIndex(): number {
+    const maxPage = Math.max(1, Math.ceil(this.visibleRowTotal() / this.pageSize));
+    return Math.min(this.pageIndex, maxPage);
   }
 
   openCreateCategory(): void {
@@ -183,6 +238,12 @@ export class CategoryHierarchyPageComponent implements OnInit {
     this.categoryForm = emptyCategoryForm();
     this.validationErrors.set([]);
     this.mutationErrorMessage.set('');
+  }
+
+  triggerCategoryCreateFocus(): void {
+    if (this.categoryModalOpen() && !this.selectedCategory()) {
+      this.categoryCreateFocusTrigger.update(value => value + 1);
+    }
   }
 
   async saveCategory(form = this.categoryForm): Promise<void> {
@@ -239,19 +300,19 @@ export class CategoryHierarchyPageComponent implements OnInit {
     }
   }
 
-  deleteCategory(category: CategoryResponse): void {
+  async deleteCategory(category: CategoryResponse): Promise<void> {
     if (this.saving()) {
       return;
     }
 
-    this.modal.confirm({
-      nzTitle: `Delete category "${category.name}"?`,
-      nzContent: 'This action cannot be undone.',
-      nzOkText: 'Delete',
-      nzOkDanger: true,
-      nzCancelText: 'Cancel',
-      nzOnOk: () => this.confirmDeleteCategory(category)
-    });
+    if (!await this.confirmDelete.open({
+      title: 'Delete Category',
+      itemName: category.name
+    })) {
+      return;
+    }
+
+    await this.confirmDeleteCategory(category);
   }
 
   trackByCategoryId(_: number, node: CategoryTreeNode): string {
@@ -298,7 +359,6 @@ export class CategoryHierarchyPageComponent implements OnInit {
       this.expandedCategoryIds.set(expanded);
     } catch (error) {
       await this.handleMutationError(error, 'Delete Category Failed');
-      throw error;
     } finally {
       this.saving.set(false);
     }
@@ -334,12 +394,11 @@ export class CategoryHierarchyPageComponent implements OnInit {
       this.validationErrors.set(error.result.validationErrors);
       const message = ApiResponseReader.formatFailure(error.result);
       this.mutationErrorMessage.set(message);
-      this.notification.error(title, message);
+      this.apiNotifier.error(title, message);
       return;
     }
 
-    const message = describeApiError(error);
+    const message = this.apiNotifier.error(title, error);
     this.mutationErrorMessage.set(message);
-    this.notification.error(title, message);
   }
 }

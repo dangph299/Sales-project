@@ -24,21 +24,21 @@
           nz-input
           name="categorySearch"
           [ngModel]="searchText()"
-          (ngModelChange)="searchText.set($event)"
+          (ngModelChange)="changeSearchText($event)"
           placeholder="Name, code, or parent category">
       </label>
     </div>
 
     <div class="toolbar-filters">
-      <div class="filter-field">
-        <span>Status</span>
-        <nz-select name="categoryStatusFilter" [ngModel]="statusFilter()" (ngModelChange)="statusFilter.set($event)">
-          <nz-option nzValue="" nzLabel="All"></nz-option>
-          <nz-option nzValue="Draft" nzLabel="Draft"></nz-option>
-          <nz-option nzValue="Published" nzLabel="Published"></nz-option>
-          <nz-option nzValue="Archived" nzLabel="Archived"></nz-option>
-        </nz-select>
-      </div>
+      <app-dropdown
+        class="filter-field"
+        label="Status"
+        name="categoryStatusFilter"
+        presentation="toolbar"
+        [ngModel]="statusFilter()"
+        [options]="statusOptions"
+        (ngModelChange)="changeStatusFilter($event)">
+      </app-dropdown>
     </div>
 
     <div class="toolbar-actions">
@@ -49,44 +49,31 @@
     </div>
   </div>
 
-  <app-page-state
+  <app-data-table
     class="category-state"
+    [showCard]="false"
+    tableRole="treegrid"
+    size="middle"
+    scrollX="1250px"
+    [columns]="tableColumns"
+    [rows]="pagedVisibleRows()"
+    [rowKey]="rowIdentity"
+    [rowClass]="rowClass"
+    [rowAriaLevel]="rowAriaLevel"
+    [rowAriaExpanded]="rowAriaExpanded"
     [loading]="loading()"
     [errorMessage]="errorMessage()"
     [empty]="visibleRows().length === 0"
+    [total]="visibleRowTotal()"
+    [pageIndex]="effectivePageIndex()"
+    [pageSize]="pageSize"
+    [pageSizeOptions]="pageSizeOptions"
+    [showPagination]="true"
     emptyTitle="No categories found"
     emptyText="Create your first category to start organizing the product catalog."
-    (retry)="loadCategories()">
-  </app-page-state>
-
-  <nz-table
-    *ngIf="!loading() && !errorMessage() && visibleRows().length > 0"
-    role="treegrid"
-    nzSize="middle"
-    [nzData]="visibleRows()"
-    [nzFrontPagination]="false"
-    [nzShowPagination]="false"
-    [nzScroll]="{ x: '1250px' }">
-    <thead>
-      <tr>
-        <th class="category-column" nzWidth="250px">Category</th>
-        <th class="code-column" nzWidth="120px">Code</th>
-        <th class="parent-column" nzWidth="150px">Parent Category</th>
-        <th class="status-column" nzWidth="120px">Status</th>
-        <th class="number-column" nzWidth="90px">Sort</th>
-        <th class="number-column" nzWidth="100px">Products</th>
-        <th class="date-column" nzWidth="150px">Updated</th>
-        <th class="actions-column" nzWidth="150px">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr
-        *ngFor="let node of visibleRows(); trackBy: trackByCategoryId"
-        role="row"
-        [attr.aria-level]="node.level + 1"
-        [attr.aria-expanded]="node.hasChildren ? node.isExpanded : null"
-        [class.context-row]="node.isContextOnly">
-        <td role="gridcell" class="category-column">
+    (retry)="loadCategories()"
+    (pageChanged)="changeTablePage($event)">
+    <ng-template appTableCell="category" let-node>
           <div class="tree-cell" [style.--tree-level]="node.level">
             <span class="tree-indent"></span>
             <button
@@ -106,22 +93,19 @@
             </span>
             <nz-tag *ngIf="node.isInvalid" nzColor="warning">{{ node.invalidReason }}</nz-tag>
           </div>
-        </td>
-        <td class="code-column">
-          <span class="cell-ellipsis mono" [nzTooltipTitle]="node.code" nz-tooltip>{{ node.code }}</span>
-        </td>
-        <td class="parent-column">
-          <span class="cell-ellipsis" [nzTooltipTitle]="node.parentCategoryName || 'Root'" nz-tooltip>
-            {{ node.parentCategoryName || 'Root' }}
-          </span>
-        </td>
-        <td class="status-column">
-          <app-status-tag [display]="statusDisplay(node.status)"></app-status-tag>
-        </td>
-        <td class="number-column">{{ node.sortOrder }}</td>
-        <td class="number-column">{{ node.productCount ?? 0 }}</td>
-        <td class="date-column">{{ node.updatedAt | dateTime }}</td>
-        <td class="actions-column">
+    </ng-template>
+    <ng-template appTableCell="code" let-node>
+      <span class="cell-ellipsis mono" [nzTooltipTitle]="node.code" nz-tooltip>{{ node.code }}</span>
+    </ng-template>
+    <ng-template appTableCell="parentCategoryName" let-node>
+      <span class="cell-ellipsis" [nzTooltipTitle]="node.parentCategoryName || 'Root'" nz-tooltip>
+        {{ node.parentCategoryName || 'Root' }}
+      </span>
+    </ng-template>
+    <ng-template appTableCell="status" let-node>
+      <app-status-tag [display]="statusDisplay(node.status)"></app-status-tag>
+    </ng-template>
+    <ng-template appTableCell="actions" let-node>
           <div class="row-actions">
             <button
               nz-button
@@ -141,29 +125,29 @@
               Delete
             </button>
           </div>
-        </td>
-      </tr>
-    </tbody>
-  </nz-table>
+    </ng-template>
+  </app-data-table>
 </nz-card>
 
-<nz-modal
-  [nzVisible]="categoryModalOpen()"
-  [nzTitle]="modalTitle()"
-  [nzFooter]="null"
-  [nzWidth]="640"
-  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
-  (nzOnCancel)="closeCategoryModal()">
-  <ng-container *nzModalContent>
-    <app-category-form
-      [model]="categoryForm"
-      [parentOptions]="parentOptions()"
-      [validationErrors]="validationErrors()"
-      [errorMessage]="mutationErrorMessage()"
-      [saving]="saving()"
-      [editing]="!!selectedCategory()"
-      [assignedCode]="selectedCategory()?.categoryCode || ''"
-      (save)="saveCategory($event)"
-      (cancel)="closeCategoryModal()"></app-category-form>
-  </ng-container>
-</nz-modal>
+<app-form-dialog
+  [title]="modalTitle()"
+  [open]="categoryModalOpen()"
+  [saving]="saving()"
+  [saveDisabled]="false"
+  [saveText]="selectedCategory() ? 'Save Changes' : 'Create Category'"
+  [width]="640"
+  [bodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (afterOpen)="triggerCategoryCreateFocus()"
+  (save)="saveCategory()"
+  (cancel)="closeCategoryModal()">
+  <app-category-form
+    [appFocusFirstRequired]="!selectedCategory()"
+    [focusFirstRequiredTrigger]="categoryCreateFocusTrigger()"
+    [model]="categoryForm"
+    [parentOptions]="parentOptions()"
+    [validationErrors]="validationErrors()"
+    [errorMessage]="mutationErrorMessage()"
+    [editing]="!!selectedCategory()"
+    [assignedCode]="selectedCategory()?.categoryCode || ''"
+    (save)="saveCategory($event)"></app-category-form>
+</app-form-dialog>

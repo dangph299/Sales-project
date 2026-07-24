@@ -7,9 +7,12 @@ import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
-import { NzSelectModule } from 'ng-zorro-antd/select';
 import { NzTreeSelectModule } from 'ng-zorro-antd/tree-select';
 import { ValidationError } from '../../../../core/api/api-error.model';
+import { DropdownComponent } from '../../../../shared/components/dropdown/dropdown.component';
+import { FormFieldComponent } from '../../../../shared/components/form-field/form-field.component';
+import { SelectOption } from '../../../../shared/models/select-option.model';
+import { CategoryStatus } from '../../constants/category-status';
 import { CategoryFormModel } from '../../models/category-form.model';
 
 @Component({
@@ -18,12 +21,12 @@ import { CategoryFormModel } from '../../models/category-form.model';
   imports: [
     CommonModule,
     FormsModule,
+    DropdownComponent,
+    FormFieldComponent,
     NzAlertModule,
-    NzButtonModule,
     NzFormModule,
     NzInputModule,
     NzInputNumberModule,
-    NzSelectModule,
     NzTreeSelectModule
   ],
   templateUrl: './category-form.component.html',
@@ -34,14 +37,18 @@ export class CategoryFormComponent {
   @Input() parentOptions: NzTreeNodeOptions[] = [];
   @Input() validationErrors: ValidationError[] = [];
   @Input() errorMessage = '';
-  @Input() saving = false;
   @Input() editing = false;
 
   /** Backend-assigned category code, shown read-only while editing. */
   @Input() assignedCode = '';
 
   @Output() save = new EventEmitter<CategoryFormModel>();
-  @Output() cancel = new EventEmitter<void>();
+
+  readonly statusOptions: SelectOption<CategoryStatus>[] = [
+    { value: 'Draft', label: 'Draft' },
+    { value: 'Published', label: 'Published' },
+    { value: 'Archived', label: 'Archived' }
+  ];
 
   fieldError(field: string): string {
     return this.validationErrors.find(error => error.field.toLowerCase() === field.toLowerCase())?.message ?? '';

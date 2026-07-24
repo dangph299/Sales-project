@@ -12,14 +12,24 @@ namespace Dashboard.Bff.Extensions;
 public static class DashboardBffStartupTaskExtensions
 {
     /// <summary>
-    /// Runs the Dashboard BFF startup tasks. Currently a no-op placeholder; recurring-job
-    /// (Hangfire) registration is added in a later phase.
+    /// Runs the Dashboard BFF startup tasks. Recurring-job registration is best-effort so
+    /// dashboard HTTP traffic is still served when Hangfire storage is temporarily unavailable.
     /// </summary>
     /// <param name="app">Dashboard BFF application.</param>
     /// <returns>A completed task.</returns>
     public static Task RunDashboardStartupTasksAsync(this WebApplication app)
     {
-        app.Services.RegisterDashboardRecurringJobs();
+        try
+        {
+            app.Services.RegisterDashboardRecurringJobs();
+        }
+        catch (Exception exception)
+        {
+            app.Logger.LogError(
+                exception,
+                "Dashboard recurring job registration failed. The Dashboard BFF will continue serving HTTP requests.");
+        }
+
         return Task.CompletedTask;
     }
 

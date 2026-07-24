@@ -163,7 +163,7 @@ public static class DashboardBffServiceCollectionExtensions
         var refreshOptions = configuration.GetSection(DashboardRefreshJobOptions.SectionName).Get<DashboardRefreshJobOptions>()
             ?? new DashboardRefreshJobOptions();
         var hangfireConnectionString = configuration.GetConnectionString("Hangfire");
-        if (string.IsNullOrWhiteSpace(hangfireConnectionString))
+        if (!refreshOptions.Enabled || string.IsNullOrWhiteSpace(hangfireConnectionString))
         {
             return services;
         }

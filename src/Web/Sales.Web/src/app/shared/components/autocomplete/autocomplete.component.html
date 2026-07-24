@@ -1,0 +1,61 @@
+<ng-template #autocompleteControl>
+  <div class="autocomplete-shell">
+    <input
+      #textInput
+      nz-input
+      [attr.name]="name || null"
+      [ngModel]="inputText"
+      [disabled]="disabled || readonly"
+      [placeholder]="placeholder"
+      [attr.aria-required]="required"
+      [attr.aria-invalid]="invalidSelection"
+      [attr.aria-expanded]="visibleOptions.length > 0"
+      [nzAutocomplete]="auto"
+      (ngModelChange)="changeText($event)"
+      (blur)="markTouched()">
+    <button
+      *ngIf="clearable && inputText"
+      nz-button
+      nzType="text"
+      type="button"
+      aria-label="Clear value"
+      [disabled]="disabled || readonly"
+      (click)="clear()">
+      Clear
+    </button>
+  </div>
+
+  <nz-autocomplete #auto>
+    <nz-auto-option
+      *ngFor="let option of visibleOptions"
+      [nzValue]="displayWith(option)"
+      [nzLabel]="displayWith(option)"
+      (selectionChange)="selectOption(option, $event)">
+      <ng-container *ngIf="optionTemplate; else plainOption">
+        <ng-container *ngTemplateOutlet="optionTemplate.template; context: { $implicit: option, option: option }"></ng-container>
+      </ng-container>
+      <ng-template #plainOption>{{ displayWith(option) }}</ng-template>
+    </nz-auto-option>
+  </nz-autocomplete>
+
+  <div
+    class="field-hint"
+    *ngIf="showStatusHint && (searching() || invalidSelection || (!searching() && inputText && visibleOptions.length === 0))">
+    <ng-container *ngIf="searching()">Searching...</ng-container>
+    <ng-container *ngIf="!searching() && invalidSelection">Select an option from the list.</ng-container>
+    <ng-container *ngIf="!searching() && !invalidSelection && inputText && visibleOptions.length === 0">No results found.</ng-container>
+  </div>
+</ng-template>
+
+<ng-container [ngSwitch]="presentation">
+  <nz-form-item *ngSwitchCase="'form'">
+    <nz-form-label *ngIf="label" [nzRequired]="required">{{ label }}</nz-form-label>
+    <nz-form-control [nzErrorTip]="errorMessage || loadErrorMessage()">
+      <ng-container *ngTemplateOutlet="autocompleteControl"></ng-container>
+    </nz-form-control>
+  </nz-form-item>
+
+  <ng-container *ngSwitchDefault>
+    <ng-container *ngTemplateOutlet="autocompleteControl"></ng-container>
+  </ng-container>
+</ng-container>

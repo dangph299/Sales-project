@@ -1,0 +1,24 @@
+:host {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.autocomplete-shell {
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.autocomplete-shell input {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.field-hint {
+  color: rgba(0, 0, 0, 0.45);
+  font-size: 12px;
+  margin-top: 4px;
+}

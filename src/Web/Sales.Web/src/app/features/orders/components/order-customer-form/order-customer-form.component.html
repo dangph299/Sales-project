@@ -1,72 +1,52 @@
-<div nz-form nzLayout="vertical" class="form-grid three">
-  <nz-form-item>
-    <nz-form-label nzRequired>Phone</nz-form-label>
-    <nz-form-control [nzExtra]="phoneHint">
-      <input
-        nz-input
-        name="orderCustomerPhone"
-        [ngModel]="customer.phone"
-        [disabled]="disabled"
-        (ngModelChange)="changePhone($event)"
-        [nzAutocomplete]="phoneSuggestions"
-        placeholder="Type a phone number">
-      <nz-autocomplete #phoneSuggestions>
-        <nz-auto-option
-          *ngFor="let suggestion of suggestions()"
-          [nzValue]="suggestion.phone"
-          [nzLabel]="suggestion.phone"
-          (selectionChange)="selectSuggestion(suggestion, $event)">
-          {{ suggestion.phone }} — {{ suggestion.name }}
-        </nz-auto-option>
-      </nz-autocomplete>
-      <span class="field-error" *ngIf="errors.phone">{{ errors.phone }}</span>
-    </nz-form-control>
-    <ng-template #phoneHint>
-      <ng-container *ngIf="searching()">Searching…</ng-container>
-      <ng-container *ngIf="!searching() && isNewCustomer()">New Customer</ng-container>
-      <ng-container *ngIf="suggestionErrorMessage()">{{ suggestionErrorMessage() }}</ng-container>
-    </ng-template>
-  </nz-form-item>
+<div class="form-grid three">
+  <app-form-field label="Phone" [required]="true" [hint]="phoneHint()" [error]="errors.phone || ''">
+    <app-autocomplete
+      name="orderCustomerPhone"
+      presentation="control"
+      placeholder="Type a phone number"
+      [required]="true"
+      [disabled]="disabled"
+      [clearable]="false"
+      [showStatusHint]="false"
+      [ngModel]="customer.phone"
+      [searchFn]="phoneSuggestionSearch"
+      [displayWith]="displayPhoneSuggestion"
+      valueMode="text"
+      (ngModelChange)="changePhoneValue($event)"
+      (searchingChanged)="searching.set($event)"
+      (selected)="selectSuggestion($event)">
+    </app-autocomplete>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label nzRequired>Customer Name</nz-form-label>
-    <nz-form-control>
-      <input
-        nz-input
-        name="orderCustomerName"
-        [ngModel]="customer.name"
-        [disabled]="disabled"
-        (ngModelChange)="changeName($event)"
-        placeholder="Customer name">
-      <span class="field-error" *ngIf="errors.name">{{ errors.name }}</span>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Customer Name" [required]="true" [error]="errors.name || ''">
+    <input
+      nz-input
+      name="orderCustomerName"
+      [ngModel]="customer.name"
+      [disabled]="disabled"
+      (ngModelChange)="changeName($event)"
+      placeholder="Customer name">
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label>Email</nz-form-label>
-    <nz-form-control>
-      <input
-        nz-input
-        name="orderCustomerEmail"
-        type="email"
-        [ngModel]="customer.email"
-        [disabled]="disabled"
-        (ngModelChange)="changeEmail($event)"
-        placeholder="Optional">
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Email">
+    <input
+      nz-input
+      name="orderCustomerEmail"
+      type="email"
+      [ngModel]="customer.email"
+      [disabled]="disabled"
+      (ngModelChange)="changeEmail($event)"
+      placeholder="Optional">
+  </app-form-field>
 
-  <nz-form-item class="wide">
-    <nz-form-label>Address</nz-form-label>
-    <nz-form-control>
-      <textarea
-        nz-input
-        name="orderCustomerAddress"
-        rows="2"
-        [ngModel]="customer.address"
-        [disabled]="disabled"
-        (ngModelChange)="changeAddress($event)"
-        placeholder="Optional"></textarea>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field class="wide" label="Address">
+    <textarea
+      nz-input
+      name="orderCustomerAddress"
+      rows="2"
+      [ngModel]="customer.address"
+      [disabled]="disabled"
+      (ngModelChange)="changeAddress($event)"
+      placeholder="Optional"></textarea>
+  </app-form-field>
 </div>

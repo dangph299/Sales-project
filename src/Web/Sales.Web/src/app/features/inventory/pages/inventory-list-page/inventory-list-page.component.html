@@ -14,120 +14,75 @@
   <label> Product name
     <input nz-input name="inventoryProductName" [(ngModel)]="nameFilter" (keyup.enter)="search()" placeholder="Search by product name">
   </label>
-  <div class="filter-field">
-    <span>Stock state (this page)</span>
-    <nz-select name="stockState" [(ngModel)]="stockStateFilter" style="width: 150px">
-      <nz-option nzValue="" nzLabel="All"></nz-option>
-      <nz-option nzValue="available" nzLabel="Available"></nz-option>
-      <nz-option nzValue="low" nzLabel="Low stock"></nz-option>
-      <nz-option nzValue="out" nzLabel="Out of stock"></nz-option>
-    </nz-select>
-  </div>
+  <app-dropdown
+    class="filter-field"
+    label="Stock state (this page)"
+    name="stockState"
+    presentation="toolbar"
+    controlWidth="150px"
+    [(ngModel)]="stockStateFilter"
+    [options]="stockStateOptions">
+  </app-dropdown>
   <button nz-button nzType="primary" type="button" (click)="search()">Search</button>
 </section>
 
-<app-page-state
+<app-data-table
+  title="Stock Overview"
+  recordLabel="variants"
+  [columns]="tableColumns"
+  [rows]="filteredRows()"
   [loading]="loading()"
   [errorMessage]="errorMessage()"
   [empty]="stockRows().length === 0"
   emptyTitle="No variants found"
   emptyText="Adjust the filters, or add variants to a product to track their stock."
-  (retry)="loadStockRows()"></app-page-state>
+  [total]="total()"
+  [pageIndex]="pageIndex"
+  [pageSize]="pageSize"
+  [pageSizeOptions]="pageSizeOptions"
+  [showPagination]="true"
+  [sort]="tableSort()"
+  [clickableRows]="true"
+  [selectedRowKey]="selectedRow()?.variant?.id || ''"
+  scrollX="1080px"
+  cardClass="wide"
+  [cardExtraText]="'Low threshold: ' + lowStockThreshold"
+  [showTableWhenEmpty]="stockRows().length > 0"
+  [rowKey]="rowIdentity"
+  (retry)="loadStockRows()"
+  (pageChanged)="changeTablePage($event)"
+  (sortChanged)="changeTableSort($event)"
+  (rowClicked)="selectRow($event)">
+  <ng-template appTableCell="status" let-row>
+    <app-status-tag [display]="statusDisplay(row.variant.status)"></app-status-tag>
+  </ng-template>
+  <ng-template appTableCell="total" let-row>
+    {{ totalQuantity(row) }}
+  </ng-template>
+  <ng-template appTableCell="state" let-row>
+    <span class="stock-chip" [class]="stockState(row)">{{ stockStateText(row) }}</span>
+  </ng-template>
+  <ng-template appTableCell="actions" let-row>
+    <button nz-button nzSize="small" type="button" (click)="$event.stopPropagation(); openAdjustment(row)">
+      Adjust
+    </button>
+  </ng-template>
+</app-data-table>
 
-<nz-card *ngIf="!loading() && stockRows().length > 0" class="wide" nzTitle="Stock Overview" [nzExtra]="thresholdNote">
-  <ng-template #thresholdNote>Low threshold: {{ lowStockThreshold }}</ng-template>
-
-  <nz-table
-    #stockTable
-    [nzData]="filteredRows()"
-    [nzFrontPagination]="false"
-    [nzShowPagination]="true"
-    [nzTotal]="total()"
-    [nzPageIndex]="pageIndex"
-    [nzPageSize]="pageSize"
-    [nzPageSizeOptions]="pageSizeOptions"
-    [nzShowSizeChanger]="true"
-    [nzShowTotal]="totalTemplate"
-    nzSize="small"
-    [nzScroll]="{ x: '1080px' }"
-    (nzPageIndexChange)="changePage($event)"
-    (nzPageSizeChange)="changePageSize($event)">
-    <thead>
-      <tr>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('sku')">
-            SKU <span>{{ sortIndicator('sku') }}</span>
-          </button>
-        </th>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('product')">
-            Product <span>{{ sortIndicator('product') }}</span>
-          </button>
-        </th>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('color')">
-            Color <span>{{ sortIndicator('color') }}</span>
-          </button>
-        </th>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('size')">
-            Size <span>{{ sortIndicator('size') }}</span>
-          </button>
-        </th>
-        <th>
-          <button class="sort-header" type="button" (click)="sortBy('status')">
-            Variant Status <span>{{ sortIndicator('status') }}</span>
-          </button>
-        </th>
-        <th>Available</th>
-        <th>Reserved</th>
-        <th>Total</th>
-        <th>State</th>
-        <th class="actions-column">Actions</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr
-        *ngFor="let row of stockTable.data"
-        class="selectable"
-        [class.ant-table-row-selected]="selectedRow()?.variant?.id === row.variant.id"
-        (click)="selectRow(row)">
-        <td>{{ row.variant.sku }}</td>
-        <td>{{ row.product.name }}</td>
-        <td>{{ row.variant.color?.code || '-' }}</td>
-        <td>{{ row.variant.size?.code || '-' }}</td>
-        <td>
-          <app-status-tag [display]="statusDisplay(row.variant.status)"></app-status-tag>
-        </td>
-        <td>{{ row.inventory?.available ?? 0 }}</td>
-        <td>{{ row.inventory?.reserved ?? 0 }}</td>
-        <td>{{ totalQuantity(row) }}</td>
-        <td><span class="stock-chip" [class]="stockState(row)">{{ stockStateText(row) }}</span></td>
-        <td class="actions-column">
-          <button nz-button nzSize="small" type="button" (click)="$event.stopPropagation(); openAdjustment(row)">
-            Adjust
-          </button>
-        </td>
-      </tr>
-    </tbody>
-  </nz-table>
-  <ng-template #totalTemplate let-total>Total {{ total }} variants</ng-template>
-</nz-card>
-
-<nz-modal
-  [nzVisible]="adjustmentModalOpen()"
-  nzTitle="Receive / Adjust Stock"
-  [nzFooter]="null"
-  [nzWidth]="560"
-  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
-  (nzOnCancel)="closeAdjustment()">
-  <ng-container *nzModalContent>
-    <app-stock-adjustment-form
-      *ngIf="selectedRow() as row"
-      [row]="row"
-      [model]="adjustmentForm"
-      [saving]="saving()"
-      [errorMessage]="mutationErrorMessage()"
-      (apply)="adjustInventory()"></app-stock-adjustment-form>
-  </ng-container>
-</nz-modal>
+<app-form-dialog
+  [title]="'Receive / Adjust Stock'"
+  [open]="adjustmentModalOpen()"
+  [saving]="saving()"
+  [saveDisabled]="!canAdjustSelected()"
+  saveText="Apply adjustment"
+  [width]="560"
+  [bodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (save)="adjustInventory()"
+  (cancel)="closeAdjustment()">
+  <app-stock-adjustment-form
+    *ngIf="selectedRow() as row"
+    [row]="row"
+    [model]="adjustmentForm"
+    [errorMessage]="mutationErrorMessage()"
+    (apply)="adjustInventory()"></app-stock-adjustment-form>
+</app-form-dialog>

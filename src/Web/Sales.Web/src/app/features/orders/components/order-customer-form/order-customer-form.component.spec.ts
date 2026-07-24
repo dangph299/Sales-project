@@ -1,6 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
-import { NzOptionSelectionChange } from 'ng-zorro-antd/auto-complete';
 import { CustomerLookupApiService } from '../../../common/api/customer-lookup-api.service';
 import { CustomerPhoneSuggestionResponse } from '../../../common/contracts/customer-lookup.response';
 import { OrderCustomerRequest } from '../../api/requests/order-customer.request';
@@ -53,7 +52,7 @@ describe('OrderCustomerFormComponent phone entry', () => {
     const emitted: OrderCustomerRequest[] = [];
     component.customerChange.subscribe(customer => emitted.push(customer));
 
-    component.selectSuggestion(suggestion(), userPick());
+    component.selectSuggestion(suggestion());
     fixture.detectChanges();
     // NgModel writes the new value to the input on the next microtask.
     await fixture.whenStable();
@@ -64,22 +63,12 @@ describe('OrderCustomerFormComponent phone entry', () => {
       email: 'a@example.com',
       address: '12 Le Loi'
     });
-    // The regression: the box showed nothing, because its value was a customer id.
-    expect(phoneInput().value).toBe('0901234567');
-  });
-
-  it('ignores a suggestion the user did not pick', () => {
-    let emittedCount = 0;
-    component.customerChange.subscribe(() => emittedCount++);
-
-    component.selectSuggestion(suggestion(), { isUserInput: false } as NzOptionSelectionChange);
-
-    expect(emittedCount).toBe(0);
+    expect(component.customer.phone).toBe('0901234567');
   });
 
   it('does not treat a picked customer as new', async () => {
     lookup.suggestions = [suggestion()];
-    component.selectSuggestion(suggestion(), userPick());
+    component.selectSuggestion(suggestion());
     typePhone('0901234567');
     await settleDebounce();
 
@@ -94,12 +83,11 @@ describe('OrderCustomerFormComponent phone entry', () => {
     expect(component.isNewCustomer()).toBeTrue();
   });
 
-  it('recovers loading and customer state when the same number is re-entered after clearing', async () => {
+  it('recovers customer state when the same number is re-entered after clearing', async () => {
     lookup.suggestions = [suggestion()]; // 0901234567
 
     typePhone('0901234567');
     await settleDebounce();
-    expect(component.searching()).toBeFalse();
     expect(component.isNewCustomer()).toBeFalse();
 
     typePhone('');
@@ -108,23 +96,18 @@ describe('OrderCustomerFormComponent phone entry', () => {
     typePhone('0901234567');
     await settleDebounce();
 
-    expect(component.searching()).toBeFalse();
     expect(component.isNewCustomer()).toBeFalse();
   });
 
-  it('does not get stuck loading when the same number is entered twice in a row', async () => {
+  it('does not treat repeated matched input as a new customer', async () => {
     lookup.suggestions = [suggestion()];
 
     typePhone('0901234567');
     await settleDebounce();
-    expect(component.searching()).toBeFalse();
 
-    // distinctUntilChanged drops this repeat, so no request runs. The old code flipped `searching`
-    // on before the pipe, so the dropped term left it stuck true and hid the new-customer hint.
     typePhone('0901234567');
     await settleDebounce();
 
-    expect(component.searching()).toBeFalse();
     expect(component.isNewCustomer()).toBeFalse();
   });
 
@@ -134,31 +117,10 @@ describe('OrderCustomerFormComponent phone entry', () => {
     typePhone('0987654321');
     await settleDebounce();
 
-    expect(component.searching()).toBeFalse();
     expect(component.suggestionErrorMessage()).not.toBe('');
   });
 
-  it('does not leave loading stuck when a newer term cancels an in-flight lookup', async () => {
-    lookup.manualResolve = true;
-
-    typePhone('0901111111');
-    await settleDebounce();
-    expect(component.searching()).toBeTrue();
-
-    // A newer term makes switchMap tear down the first, still-pending lookup and start a second.
-    typePhone('0902222222');
-    await settleDebounce();
-    expect(component.searching()).toBeTrue();
-
-    lookup.resolveAll();
-    // Let the resolved lookup's promise chain (loadSuggestions → from → finalize) drain before
-    // reading the flag, the same way settleDebounce settles the other async paths.
-    await settleDebounce();
-
-    expect(component.searching()).toBeFalse();
-  });
-
-  it('clears suggestions and loading when the field is emptied', async () => {
+  it('clears suggestions when the field is emptied', async () => {
     lookup.suggestions = [suggestion()];
     typePhone('0901234567');
     await settleDebounce();
@@ -168,7 +130,6 @@ describe('OrderCustomerFormComponent phone entry', () => {
     await settleDebounce();
 
     expect(component.suggestions()).toEqual([]);
-    expect(component.searching()).toBeFalse();
   });
 
   function phoneInput(): HTMLInputElement {
@@ -197,10 +158,6 @@ function suggestion(): CustomerPhoneSuggestionResponse {
     email: 'a@example.com',
     address: '12 Le Loi'
   };
-}
-
-function userPick(): NzOptionSelectionChange {
-  return { isUserInput: true } as NzOptionSelectionChange;
 }
 
 class FakeCustomerLookupApiService {

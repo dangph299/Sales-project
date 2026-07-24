@@ -3,7 +3,8 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
-import { NzTableModule } from 'ng-zorro-antd/table';
+import { DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
+import { TableCellTemplateDirective } from '../../../../shared/components/data-table/table-cell-template.directive';
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import {
@@ -14,6 +15,7 @@ import {
   normalizeDiscountPercent,
   normalizeQuantity
 } from '../../models/cart-line.model';
+import { orderLineEditorColumns } from './order-line-editor.columns';
 
 /** Owns cart line editing: quantity/discount normalisation, line and cart totals. */
 @Component({
@@ -22,11 +24,12 @@ import {
   imports: [
     CommonModule,
     FormsModule,
+    DataTableComponent,
+    TableCellTemplateDirective,
     PageStateComponent,
     MoneyPipe,
     NzButtonModule,
-    NzInputNumberModule,
-    NzTableModule
+    NzInputNumberModule
   ],
   templateUrl: './order-line-editor.component.html',
   styleUrl: './order-line-editor.component.scss'
@@ -49,6 +52,8 @@ export class OrderLineEditorComponent {
   @Output() createOrder = new EventEmitter<void>();
 
   readonly lineTotal = cartLineTotal;
+  readonly tableColumns = orderLineEditorColumns;
+  readonly rowIdentity = (line: CartLine): string => line.variant.id;
 
   get subtotal(): number {
     return cartSubtotal(this.lines);
