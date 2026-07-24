@@ -17,17 +17,17 @@ public sealed class InboxCleanupJob(
     ILogger<InboxCleanupJob> logger) : InboxCleanupJobBase<InventoryDbContext>(db, logger)
 {
     /// <summary>
-    /// Executes one Inventory processed inbox cleanup batch.
+    /// Executes one Inventory processed inbox cleanup batch. No distributed lock is used: the
+    /// delete is bounded and idempotent, so concurrent or repeated runs cannot corrupt data.
     /// </summary>
     [AutomaticRetry(Attempts = 3)]
     [DisableConcurrentExecution(timeoutInSeconds: 300)]
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var jobOptions = options.Value.InboxCleanup;
-        await ExecuteCoreAsync(
+        await ExecuteCleanupBatchAsync(
             jobOptions.BatchSize,
             jobOptions.RetentionDays,
-            InventoryMessagingJobLockKeys.InboxCleanup,
             clock.UtcNow,
             cancellationToken);
     }

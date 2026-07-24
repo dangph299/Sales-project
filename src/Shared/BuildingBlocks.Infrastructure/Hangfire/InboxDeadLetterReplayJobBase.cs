@@ -33,6 +33,21 @@ public abstract class InboxDeadLetterReplayJobBase<TDbContext>(
             return;
         }
 
+        await ExecuteReplayBatchAsync(batchSize, retryDelaySeconds, now, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes one reset batch without opening a transaction or acquiring any lock. Callers that
+    /// need single-instance execution must coordinate that themselves (e.g. a distributed lease)
+    /// before invoking this method.
+    /// </summary>
+    protected async Task ExecuteReplayBatchAsync(
+        int batchSize,
+        int retryDelaySeconds,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
         var nextAttemptAt = now.AddSeconds(retryDelaySeconds);
         var ids = await Inbox(db)
             .Where(row => row.Status == InboxMessageStatus.DeadLettered && row.Payload != null)
@@ -52,7 +67,6 @@ public abstract class InboxDeadLetterReplayJobBase<TDbContext>(
                 .SetProperty(row => row.DeadLetteredAt, (DateTimeOffset?)null)
                 .SetProperty(row => row.NextAttemptAt, nextAttemptAt), cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
         RecordReplayRequested(reset);
         logger.LogInformation(
             "{DbContext} replay dead-letter job reset {ResetCount} inbox rows at {ReplayRequestedAt} for retry at {NextAttemptAt}",

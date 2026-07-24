@@ -34,20 +34,17 @@ public sealed class MessagingReliabilityJobConventionsTests
     }
 
     [Fact]
-    public void Sales_and_inventory_messaging_lock_keys_do_not_overlap()
+    public void Sales_messaging_lock_keys_are_distinct()
     {
+        // Inventory no longer holds PostgreSQL advisory lock keys: its messaging jobs coordinate
+        // via a Redis distributed lease (ReplayDeadLetter) or need no lock at all (the others).
         var lockKeys = new[]
         {
             SalesMessagingJobLockKeys.ReplayDeadLetter,
             SalesMessagingJobLockKeys.KafkaLagMonitor,
             SalesMessagingJobLockKeys.InboxCleanup,
             SalesMessagingJobLockKeys.FailedOutboxRetry,
-            SalesMessagingJobLockKeys.OutboxPendingMonitor,
-            InventoryMessagingJobLockKeys.ReplayDeadLetter,
-            InventoryMessagingJobLockKeys.KafkaLagMonitor,
-            InventoryMessagingJobLockKeys.InboxCleanup,
-            InventoryMessagingJobLockKeys.FailedOutboxRetry,
-            InventoryMessagingJobLockKeys.OutboxPendingMonitor
+            SalesMessagingJobLockKeys.OutboxPendingMonitor
         };
 
         Assert.Equal(lockKeys.Length, lockKeys.Distinct().Count());

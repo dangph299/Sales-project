@@ -35,6 +35,21 @@ public abstract class KafkaLagMonitorJobBase<TDbContext>(
             return;
         }
 
+        await ExecuteMonitorBatchAsync(groupId, topics, warningThreshold, requestTimeoutSeconds, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes one Kafka consumer lag snapshot without opening a transaction or acquiring any
+    /// lock. Read-only against Kafka admin APIs: duplicate execution only duplicates metrics.
+    /// </summary>
+    protected async Task ExecuteMonitorBatchAsync(
+        string groupId,
+        IReadOnlyCollection<string> topics,
+        int warningThreshold,
+        int requestTimeoutSeconds,
+        CancellationToken cancellationToken)
+    {
         var timeout = TimeSpan.FromSeconds(requestTimeoutSeconds);
         using var adminClient = CreateAdminClient();
         var topicPartitions = ReadTopicPartitions(adminClient, topics, timeout);
@@ -42,7 +57,6 @@ public abstract class KafkaLagMonitorJobBase<TDbContext>(
         {
             SetKafkaConsumerLag(0, 0);
             logger.LogWarning("{DbContext} Kafka lag monitor found no partitions {GroupId}", typeof(TDbContext).Name, groupId);
-            await transaction.CommitAsync(cancellationToken);
             return;
         }
 
@@ -107,8 +121,6 @@ public abstract class KafkaLagMonitorJobBase<TDbContext>(
                 totalLag,
                 laggingPartitions);
         }
-
-        await transaction.CommitAsync(cancellationToken);
     }
 
     private IAdminClient CreateAdminClient()

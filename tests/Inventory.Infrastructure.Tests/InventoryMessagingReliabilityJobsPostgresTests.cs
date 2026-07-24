@@ -1,5 +1,6 @@
 using BuildingBlocks.Application;
 using BuildingBlocks.Infrastructure;
+using BuildingBlocks.Infrastructure.Coordination.Redis;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -33,6 +34,7 @@ public sealed class InventoryMessagingReliabilityJobsPostgresTests
         await new ReplayDeadLetterJob(
             context,
             new FixedClock(CurrentUtc),
+            new AlwaysAcquiringLeaseManager(),
             Options.Create(OptionsForReplayDeadLetter()),
             NullLogger<ReplayDeadLetterJob>.Instance).ExecuteAsync();
 
@@ -307,6 +309,28 @@ public sealed class InventoryMessagingReliabilityJobsPostgresTests
     private sealed class FixedClock(DateTimeOffset currentUtc) : IClock
     {
         public DateTimeOffset UtcNow { get; } = currentUtc;
+    }
+
+    private sealed class AlwaysAcquiringLeaseManager : IDistributedLeaseManager
+    {
+        public Task<IDistributedLease?> TryAcquireAsync(
+            string resource,
+            DistributedLeaseOptions options,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IDistributedLease?>(new AcquiredLease(resource));
+        }
+
+        private sealed class AcquiredLease(string resource) : IDistributedLease
+        {
+            public string Resource { get; } = resource;
+
+            public string OwnerToken { get; } = Guid.NewGuid().ToString("N");
+
+            public bool IsHeld => true;
+
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        }
     }
 
     private sealed class RecordingOutboxSignal : IOutboxSignal
