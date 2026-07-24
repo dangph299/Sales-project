@@ -13,14 +13,17 @@ import { ApiClientError, ApiResponseReader } from '../../../../core/api/api-clie
 import { ValidationError } from '../../../../core/api/api-error.model';
 import { DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
 import { TableCellTemplateDirective } from '../../../../shared/components/data-table/table-cell-template.directive';
+import { FormDialogComponent } from '../../../../shared/components/form-dialog/form-dialog.component';
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../../shared/components/status-tag/status-tag.component';
 import { CompactTextPipe } from '../../../../shared/pipes/compact-text.pipe';
 import { DateTimePipe } from '../../../../shared/pipes/date-time.pipe';
 import { TablePageChange, TableSort } from '../../../../shared/models/table.model';
 import { FocusFirstRequiredDirective } from '../../../../shared/directives/focus-first-required.directive';
+import { ApiNotifierService } from '../../../../shared/services/api-notifier.service';
+import { ConfirmDeleteService } from '../../../../shared/services/confirm-delete.service';
 import { confirmAction } from '../../../../shared/utilities/confirm-action';
-import { describeApiError } from '../../../../shared/utilities/describe-api-error';
+import { ListQueryController } from '../../../../shared/utilities/list-query-controller';
 import { CustomerApiService } from '../../api/customer-api.service';
 import { CustomerResponse } from '../../api/responses/customer.response';
 import { CustomerFormComponent } from '../../components/customer-form/customer-form.component';
@@ -39,6 +42,7 @@ type SortDirection = 'ascend' | 'descend' | null;
     FormsModule,
     DataTableComponent,
     TableCellTemplateDirective,
+    FormDialogComponent,
     PageStateComponent,
     StatusTagComponent,
     CustomerFormComponent,
@@ -60,8 +64,16 @@ export class CustomerListPageComponent implements OnInit {
   private readonly customerApi = inject(CustomerApiService);
   private readonly modal = inject(NzModalService);
   private readonly notification = inject(NzNotificationService);
+  private readonly apiNotifier = inject(ApiNotifierService);
+  private readonly confirmDelete = inject(ConfirmDeleteService);
 
-  readonly loading = signal(false);
+  private readonly query = new ListQueryController<{ name: string; phone: string }>({
+    pageIndex: 1,
+    pageSize: 20,
+    filters: { name: '', phone: '' }
+  });
+
+  readonly loading = this.query.loading;
   readonly saving = signal(false);
   readonly errorMessage = signal('');
   readonly mutationErrorMessage = signal('');
@@ -78,10 +90,16 @@ export class CustomerListPageComponent implements OnInit {
 
   searchName = '';
   searchPhone = '';
-  pageIndex = 1;
-  pageSize = 20;
   readonly pageSizeOptions = [10, 20, 50];
   customerForm: CustomerFormModel = emptyCustomerForm();
+
+  get pageIndex(): number {
+    return this.query.state().pageIndex;
+  }
+
+  get pageSize(): number {
+    return this.query.state().pageSize;
+  }
 
   readonly statusDisplay = customerStatusDisplay;
   readonly modalTitle = computed(() => this.selectedCustomer() ? 'Edit Customer' : 'Add Customer');
@@ -93,17 +111,20 @@ export class CustomerListPageComponent implements OnInit {
   }
 
   async loadCustomers(): Promise<void> {
-    this.loading.set(true);
     this.errorMessage.set('');
     try {
-      const page = await this.customerApi.search({
-        name: this.searchName,
-        phone: this.searchPhone,
-        page: this.pageIndex,
-        pageSize: this.pageSize
-      });
+      const page = await this.query.run(state => this.customerApi.search({
+        name: state.filters.name,
+        phone: state.filters.phone,
+        page: state.pageIndex,
+        pageSize: state.pageSize
+      }));
+      if (!page) {
+        return;
+      }
+
       if (page.items.length === 0 && page.total > 0 && this.pageIndex > 1) {
-        this.pageIndex = Math.max(1, Math.ceil(page.total / this.pageSize));
+        this.query.setPage(Math.max(1, Math.ceil(page.total / this.pageSize)));
         await this.loadCustomers();
         return;
       }
@@ -112,8 +133,6 @@ export class CustomerListPageComponent implements OnInit {
       this.total.set(page.total);
     } catch (error) {
       this.notifyError('Load Customers Failed', error, 'page');
-    } finally {
-      this.loading.set(false);
     }
   }
 
@@ -176,29 +195,17 @@ export class CustomerListPageComponent implements OnInit {
   resetFilters(): void {
     this.searchName = '';
     this.searchPhone = '';
-    this.pageIndex = 1;
+    this.query.setFilters({ name: '', phone: '' });
     void this.loadCustomers();
   }
 
   searchCustomers(): void {
-    this.pageIndex = 1;
-    void this.loadCustomers();
-  }
-
-  changePage(pageIndex: number): void {
-    this.pageIndex = pageIndex;
-    void this.loadCustomers();
-  }
-
-  changePageSize(pageSize: number): void {
-    this.pageSize = pageSize;
-    this.pageIndex = 1;
+    this.query.setFilters({ name: this.searchName, phone: this.searchPhone });
     void this.loadCustomers();
   }
 
   changeTablePage(page: TablePageChange): void {
-    this.pageIndex = page.pageIndex;
-    this.pageSize = page.pageSize;
+    this.query.setPage(page.pageIndex, page.pageSize);
     void this.loadCustomers();
   }
 
@@ -241,7 +248,7 @@ export class CustomerListPageComponent implements OnInit {
       this.customerForm = emptyCustomerForm();
       this.validationErrors.set([]);
       this.mutationErrorMessage.set('');
-      this.notification.success(selected ? 'Customer Updated' : 'Customer Created', `${saved.customerCode || saved.name} - ${saved.name}`);
+      this.apiNotifier.success(selected ? 'Customer Updated' : 'Customer Created', `${saved.customerCode || saved.name} - ${saved.name}`);
     } catch (error) {
       this.handleFormError(error);
     } finally {
@@ -280,7 +287,7 @@ export class CustomerListPageComponent implements OnInit {
       const updated = await this.customerApi.updateStatus(customer.id, status);
       this.selectedCustomer.set(updated);
       await this.loadCustomers();
-      this.notification.success('Customer Status Updated', `${updated.customerCode || updated.name} is now ${updated.status}.`);
+      this.apiNotifier.success('Customer Status Updated', `${updated.customerCode || updated.name} is now ${updated.status}.`);
     } catch (error) {
       this.notifyError('Update Customer Status Failed', error, 'mutation');
     } finally {
@@ -293,10 +300,11 @@ export class CustomerListPageComponent implements OnInit {
       return;
     }
 
-    if (!await confirmAction(
-      this.modal,
-      'Delete Customer',
-      `Delete ${customer.name}? This removes the customer from active management.`)) {
+    if (!await this.confirmDelete.open({
+      title: 'Delete Customer',
+      itemName: customer.name,
+      warningMessage: 'This removes the customer from active management.'
+    })) {
       return;
     }
 
@@ -308,7 +316,7 @@ export class CustomerListPageComponent implements OnInit {
         this.detailModalOpen.set(false);
       }
       await this.loadCustomers();
-      this.notification.success('Customer Deleted', `${customer.customerCode || customer.name} - ${customer.name}`);
+      this.apiNotifier.success('Customer Deleted', `${customer.customerCode || customer.name} - ${customer.name}`);
     } catch (error) {
       this.notifyError('Delete Customer Failed', error, 'mutation');
     } finally {
@@ -361,13 +369,11 @@ export class CustomerListPageComponent implements OnInit {
   }
 
   private notifyError(title: string, error: unknown, target: 'page' | 'mutation'): void {
-    const message = typeof error === 'string' ? error : describeApiError(error);
+    const message = this.apiNotifier.error(title, error);
     if (target === 'page') {
       this.errorMessage.set(message);
     } else {
       this.mutationErrorMessage.set(message);
     }
-
-    this.notification.error(title, message);
   }
 }

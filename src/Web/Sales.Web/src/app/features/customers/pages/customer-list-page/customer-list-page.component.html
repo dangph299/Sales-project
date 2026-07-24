@@ -140,23 +140,21 @@
   </nz-dropdown-menu>
 </nz-modal>
 
-<nz-modal
-  [nzVisible]="customerModalOpen()"
-  [nzTitle]="modalTitle()"
-  [nzFooter]="null"
-  [nzWidth]="640"
-  (nzAfterOpen)="triggerCustomerCreateFocus()"
-  (nzOnCancel)="closeCustomerModal()">
-  <ng-container *nzModalContent>
-    <app-customer-form
-      [appFocusFirstRequired]="!selectedCustomer()"
-      [focusFirstRequiredTrigger]="customerCreateFocusTrigger()"
-      [model]="customerForm"
-      [validationErrors]="validationErrors()"
-      [errorMessage]="mutationErrorMessage()"
-      [saving]="saving()"
-      [editing]="!!selectedCustomer()"
-      (save)="saveCustomer()"
-      (cancel)="closeCustomerModal()"></app-customer-form>
-  </ng-container>
-</nz-modal>
+<app-form-dialog
+  [title]="modalTitle()"
+  [open]="customerModalOpen()"
+  [saving]="saving()"
+  [saveDisabled]="false"
+  [saveText]="selectedCustomer() ? 'Save changes' : 'Create customer'"
+  [width]="640"
+  (afterOpen)="triggerCustomerCreateFocus()"
+  (save)="saveCustomer()"
+  (cancel)="closeCustomerModal()">
+  <app-customer-form
+    [appFocusFirstRequired]="!selectedCustomer()"
+    [focusFirstRequiredTrigger]="customerCreateFocusTrigger()"
+    [model]="customerForm"
+    [validationErrors]="validationErrors()"
+    [errorMessage]="mutationErrorMessage()"
+    (save)="saveCustomer()"></app-customer-form>
+</app-form-dialog>

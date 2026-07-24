@@ -7,7 +7,6 @@ import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzIconModule } from 'ng-zorro-antd/icon';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { NzModalModule, NzModalService } from 'ng-zorro-antd/modal';
-import { NzNotificationService } from 'ng-zorro-antd/notification';
 import { NzTagModule } from 'ng-zorro-antd/tag';
 import { NzToolTipModule } from 'ng-zorro-antd/tooltip';
 import { ApiClientError, ApiResponseReader } from '../../../../core/api/api-client-result';
@@ -15,11 +14,14 @@ import { ValidationError } from '../../../../core/api/api-error.model';
 import { DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
 import { TableCellTemplateDirective } from '../../../../shared/components/data-table/table-cell-template.directive';
 import { DropdownComponent } from '../../../../shared/components/dropdown/dropdown.component';
+import { FormDialogComponent } from '../../../../shared/components/form-dialog/form-dialog.component';
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../../shared/components/status-tag/status-tag.component';
 import { FocusFirstRequiredDirective } from '../../../../shared/directives/focus-first-required.directive';
 import { TablePageChange } from '../../../../shared/models/table.model';
 import { DateTimePipe } from '../../../../shared/pipes/date-time.pipe';
+import { ApiNotifierService } from '../../../../shared/services/api-notifier.service';
+import { ConfirmDeleteService } from '../../../../shared/services/confirm-delete.service';
 import { describeApiError } from '../../../../shared/utilities/describe-api-error';
 import { CategoryCodes } from '../../../common/constants/category-codes';
 import { CategoryApiService } from '../../api/category-api.service';
@@ -41,6 +43,7 @@ import { categoryHierarchyColumns } from './category-hierarchy.columns';
     DataTableComponent,
     TableCellTemplateDirective,
     DropdownComponent,
+    FormDialogComponent,
     PageStateComponent,
     StatusTagComponent,
     CategoryFormComponent,
@@ -61,7 +64,8 @@ import { categoryHierarchyColumns } from './category-hierarchy.columns';
 export class CategoryHierarchyPageComponent implements OnInit {
   private readonly categoryApi = inject(CategoryApiService);
   private readonly modal = inject(NzModalService);
-  private readonly notification = inject(NzNotificationService);
+  private readonly apiNotifier = inject(ApiNotifierService);
+  private readonly confirmDelete = inject(ConfirmDeleteService);
 
   readonly loading = signal(false);
   readonly saving = signal(false);
@@ -296,19 +300,19 @@ export class CategoryHierarchyPageComponent implements OnInit {
     }
   }
 
-  deleteCategory(category: CategoryResponse): void {
+  async deleteCategory(category: CategoryResponse): Promise<void> {
     if (this.saving()) {
       return;
     }
 
-    this.modal.confirm({
-      nzTitle: `Delete category "${category.name}"?`,
-      nzContent: 'This action cannot be undone.',
-      nzOkText: 'Delete',
-      nzOkDanger: true,
-      nzCancelText: 'Cancel',
-      nzOnOk: () => this.confirmDeleteCategory(category)
-    });
+    if (!await this.confirmDelete.open({
+      title: 'Delete Category',
+      itemName: category.name
+    })) {
+      return;
+    }
+
+    await this.confirmDeleteCategory(category);
   }
 
   trackByCategoryId(_: number, node: CategoryTreeNode): string {
@@ -355,7 +359,6 @@ export class CategoryHierarchyPageComponent implements OnInit {
       this.expandedCategoryIds.set(expanded);
     } catch (error) {
       await this.handleMutationError(error, 'Delete Category Failed');
-      throw error;
     } finally {
       this.saving.set(false);
     }
@@ -391,12 +394,11 @@ export class CategoryHierarchyPageComponent implements OnInit {
       this.validationErrors.set(error.result.validationErrors);
       const message = ApiResponseReader.formatFailure(error.result);
       this.mutationErrorMessage.set(message);
-      this.notification.error(title, message);
+      this.apiNotifier.error(title, message);
       return;
     }
 
-    const message = describeApiError(error);
+    const message = this.apiNotifier.error(title, error);
     this.mutationErrorMessage.set(message);
-    this.notification.error(title, message);
   }
 }

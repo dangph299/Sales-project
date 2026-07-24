@@ -1,36 +1,19 @@
 <form nz-form nzLayout="vertical" (ngSubmit)="save.emit()">
-  <nz-form-item>
-    <nz-form-label nzRequired>Name</nz-form-label>
-    <nz-form-control [nzErrorTip]="fieldError('Name')">
-      <input nz-input name="customerName" [(ngModel)]="model.name" required>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Name" [required]="true" [error]="fieldError('Name')">
+    <input nz-input name="customerName" [(ngModel)]="model.name" required>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label nzRequired>Phone</nz-form-label>
-    <nz-form-control [nzErrorTip]="fieldError('Phone')">
-      <input nz-input name="customerPhone" [(ngModel)]="model.phone" required>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Phone" [required]="true" [error]="fieldError('Phone')">
+    <input nz-input name="customerPhone" [(ngModel)]="model.phone" required>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label>Email</nz-form-label>
-    <nz-form-control [nzErrorTip]="fieldError('Email')">
-      <input nz-input name="customerEmail" type="email" [(ngModel)]="model.email">
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Email" [error]="fieldError('Email')">
+    <input nz-input name="customerEmail" type="email" [(ngModel)]="model.email">
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label>Address</nz-form-label>
-    <nz-form-control [nzErrorTip]="fieldError('Address')">
-      <textarea nz-input name="customerAddress" rows="3" [(ngModel)]="model.address"></textarea>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Address" [error]="fieldError('Address')">
+    <textarea nz-input name="customerAddress" rows="3" [(ngModel)]="model.address"></textarea>
+  </app-form-field>
 
-  <div class="form-actions">
-    <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="saving">
-      {{ editing ? 'Save changes' : 'Create customer' }}
-    </button>
-    <button nz-button type="button" (click)="cancel.emit()" [disabled]="saving">Cancel</button>
-  </div>
+  <button type="submit" hidden aria-hidden="true"></button>
 </form>

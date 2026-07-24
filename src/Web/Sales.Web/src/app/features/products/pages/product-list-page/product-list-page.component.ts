@@ -14,6 +14,7 @@ import { ValidationError } from '../../../../core/api/api-error.model';
 import { DataTableComponent } from '../../../../shared/components/data-table/data-table.component';
 import { TableCellTemplateDirective } from '../../../../shared/components/data-table/table-cell-template.directive';
 import { DropdownComponent } from '../../../../shared/components/dropdown/dropdown.component';
+import { FormDialogComponent } from '../../../../shared/components/form-dialog/form-dialog.component';
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../../shared/components/status-tag/status-tag.component';
 import { SelectOption } from '../../../../shared/models/select-option.model';
@@ -22,8 +23,10 @@ import { FocusFirstRequiredDirective } from '../../../../shared/directives/focus
 import { DateTimePipe } from '../../../../shared/pipes/date-time.pipe';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
 import { PriceRangePipe } from '../../../../shared/pipes/price-range.pipe';
+import { ApiNotifierService } from '../../../../shared/services/api-notifier.service';
+import { ConfirmDeleteService } from '../../../../shared/services/confirm-delete.service';
 import { confirmAction } from '../../../../shared/utilities/confirm-action';
-import { describeApiError } from '../../../../shared/utilities/describe-api-error';
+import { ListQueryController } from '../../../../shared/utilities/list-query-controller';
 import { InventoryApiService } from '../../../inventory/api/inventory-api.service';
 import { CommonStore } from '../../../common/services/common-store.service';
 import { ProductApiService } from '../../api/product-api.service';
@@ -31,7 +34,12 @@ import { ProductResponse, ProductVariantResponse } from '../../api/responses/pro
 import { ProductFormComponent } from '../../components/product-form/product-form.component';
 import { ProductVariantFormComponent } from '../../components/product-variant-form/product-variant-form.component';
 import { ProductStatus } from '../../constants/product-status';
-import { ProductVariantStatus, productVariantStatusDisplay } from '../../constants/product-variant-status';
+import {
+  ProductVariantStatus,
+  allowedProductVariantStatusTransitions,
+  coerceProductVariantStatus,
+  productVariantStatusDisplay
+} from '../../constants/product-variant-status';
 import { ProductFormModel, emptyProductForm } from '../../models/product-form.model';
 import { ProductVariantFormModel, emptyProductVariantForm } from '../../models/product-variant-form.model';
 import { productListColumns, productVariantListColumns } from './product-list.columns';
@@ -45,6 +53,7 @@ import { productListColumns, productVariantListColumns } from './product-list.co
     DataTableComponent,
     TableCellTemplateDirective,
     DropdownComponent,
+    FormDialogComponent,
     PageStateComponent,
     StatusTagComponent,
     ProductFormComponent,
@@ -70,6 +79,8 @@ export class ProductListPageComponent implements OnInit {
   private readonly common = inject(CommonStore);
   private readonly modal = inject(NzModalService);
   private readonly notification = inject(NzNotificationService);
+  private readonly apiNotifier = inject(ApiNotifierService);
+  private readonly confirmDelete = inject(ConfirmDeleteService);
 
   readonly colors = this.common.colors;
   readonly sizes = this.common.sizes;
@@ -82,7 +93,19 @@ export class ProductListPageComponent implements OnInit {
     ...this.sizes().map(size => ({ value: size.id, label: size.code }))
   ]);
 
-  readonly loading = signal(false);
+  private readonly query = new ListQueryController<{
+    productCode: string;
+    name: string;
+    sku: string;
+    colorId: string;
+    sizeId: string;
+  }>({
+    pageIndex: 1,
+    pageSize: 20,
+    filters: { productCode: '', name: '', sku: '', colorId: '', sizeId: '' }
+  });
+
+  readonly loading = this.query.loading;
   readonly saving = signal(false);
   readonly errorMessage = signal('');
   readonly mutationErrorMessage = signal('');
@@ -103,9 +126,15 @@ export class ProductListPageComponent implements OnInit {
   skuFilter = '';
   colorFilter = '';
   sizeFilter = '';
-  pageIndex = 1;
-  pageSize = 20;
   readonly pageSizeOptions = [10, 20, 50];
+
+  get pageIndex(): number {
+    return this.query.state().pageIndex;
+  }
+
+  get pageSize(): number {
+    return this.query.state().pageSize;
+  }
 
   productForm: ProductFormModel = emptyProductForm();
   variantForm: ProductVariantFormModel = emptyProductVariantForm();
@@ -121,21 +150,24 @@ export class ProductListPageComponent implements OnInit {
   }
 
   async loadProducts(): Promise<void> {
-    this.loading.set(true);
     this.errorMessage.set('');
     try {
-      const page = await this.productApi.search({
-        productCode: this.productCodeFilter,
-        name: this.nameFilter,
-        sku: this.skuFilter,
+      const page = await this.query.run(state => this.productApi.search({
+        productCode: state.filters.productCode,
+        name: state.filters.name,
+        sku: state.filters.sku,
         status: '',
-        colorId: this.colorFilter,
-        sizeId: this.sizeFilter,
-        page: this.pageIndex,
-        pageSize: this.pageSize
-      });
+        colorId: state.filters.colorId,
+        sizeId: state.filters.sizeId,
+        page: state.pageIndex,
+        pageSize: state.pageSize
+      }));
+      if (!page) {
+        return;
+      }
+
       if (page.items.length === 0 && page.total > 0 && this.pageIndex > 1) {
-        this.pageIndex = Math.max(1, Math.ceil(page.total / this.pageSize));
+        this.query.setPage(Math.max(1, Math.ceil(page.total / this.pageSize)));
         await this.loadProducts();
         return;
       }
@@ -145,19 +177,22 @@ export class ProductListPageComponent implements OnInit {
       this.reselectAfterReload();
     } catch (error) {
       this.notifyError('Load Products Failed', error, 'page');
-    } finally {
-      this.loading.set(false);
     }
   }
 
   async searchProducts(): Promise<void> {
-    this.pageIndex = 1;
+    this.query.setFilters({
+      productCode: this.productCodeFilter,
+      name: this.nameFilter,
+      sku: this.skuFilter,
+      colorId: this.colorFilter,
+      sizeId: this.sizeFilter
+    });
     await this.loadProducts();
   }
 
   async changeTablePage(page: TablePageChange): Promise<void> {
-    this.pageIndex = page.pageIndex;
-    this.pageSize = page.pageSize;
+    this.query.setPage(page.pageIndex, page.pageSize);
     await this.loadProducts();
   }
 
@@ -238,12 +273,12 @@ export class ProductListPageComponent implements OnInit {
     }
 
     this.selectedVariant.set(variant);
-    const statusOptions = this.allowedVariantStatuses(variant.status as ProductVariantStatus);
+    const statusOptions = allowedProductVariantStatusTransitions(variant.status as ProductVariantStatus);
     this.variantForm = {
       colorId: variant.color?.id || this.common.defaultColorId(),
       sizeId: variant.size?.id || this.common.defaultSizeId(),
       price: variant.price,
-      status: this.coerceVariantStatus(variant.status as ProductVariantStatus, statusOptions)
+      status: coerceProductVariantStatus(variant.status as ProductVariantStatus, statusOptions)
     };
     this.variantStatusOptions.set(statusOptions);
     this.validationErrors.set([]);
@@ -308,7 +343,7 @@ export class ProductListPageComponent implements OnInit {
       this.validationErrors.set([]);
       this.mutationErrorMessage.set('');
       await this.loadProducts();
-      this.notification.success(selected ? 'Product Updated' : 'Product Created', `${saved.productCode || saved.sku} - ${saved.name}`);
+      this.apiNotifier.success(selected ? 'Product Updated' : 'Product Created', `${saved.productCode || saved.sku} - ${saved.name}`);
     } catch (error) {
       this.handleFormError(error);
     } finally {
@@ -357,7 +392,7 @@ export class ProductListPageComponent implements OnInit {
       this.validationErrors.set([]);
       this.mutationErrorMessage.set('');
       await this.loadProducts();
-      this.notification.success(selectedVariant ? 'Variant Updated' : 'Variant Added', saved.productCode || saved.sku);
+      this.apiNotifier.success(selectedVariant ? 'Variant Updated' : 'Variant Added', saved.productCode || saved.sku);
     } catch (error) {
       this.handleFormError(error);
     } finally {
@@ -387,7 +422,7 @@ export class ProductListPageComponent implements OnInit {
       const saved = await this.productApi.discontinueVariant(selected.id, variant.id);
       this.upsertProduct(saved);
       this.selectedProduct.set(saved);
-      this.notification.success('Variant Discontinued', variant.sku);
+      this.apiNotifier.success('Variant Discontinued', variant.sku);
     } catch (error) {
       this.notifyError('Discontinue Variant Failed', error);
     } finally {
@@ -425,7 +460,7 @@ export class ProductListPageComponent implements OnInit {
       });
       this.upsertProduct(saved);
       this.selectedProduct.set(saved);
-      this.notification.success('Variant Status Updated', `${variant.sku} is now ${status}.`);
+      this.apiNotifier.success('Variant Status Updated', `${variant.sku} is now ${status}.`);
     } catch (error) {
       this.notifyError('Update Variant Status Failed', error);
     } finally {
@@ -453,10 +488,11 @@ export class ProductListPageComponent implements OnInit {
       return;
     }
 
-    if (!await confirmAction(
-      this.modal,
-      'Delete Variant',
-      `Delete ${variant.sku}? This removes the variant from active catalog management.`)) {
+    if (!await this.confirmDelete.open({
+      title: 'Delete Variant',
+      itemName: variant.sku,
+      warningMessage: 'This removes the variant from active catalog management.'
+    })) {
       return;
     }
 
@@ -465,7 +501,7 @@ export class ProductListPageComponent implements OnInit {
     try {
       await this.productApi.deleteVariant(selected.id, variant.id);
       await this.loadProducts();
-      this.notification.success('Variant Deleted', variant.sku);
+      this.apiNotifier.success('Variant Deleted', variant.sku);
     } catch (error) {
       this.notifyError('Delete Variant Failed', error);
     } finally {
@@ -492,10 +528,11 @@ export class ProductListPageComponent implements OnInit {
       return;
     }
 
-    if (!await confirmAction(
-      this.modal,
-      'Delete Product',
-      `Delete ${product.productCode || product.sku} - ${product.name}? This removes the product from active catalog management.`)) {
+    if (!await this.confirmDelete.open({
+      title: 'Delete Product',
+      itemName: `${product.productCode || product.sku} - ${product.name}`,
+      warningMessage: 'This removes the product from active catalog management.'
+    })) {
       return;
     }
 
@@ -507,7 +544,7 @@ export class ProductListPageComponent implements OnInit {
         this.selectedProduct.set(null);
       }
       await this.loadProducts();
-      this.notification.success('Product Deleted', `${product.productCode || product.sku} - ${product.name}`);
+      this.apiNotifier.success('Product Deleted', `${product.productCode || product.sku} - ${product.name}`);
     } catch (error) {
       this.notifyError('Delete Product Failed', error);
     } finally {
@@ -534,29 +571,12 @@ export class ProductListPageComponent implements OnInit {
     this.selectedProduct.set(this.products().find(product => product.id === selectedId) ?? null);
   }
 
-  private allowedVariantStatuses(status: ProductVariantStatus): ProductVariantStatus[] {
-    switch (status) {
-      case 'Draft':
-        return ['Draft', 'Published'];
-      case 'Published':
-        return ['Published', 'Discontinued'];
-      case 'Discontinued':
-        return ['Discontinued', 'Published'];
-      default:
-        return ['Draft', 'Published'];
-    }
-  }
-
   canDeleteProduct(product: ProductResponse): boolean {
     return !product.isDelete;
   }
 
   canDeleteVariant(variant: ProductVariantResponse): boolean {
     return variant.status === 'Draft' || variant.status === 'Discontinued';
-  }
-
-  private coerceVariantStatus(status: ProductVariantStatus, options: ProductVariantStatus[]): ProductVariantStatus {
-    return options.includes(status) ? status : options[0];
   }
 
   private async hasProductStock(product: ProductResponse): Promise<boolean> {
@@ -590,13 +610,11 @@ export class ProductListPageComponent implements OnInit {
   }
 
   private notifyError(title: string, error: unknown, target: 'page' | 'mutation' = 'mutation'): void {
-    const message = describeApiError(error);
+    const message = this.apiNotifier.error(title, error);
     if (target === 'page') {
       this.errorMessage.set(message);
     } else {
       this.mutationErrorMessage.set(message);
     }
-
-    this.notification.error(title, message);
   }
 }

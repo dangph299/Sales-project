@@ -69,20 +69,20 @@
   </ng-template>
 </app-data-table>
 
-<nz-modal
-  [nzVisible]="adjustmentModalOpen()"
-  nzTitle="Receive / Adjust Stock"
-  [nzFooter]="null"
-  [nzWidth]="560"
-  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
-  (nzOnCancel)="closeAdjustment()">
-  <ng-container *nzModalContent>
-    <app-stock-adjustment-form
-      *ngIf="selectedRow() as row"
-      [row]="row"
-      [model]="adjustmentForm"
-      [saving]="saving()"
-      [errorMessage]="mutationErrorMessage()"
-      (apply)="adjustInventory()"></app-stock-adjustment-form>
-  </ng-container>
-</nz-modal>
+<app-form-dialog
+  [title]="'Receive / Adjust Stock'"
+  [open]="adjustmentModalOpen()"
+  [saving]="saving()"
+  [saveDisabled]="!canAdjustSelected()"
+  saveText="Apply adjustment"
+  [width]="560"
+  [bodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (save)="adjustInventory()"
+  (cancel)="closeAdjustment()">
+  <app-stock-adjustment-form
+    *ngIf="selectedRow() as row"
+    [row]="row"
+    [model]="adjustmentForm"
+    [errorMessage]="mutationErrorMessage()"
+    (apply)="adjustInventory()"></app-stock-adjustment-form>
+</app-form-dialog>

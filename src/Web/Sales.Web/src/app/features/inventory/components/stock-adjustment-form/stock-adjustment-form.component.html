@@ -20,19 +20,13 @@
     [options]="operationOptions">
   </app-dropdown>
 
-  <nz-form-item>
-    <nz-form-label nzRequired>Adjustment quantity</nz-form-label>
-    <nz-form-control>
-      <nz-input-number name="quantityDelta" [(ngModel)]="model.quantityDelta" [nzStep]="1"></nz-input-number>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Adjustment quantity" [required]="true">
+    <nz-input-number name="quantityDelta" [(ngModel)]="model.quantityDelta" [nzStep]="1"></nz-input-number>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label>Reason</nz-form-label>
-    <nz-form-control>
-      <input nz-input name="adjustmentReason" [(ngModel)]="model.reason" placeholder="Purchase receipt, cycle count...">
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Reason">
+    <input nz-input name="adjustmentReason" [(ngModel)]="model.reason" placeholder="Purchase receipt, cycle count...">
+  </app-form-field>
 
   <nz-alert
     *ngIf="!canAdjust"
@@ -41,7 +35,5 @@
     nzShowIcon
     nzMessage="Only Published products and Published variants can receive stock."></nz-alert>
 
-  <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="saving || !canAdjust">
-    Apply adjustment
-  </button>
+  <button type="submit" hidden aria-hidden="true"></button>
 </form>

@@ -5,6 +5,7 @@ import { provideRouter } from '@angular/router';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { en_US, provideNzI18n } from 'ng-zorro-antd/i18n';
 import { provideNzIcons } from 'ng-zorro-antd/icon';
+import { NzModalModule } from 'ng-zorro-antd/modal';
 import {
   ApiOutline,
   AppstoreOutline,
@@ -40,6 +41,7 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withInterceptors([authInterceptor])),
     provideNzI18n(en_US),
     provideRouter(routes),
+    importProvidersFrom(NzModalModule),
     provideNzIcons([
       ApiOutline,
       AppstoreOutline,

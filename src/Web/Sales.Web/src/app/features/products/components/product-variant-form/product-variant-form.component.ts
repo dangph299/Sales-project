@@ -1,12 +1,12 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, computed, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzAlertModule } from 'ng-zorro-antd/alert';
 import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputNumberModule } from 'ng-zorro-antd/input-number';
 import { DropdownComponent } from '../../../../shared/components/dropdown/dropdown.component';
 import { DropdownOptionTemplateDirective } from '../../../../shared/components/dropdown/dropdown-option-template.directive';
+import { FormFieldComponent } from '../../../../shared/components/form-field/form-field.component';
 import { SelectOption } from '../../../../shared/models/select-option.model';
 import { formatMoney } from '../../../../shared/utilities/display-formatters';
 import { CommonStore } from '../../../common/services/common-store.service';
@@ -24,8 +24,8 @@ import { ProductVariantStatus } from '../../constants/product-variant-status';
     FormsModule,
     DropdownComponent,
     DropdownOptionTemplateDirective,
+    FormFieldComponent,
     NzAlertModule,
-    NzButtonModule,
     NzFormModule,
     NzInputNumberModule
   ],
@@ -38,14 +38,11 @@ export class ProductVariantFormComponent {
   @Input({ required: true }) model!: ProductVariantFormModel;
   /** Product code the SKU preview is derived from. */
   @Input() productCode = '';
-  @Input() saving = false;
   @Input() errorMessage = '';
-  @Input() disabled = false;
   @Input() editing = false;
   @Input() statusOptions: ProductVariantStatus[] = ['Draft', 'Published'];
 
   @Output() save = new EventEmitter<void>();
-  @Output() cancel = new EventEmitter<void>();
 
   readonly colors = this.common.colors;
   readonly sizes = this.common.sizes;

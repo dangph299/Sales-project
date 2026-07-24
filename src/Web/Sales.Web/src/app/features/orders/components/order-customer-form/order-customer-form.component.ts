@@ -1,9 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { NzFormModule } from 'ng-zorro-antd/form';
 import { NzInputModule } from 'ng-zorro-antd/input';
 import { AutocompleteComponent } from '../../../../shared/components/autocomplete/autocomplete.component';
+import { FormFieldComponent } from '../../../../shared/components/form-field/form-field.component';
 import { CustomerLookupApiService } from '../../../common/api/customer-lookup-api.service';
 import { CustomerPhoneSuggestionResponse } from '../../../common/contracts/customer-lookup.response';
 import { OrderCustomerRequest } from '../../api/requests/order-customer.request';
@@ -32,7 +32,7 @@ export interface OrderCustomerFormErrors {
 @Component({
   selector: 'app-order-customer-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, AutocompleteComponent, NzFormModule, NzInputModule],
+  imports: [CommonModule, FormsModule, AutocompleteComponent, FormFieldComponent, NzInputModule],
   templateUrl: './order-customer-form.component.html'
 })
 export class OrderCustomerFormComponent {
@@ -64,6 +64,18 @@ export class OrderCustomerFormComponent {
    * True when the user has typed a usable phone number that matched no existing
    * customer. Deliberately not an error: the backend will create the customer.
    */
+  phoneHint(): string {
+    if (this.searching()) {
+      return 'Searching...';
+    }
+
+    if (this.isNewCustomer()) {
+      return 'New Customer';
+    }
+
+    return this.suggestionErrorMessage();
+  }
+
   isNewCustomer(): boolean {
     if (!this.showNewCustomerHint) {
       return false;

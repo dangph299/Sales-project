@@ -44,15 +44,13 @@ describe('InventoryListPageComponent stock rows', () => {
   });
 
   it('asks the server for the requested page instead of only the first', async () => {
-    fixture.componentInstance.changePage(3);
-    await fixture.whenStable();
+    await fixture.componentInstance.changeTablePage({ pageIndex: 3, pageSize: fixture.componentInstance.pageSize });
 
     expect(productLookup.lastFilters?.page).toBe(3);
   });
 
   it('returns to the first page when the filters change', async () => {
-    fixture.componentInstance.changePage(3);
-    await fixture.whenStable();
+    await fixture.componentInstance.changeTablePage({ pageIndex: 3, pageSize: fixture.componentInstance.pageSize });
 
     fixture.componentInstance.search();
     await fixture.whenStable();
@@ -72,9 +70,8 @@ describe('InventoryListPageComponent stock rows', () => {
   it('steps back to the last populated page when the current one has gone', async () => {
     productLookup.variants = [];
     productLookup.total = 20;
-    fixture.componentInstance.pageIndex = 5;
 
-    await fixture.componentInstance.loadStockRows();
+    await fixture.componentInstance.changeTablePage({ pageIndex: 5, pageSize: fixture.componentInstance.pageSize });
 
     expect(fixture.componentInstance.pageIndex).toBe(1);
   });

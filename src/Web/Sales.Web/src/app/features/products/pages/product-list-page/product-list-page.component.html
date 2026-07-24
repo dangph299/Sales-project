@@ -162,48 +162,46 @@
   </app-data-table>
 </nz-card>
 
-<nz-modal
-  [nzVisible]="productModalOpen()"
-  [nzTitle]="selectedProduct() ? 'Edit Product' : 'New Product'"
-  [nzFooter]="null"
-  [nzWidth]="640"
-  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
-  (nzAfterOpen)="triggerProductCreateFocus()"
-  (nzOnCancel)="closeProductModal()">
-  <ng-container *nzModalContent>
-    <app-product-form
-      [appFocusFirstRequired]="!selectedProduct()"
-      [focusFirstRequiredTrigger]="productCreateFocusTrigger()"
-      [model]="productForm"
-      [validationErrors]="validationErrors()"
-      [errorMessage]="mutationErrorMessage()"
-      [saving]="saving()"
-      [editing]="!!selectedProduct()"
-      [assignedCode]="selectedProduct()?.productCode || ''"
-      (save)="saveProduct($event)"
-      (cancel)="closeProductModal()"></app-product-form>
-  </ng-container>
-</nz-modal>
+<app-form-dialog
+  [title]="selectedProduct() ? 'Edit Product' : 'New Product'"
+  [open]="productModalOpen()"
+  [saving]="saving()"
+  [saveDisabled]="false"
+  [saveText]="selectedProduct() ? 'Save product' : 'Create product'"
+  [width]="640"
+  [bodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (afterOpen)="triggerProductCreateFocus()"
+  (save)="saveProduct()"
+  (cancel)="closeProductModal()">
+  <app-product-form
+    [appFocusFirstRequired]="!selectedProduct()"
+    [focusFirstRequiredTrigger]="productCreateFocusTrigger()"
+    [model]="productForm"
+    [validationErrors]="validationErrors()"
+    [errorMessage]="mutationErrorMessage()"
+    [editing]="!!selectedProduct()"
+    [assignedCode]="selectedProduct()?.productCode || ''"
+    (save)="saveProduct($event)"></app-product-form>
+</app-form-dialog>
 
-<nz-modal
-  [nzVisible]="variantModalOpen()"
-  [nzTitle]="selectedVariant() ? 'Edit Variant' : 'Add Variant'"
-  [nzFooter]="null"
-  [nzWidth]="720"
-  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
-  (nzAfterOpen)="triggerVariantCreateFocus()"
-  (nzOnCancel)="closeVariantModal()">
-  <ng-container *nzModalContent>
-    <app-product-variant-form
-      [appFocusFirstRequired]="!selectedVariant()"
-      [focusFirstRequiredTrigger]="variantCreateFocusTrigger()"
-      [model]="variantForm"
-      [productCode]="(selectedProduct()?.productCode || selectedProduct()?.sku) || ''"
-      [saving]="saving()"
-      [errorMessage]="mutationErrorMessage()"
-      [editing]="!!selectedVariant()"
-      [statusOptions]="variantStatusOptions()"
-      (save)="saveVariant()"
-      (cancel)="closeVariantModal()"></app-product-variant-form>
-  </ng-container>
-</nz-modal>
+<app-form-dialog
+  [title]="selectedVariant() ? 'Edit Variant' : 'Add Variant'"
+  [open]="variantModalOpen()"
+  [saving]="saving()"
+  [saveDisabled]="false"
+  [saveText]="selectedVariant() ? 'Save variant' : 'Add variant'"
+  [width]="720"
+  [bodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (afterOpen)="triggerVariantCreateFocus()"
+  (save)="saveVariant()"
+  (cancel)="closeVariantModal()">
+  <app-product-variant-form
+    [appFocusFirstRequired]="!selectedVariant()"
+    [focusFirstRequiredTrigger]="variantCreateFocusTrigger()"
+    [model]="variantForm"
+    [productCode]="(selectedProduct()?.productCode || selectedProduct()?.sku) || ''"
+    [errorMessage]="mutationErrorMessage()"
+    [editing]="!!selectedVariant()"
+    [statusOptions]="variantStatusOptions()"
+    (save)="saveVariant()"></app-product-variant-form>
+</app-form-dialog>

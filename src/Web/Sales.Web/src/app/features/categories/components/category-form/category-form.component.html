@@ -7,47 +7,32 @@
   nzShowIcon></nz-alert>
 
 <form nz-form nzLayout="vertical" (ngSubmit)="submit()">
-  <nz-form-item *ngIf="editing">
-    <nz-form-label>Category code</nz-form-label>
-    <nz-form-control>
-      <input nz-input name="categoryCode" [ngModel]="assignedCode" disabled>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field *ngIf="editing" label="Category code">
+    <input nz-input name="categoryCode" [ngModel]="assignedCode" disabled>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label nzRequired>Name</nz-form-label>
-    <nz-form-control [nzErrorTip]="fieldError('Name')">
-      <input nz-input name="categoryName" [(ngModel)]="model.name" required>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Name" [required]="true" [error]="fieldError('Name')">
+    <input nz-input name="categoryName" [(ngModel)]="model.name" required>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label>Description</nz-form-label>
-    <nz-form-control>
-      <textarea nz-input name="categoryDescription" rows="3" [(ngModel)]="model.description"></textarea>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Description">
+    <textarea nz-input name="categoryDescription" rows="3" [(ngModel)]="model.description"></textarea>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label>Parent Category</nz-form-label>
-    <nz-form-control>
-      <nz-tree-select
-        name="parentCategoryId"
-        [(ngModel)]="model.parentCategoryId"
-        [nzNodes]="parentOptions"
-        nzPlaceHolder="No parent"
-        nzShowSearch
-        nzAllowClear>
-      </nz-tree-select>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Parent Category">
+    <nz-tree-select
+      name="parentCategoryId"
+      [(ngModel)]="model.parentCategoryId"
+      [nzNodes]="parentOptions"
+      nzPlaceHolder="No parent"
+      nzShowSearch
+      nzAllowClear>
+    </nz-tree-select>
+  </app-form-field>
 
-  <nz-form-item>
-    <nz-form-label nzRequired>Sort Order</nz-form-label>
-    <nz-form-control>
-      <nz-input-number name="sortOrder" [(ngModel)]="model.sortOrder" [nzMin]="0"></nz-input-number>
-    </nz-form-control>
-  </nz-form-item>
+  <app-form-field label="Sort Order" [required]="true">
+    <nz-input-number name="sortOrder" [(ngModel)]="model.sortOrder" [nzMin]="0"></nz-input-number>
+  </app-form-field>
 
   <app-dropdown
     label="Status"
@@ -57,10 +42,5 @@
     [disabled]="!editing">
   </app-dropdown>
 
-  <div class="form-actions">
-    <button nz-button nzType="primary" type="submit" [nzLoading]="saving" [disabled]="saving">
-      {{ editing ? 'Save Changes' : 'Create Category' }}
-    </button>
-    <button nz-button type="button" (click)="cancel.emit()" [disabled]="saving">Cancel</button>
-  </div>
+  <button type="submit" hidden aria-hidden="true"></button>
 </form>

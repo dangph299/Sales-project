@@ -3,13 +3,16 @@ import {
   AfterContentInit,
   Component,
   ContentChildren,
+  DestroyRef,
   EventEmitter,
   Input,
   Output,
   QueryList,
   TemplateRef,
+  inject,
   signal
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NzButtonModule } from 'ng-zorro-antd/button';
 import { NzCardModule } from 'ng-zorro-antd/card';
 import { NzDropDownModule } from 'ng-zorro-antd/dropdown';
@@ -95,9 +98,11 @@ export class DataTableComponent<T extends object> implements AfterContentInit {
 
   private readonly cellTemplates = signal(new Map<string, TemplateRef<unknown>>());
 
+  private readonly destroyRef = inject(DestroyRef);
+
   ngAfterContentInit(): void {
     this.refreshTemplates();
-    this.projectedCells?.changes.subscribe(() => this.refreshTemplates());
+    this.projectedCells?.changes.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.refreshTemplates());
   }
 
   changeSort(column: TableColumn<T>): void {

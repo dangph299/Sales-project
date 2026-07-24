@@ -17,11 +17,12 @@ import { DropdownComponent } from '../../../../shared/components/dropdown/dropdo
 import { PageStateComponent } from '../../../../shared/components/page-state/page-state.component';
 import { StatusTagComponent } from '../../../../shared/components/status-tag/status-tag.component';
 import { FocusFirstRequiredDirective } from '../../../../shared/directives/focus-first-required.directive';
-import { TablePageChange, TableSort, TableSortDirection } from '../../../../shared/models/table.model';
+import { ApiNotifierService } from '../../../../shared/services/api-notifier.service';
+import { TablePageChange, TableSort } from '../../../../shared/models/table.model';
 import { DateTimePipe } from '../../../../shared/pipes/date-time.pipe';
 import { MoneyPipe } from '../../../../shared/pipes/money.pipe';
+import { ListQueryController } from '../../../../shared/utilities/list-query-controller';
 import { confirmAction } from '../../../../shared/utilities/confirm-action';
-import { describeApiError } from '../../../../shared/utilities/describe-api-error';
 import { formatDateTime } from '../../../../shared/utilities/display-formatters';
 import { ProductLookupApiService } from '../../../common/api/product-lookup-api.service';
 import {
@@ -30,7 +31,6 @@ import {
 } from '../../../common/contracts/product-lookup.response';
 import { OrderApiService } from '../../api/order-api.service';
 import { OrderCustomerRequest } from '../../api/requests/order-customer.request';
-import { OrderLineRequest } from '../../api/requests/order-line.request';
 import { OrderResponse } from '../../api/responses/order.response';
 import { OrderLineEditorComponent } from '../../components/order-line-editor/order-line-editor.component';
 import {
@@ -43,18 +43,27 @@ import { OrderStatusChangedNotification } from '../../models/order-status-change
 import { OrderRealtimeService } from '../../services/order-realtime.service';
 import { productLookupStatusDisplay } from '@features/common/constants/product-lookup-status';
 import { OrderProductOption, orderListColumns, orderProductOptionColumns } from './order-list.columns';
+import {
+  emptyOrderCustomer,
+  hasCustomerChanged,
+  haveLinesChanged,
+  toCartLines,
+  toOrderLineRequests,
+  validateOrderForm
+} from './order-form.util';
+import { DebouncedRefresh, PendingOrderPoller } from './order-refresh-scheduler';
+import {
+  OrderSortKey,
+  OrderSortDirection,
+  compareOrders,
+  fromTableSortDirection,
+  toTableSortDirection
+} from './order-table-sort';
 
 const orderListRefreshDelayMs = 500;
 const orderDetailRefreshDelayMs = 300;
 const pendingPollIntervalMs = 7_000;
 const pendingPollWindowMs = 2 * 60_000;
-
-type OrderSortKey = 'orderNumber' | 'customer' | 'phone' | 'createdAt' | 'total' | 'status' | 'updatedAt';
-type SortDirection = 'asc' | 'desc';
-
-function emptyOrderCustomer(): OrderCustomerRequest {
-  return { name: '', phone: '', email: '', address: '' };
-}
 
 @Component({
   selector: 'app-order-list-page',
@@ -91,8 +100,22 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   readonly orderRealtime = inject(OrderRealtimeService);
   private readonly modal = inject(NzModalService);
   private readonly notificationService = inject(NzNotificationService);
+  private readonly apiNotifier = inject(ApiNotifierService);
 
-  readonly loading = signal(false);
+  private readonly query = new ListQueryController<{
+    orderNumber: string;
+    customerName: string;
+    customerPhone: string;
+    status: OrderStatus | '' | null;
+    from: string;
+    to: string;
+  }>({
+    pageIndex: 1,
+    pageSize: 20,
+    filters: { orderNumber: '', customerName: '', customerPhone: '', status: '', from: '', to: '' }
+  });
+
+  readonly loading = this.query.loading;
   readonly saving = signal(false);
   readonly errorMessage = signal('');
   readonly realtimeMessage = signal('');
@@ -123,10 +146,8 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   statusFilter: OrderStatus | '' | null = '';
   fromDate = '';
   toDate = '';
-  pageIndex = 1;
-  pageSize = 20;
   readonly sortKey = signal<OrderSortKey>('updatedAt');
-  readonly sortDirection = signal<SortDirection>('desc');
+  readonly sortDirection = signal<OrderSortDirection>('desc');
   readonly tableColumns = orderListColumns;
   readonly productOptionColumns = orderProductOptionColumns;
 
@@ -155,20 +176,34 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   // returned. Nothing is filtered out here — doing so would silently disagree
   // with total() and hide matches the server did find.
   readonly displayedOrders = computed(() =>
-    [...this.orders()].sort((left, right) => this.compareOrders(left, right)));
+    [...this.orders()].sort((left, right) =>
+      compareOrders(left, right, this.sortKey(), this.sortDirection(), this.statusDisplay)));
   readonly tableSort = computed<TableSort>(() => ({
     key: this.sortKey(),
-    direction: this.toTableSortDirection(this.sortDirection())
+    direction: toTableSortDirection(this.sortDirection())
   }));
+
+  get pageIndex(): number {
+    return this.query.state().pageIndex;
+  }
+
+  get pageSize(): number {
+    return this.query.state().pageSize;
+  }
 
   private currentSubscribedOrderId: string | null = null;
   private removeStatusChangedHandler: (() => void) | null = null;
   private removeReconnectedHandler: (() => void) | null = null;
-  private orderListRefreshTimer: ReturnType<typeof setTimeout> | null = null;
-  private detailRefreshTimer: ReturnType<typeof setTimeout> | null = null;
-  private pendingPollTimer: ReturnType<typeof setInterval> | null = null;
-  private pendingPollDeadline = 0;
   private lastDetailNotificationKey = '';
+
+  private readonly orderListRefresh = new DebouncedRefresh(orderListRefreshDelayMs, () => void this.loadOrders());
+  private readonly orderDetailRefresh = new DebouncedRefresh(
+    orderDetailRefreshDelayMs, () => void this.refreshCurrentOrder());
+  private readonly pendingPoller = new PendingOrderPoller(
+    pendingPollIntervalMs,
+    pendingPollWindowMs,
+    () => this.orderRealtime.state() === 'Connected',
+    () => void this.refreshCurrentOrder());
 
   private readonly visibilityHandler = () => {
     if (document.visibilityState === 'visible') {
@@ -183,11 +218,11 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       const realtimeState = this.orderRealtime.state();
 
       if (order?.status !== 'PendingInventory' || realtimeState === 'Connected') {
-        this.stopPendingPolling();
+        this.pendingPoller.stop();
         return;
       }
 
-      this.ensurePendingPolling();
+      this.pendingPoller.ensureStarted();
     });
   }
 
@@ -214,8 +249,9 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     this.removeStatusChangedHandler?.();
     this.removeReconnectedHandler?.();
     document.removeEventListener('visibilitychange', this.visibilityHandler);
-    this.clearRefreshTimers();
-    this.stopPendingPolling();
+    this.orderListRefresh.clear();
+    this.orderDetailRefresh.clear();
+    this.pendingPoller.stop();
   }
 
   async loadProducts(): Promise<void> {
@@ -241,21 +277,24 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async loadOrders(): Promise<void> {
-    this.loading.set(true);
     this.errorMessage.set('');
     try {
-      const page = await this.orderApi.search({
-        orderNumber: this.orderNumberFilter.trim() || undefined,
-        customerName: this.customerNameFilter.trim() || undefined,
-        customerPhone: this.customerPhoneFilter.trim() || undefined,
-        status: this.statusFilter,
-        from: this.fromDate || undefined,
-        to: this.toDate || undefined,
-        page: this.pageIndex,
-        pageSize: this.pageSize
-      });
+      const page = await this.query.run(state => this.orderApi.search({
+        orderNumber: state.filters.orderNumber || undefined,
+        customerName: state.filters.customerName || undefined,
+        customerPhone: state.filters.customerPhone || undefined,
+        status: state.filters.status,
+        from: state.filters.from || undefined,
+        to: state.filters.to || undefined,
+        page: state.pageIndex,
+        pageSize: state.pageSize
+      }));
+      if (!page) {
+        return;
+      }
+
       if (page.items.length === 0 && page.total > 0 && this.pageIndex > 1) {
-        this.pageIndex = Math.max(1, Math.ceil(page.total / this.pageSize));
+        this.query.setPage(Math.max(1, Math.ceil(page.total / this.pageSize)));
         await this.loadOrders();
         return;
       }
@@ -264,8 +303,6 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       this.total.set(page.total);
     } catch (error) {
       this.notifyError('Load Orders Failed', error, true);
-    } finally {
-      this.loading.set(false);
     }
   }
 
@@ -302,7 +339,14 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
   }
 
   async searchOrders(): Promise<void> {
-    this.pageIndex = 1;
+    this.query.setFilters({
+      orderNumber: this.orderNumberFilter.trim(),
+      customerName: this.customerNameFilter.trim(),
+      customerPhone: this.customerPhoneFilter.trim(),
+      status: this.statusFilter,
+      from: this.fromDate,
+      to: this.toDate
+    });
     await this.loadOrders();
   }
 
@@ -323,30 +367,18 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     this.statusFilter = '';
     this.fromDate = '';
     this.toDate = '';
-    this.pageIndex = 1;
-    await this.loadOrders();
-  }
-
-  async changePage(pageIndex: number): Promise<void> {
-    this.pageIndex = pageIndex;
-    await this.loadOrders();
-  }
-
-  async changePageSize(pageSize: number): Promise<void> {
-    this.pageSize = pageSize;
-    this.pageIndex = 1;
+    this.query.setFilters({ orderNumber: '', customerName: '', customerPhone: '', status: '', from: '', to: '' });
     await this.loadOrders();
   }
 
   async changeTablePage(page: TablePageChange): Promise<void> {
-    this.pageIndex = page.pageIndex;
-    this.pageSize = page.pageSize;
+    this.query.setPage(page.pageIndex, page.pageSize);
     await this.loadOrders();
   }
 
   changeTableSort(sort: TableSort): void {
     this.sortKey.set(sort.key as OrderSortKey);
-    this.sortDirection.set(this.fromTableSortDirection(sort.direction));
+    this.sortDirection.set(fromTableSortDirection(sort.direction));
   }
 
   orderNumber(order: OrderResponse): string {
@@ -395,7 +427,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       email: selected.customerEmail ?? '',
       address: selected.customerAddress ?? ''
     });
-    this.cartLines.set(this.toCartLines(selected));
+    this.cartLines.set(toCartLines(selected));
     this.formErrors.set({});
     this.customerFormErrors.set({});
     this.formDirty.set(false);
@@ -447,7 +479,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!this.validateOrderForm()) {
+    if (!this.applyFormValidation()) {
       return;
     }
 
@@ -524,7 +556,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     try {
       // Sent as typed. Whether this customer already exists is the backend's
       // question, answered in the same transaction that creates the order.
-      const result = await this.orderApi.create(this.orderCustomer(), this.toOrderLineRequests());
+      const result = await this.orderApi.create(this.orderCustomer(), toOrderLineRequests(this.cartLines()));
       this.currentOrder.set(result.body);
       this.currentEtag.set(result.etag ?? null);
       await this.subscribeToOrder(result.body.id);
@@ -564,14 +596,14 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     this.formErrors.set({});
     try {
       let saved = order;
-      if (this.hasCustomerChanged(order)) {
+      if (hasCustomerChanged(this.orderCustomer(), order)) {
         const result = await this.orderApi.updateCustomer(order.id, this.orderCustomer(), etag);
         saved = result.body;
         etag = result.etag ?? etag;
       }
 
-      if (this.haveLinesChanged(order)) {
-        const result = await this.orderApi.replaceLines(order.id, this.toOrderLineRequests(), etag);
+      if (haveLinesChanged(this.cartLines(), order)) {
+        const result = await this.orderApi.replaceLines(order.id, toOrderLineRequests(this.cartLines()), etag);
         saved = result.body;
         etag = result.etag ?? etag;
       }
@@ -587,34 +619,6 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
     } finally {
       this.saving.set(false);
     }
-  }
-
-  private toOrderLineRequests(): OrderLineRequest[] {
-    return this.cartLines().map(line => ({
-      productVariantId: line.variant.id,
-      quantity: line.quantity,
-      discountPercent: line.discountPercent
-    }));
-  }
-
-  private hasCustomerChanged(order: OrderResponse): boolean {
-    const customer = this.orderCustomer();
-    return customer.name !== order.customerName
-      || customer.phone !== order.customerPhone
-      || (customer.email || '') !== (order.customerEmail || '')
-      || (customer.address || '') !== (order.customerAddress || '');
-  }
-
-  private haveLinesChanged(order: OrderResponse): boolean {
-    const lines = this.toOrderLineRequests();
-    if (lines.length !== order.lines.length) {
-      return true;
-    }
-
-    return lines.some(line => {
-      const existing = order.lines.find(x => x.productVariantId === line.productVariantId);
-      return !existing || existing.quantity !== line.quantity || existing.discountPercent !== line.discountPercent;
-    });
   }
 
   async loadOrderDetail(orderId: string): Promise<void> {
@@ -643,7 +647,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       this.currentEtag.set(result.etag ?? null);
       this.updateWaitingState(result.body);
       if (result.body.status !== 'PendingInventory') {
-        this.stopPendingPolling();
+        this.pendingPoller.stop();
       }
     } catch (error) {
       this.notifyError('Refresh Order Failed', error);
@@ -774,55 +778,11 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
    * Explains every problem rather than just disabling Save, so the user can see
    * what to fix instead of guessing why the button does nothing.
    */
-  private validateOrderForm(): boolean {
-    const customer = this.orderCustomer();
-    const customerErrors: OrderCustomerFormErrors = {};
-    if (!customer.name.trim()) {
-      customerErrors.name = 'Customer name is required.';
-    }
-
-    const customerPhoneDigits = customer.phone.replace(/\D/g, '');
-    if (!customer.phone.trim()) {
-      customerErrors.phone = 'Phone is required.';
-    } else if (customerPhoneDigits.length < 9 || customerPhoneDigits.length > 15) {
-      customerErrors.phone = 'Phone must contain 9 to 15 digits.';
-    }
-
-    const errors: { lines?: string } = {};
-    if (this.cartLines().length === 0) {
-      errors.lines = 'Add at least one product.';
-    }
-
-    this.customerFormErrors.set(customerErrors);
-    this.formErrors.set(errors);
-    return !customerErrors.name && !customerErrors.phone && !errors.lines;
-  }
-
-  private toCartLines(order: OrderResponse): CartLine[] {
-    return order.lines.map(line => ({
-      product: {
-        id: line.productId ?? line.productVariantId,
-        sku: line.sku,
-        productCode: line.productCode,
-        name: line.productName,
-        status: 'Published',
-        variants: []
-      },
-      variant: {
-        id: line.productVariantId,
-        sku: line.sku,
-        color: line.colorCode || line.colorName
-          ? { id: line.colorCode ?? line.productVariantId, code: line.colorCode ?? '', name: line.colorName ?? line.colorCode ?? '' }
-          : null,
-        size: line.sizeCode
-          ? { id: line.sizeCode, code: line.sizeCode, name: line.sizeCode }
-          : null,
-        price: line.unitPrice,
-        status: 'Published'
-      },
-      quantity: line.quantity,
-      discountPercent: line.discountPercent
-    }));
+  private applyFormValidation(): boolean {
+    const result = validateOrderForm(this.orderCustomer(), this.cartLines());
+    this.customerFormErrors.set(result.customerErrors);
+    this.formErrors.set(result.formErrors);
+    return result.isValid;
   }
 
   private canOrderVariant(variant: ProductVariantLookupResponse): boolean {
@@ -831,45 +791,6 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
 
   canUndoConfirmOrder(order: OrderResponse): boolean {
     return order.status === 'Confirmed' && !order.lines.some(line => line.isSellThroughDiscontinued);
-  }
-
-  private compareOrders(left: OrderResponse, right: OrderResponse): number {
-    const direction = this.sortDirection() === 'asc' ? 1 : -1;
-    const leftValue = this.sortValue(left, this.sortKey());
-    const rightValue = this.sortValue(right, this.sortKey());
-
-    if (typeof leftValue === 'number' && typeof rightValue === 'number') {
-      return (leftValue - rightValue) * direction;
-    }
-
-    return String(leftValue).localeCompare(String(rightValue)) * direction;
-  }
-
-  private toTableSortDirection(direction: SortDirection): TableSortDirection {
-    return direction === 'asc' ? 'ascend' : 'descend';
-  }
-
-  private fromTableSortDirection(direction: TableSortDirection): SortDirection {
-    return direction === 'ascend' ? 'asc' : 'desc';
-  }
-
-  private sortValue(order: OrderResponse, key: OrderSortKey): string | number {
-    switch (key) {
-      case 'orderNumber':
-        return this.orderNumber(order);
-      case 'customer':
-        return order.customerName;
-      case 'phone':
-        return order.customerPhone;
-      case 'createdAt':
-        return Date.parse(order.createdAt);
-      case 'total':
-        return order.total;
-      case 'status':
-        return this.statusDisplay(order.status).label;
-      case 'updatedAt':
-        return Date.parse(order.updatedAt);
-    }
   }
 
   private async subscribeToOrder(orderId: string): Promise<void> {
@@ -887,7 +808,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
 
   private handleOrderStatusChanged(notification: OrderStatusChangedNotification): void {
     const currentOrder = this.currentOrder();
-    this.scheduleOrderListRefresh();
+    this.orderListRefresh.schedule();
 
     if (!currentOrder || currentOrder.id.toLowerCase() !== notification.orderId.toLowerCase()) {
       return;
@@ -901,29 +822,7 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
       this.notificationService.info('Order Updated', message);
     }
 
-    this.scheduleOrderDetailRefresh();
-  }
-
-  private scheduleOrderListRefresh(): void {
-    if (this.orderListRefreshTimer) {
-      clearTimeout(this.orderListRefreshTimer);
-    }
-
-    this.orderListRefreshTimer = setTimeout(() => {
-      this.orderListRefreshTimer = null;
-      void this.loadOrders();
-    }, orderListRefreshDelayMs);
-  }
-
-  private scheduleOrderDetailRefresh(): void {
-    if (this.detailRefreshTimer) {
-      clearTimeout(this.detailRefreshTimer);
-    }
-
-    this.detailRefreshTimer = setTimeout(() => {
-      this.detailRefreshTimer = null;
-      void this.refreshCurrentOrder();
-    }, orderDetailRefreshDelayMs);
+    this.orderDetailRefresh.schedule();
   }
 
   private updateWaitingState(order: OrderResponse): void {
@@ -932,55 +831,18 @@ export class OrderListPageComponent implements OnInit, OnDestroy {
         this.waitingSinceText.set(formatDateTime(new Date().toISOString()));
       }
 
-      this.ensurePendingPolling();
+      this.pendingPoller.ensureStarted();
       return;
     }
 
     this.waitingSinceText.set('');
-    this.stopPendingPolling();
-  }
-
-  private ensurePendingPolling(): void {
-    if (this.pendingPollTimer || this.orderRealtime.state() === 'Connected') {
-      return;
-    }
-
-    this.pendingPollDeadline = Date.now() + pendingPollWindowMs;
-    this.pendingPollTimer = setInterval(() => {
-      if (this.orderRealtime.state() === 'Connected' || Date.now() > this.pendingPollDeadline) {
-        this.stopPendingPolling();
-        return;
-      }
-
-      void this.refreshCurrentOrder();
-    }, pendingPollIntervalMs);
-  }
-
-  private stopPendingPolling(): void {
-    if (this.pendingPollTimer) {
-      clearInterval(this.pendingPollTimer);
-      this.pendingPollTimer = null;
-    }
-  }
-
-  private clearRefreshTimers(): void {
-    if (this.orderListRefreshTimer) {
-      clearTimeout(this.orderListRefreshTimer);
-      this.orderListRefreshTimer = null;
-    }
-
-    if (this.detailRefreshTimer) {
-      clearTimeout(this.detailRefreshTimer);
-      this.detailRefreshTimer = null;
-    }
+    this.pendingPoller.stop();
   }
 
   private notifyError(title: string, error: unknown, keepInline = false): void {
-    const message = describeApiError(error);
+    const message = this.apiNotifier.error(title, error);
     if (keepInline) {
       this.errorMessage.set(message);
     }
-
-    this.notificationService.error(title, message);
   }
 }

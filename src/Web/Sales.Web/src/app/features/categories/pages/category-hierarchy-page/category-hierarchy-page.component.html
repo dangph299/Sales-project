@@ -129,26 +129,25 @@
   </app-data-table>
 </nz-card>
 
-<nz-modal
-  [nzVisible]="categoryModalOpen()"
-  [nzTitle]="modalTitle()"
-  [nzFooter]="null"
-  [nzWidth]="640"
-  [nzBodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
-  (nzAfterOpen)="triggerCategoryCreateFocus()"
-  (nzOnCancel)="closeCategoryModal()">
-  <ng-container *nzModalContent>
-    <app-category-form
-      [appFocusFirstRequired]="!selectedCategory()"
-      [focusFirstRequiredTrigger]="categoryCreateFocusTrigger()"
-      [model]="categoryForm"
-      [parentOptions]="parentOptions()"
-      [validationErrors]="validationErrors()"
-      [errorMessage]="mutationErrorMessage()"
-      [saving]="saving()"
-      [editing]="!!selectedCategory()"
-      [assignedCode]="selectedCategory()?.categoryCode || ''"
-      (save)="saveCategory($event)"
-      (cancel)="closeCategoryModal()"></app-category-form>
-  </ng-container>
-</nz-modal>
+<app-form-dialog
+  [title]="modalTitle()"
+  [open]="categoryModalOpen()"
+  [saving]="saving()"
+  [saveDisabled]="false"
+  [saveText]="selectedCategory() ? 'Save Changes' : 'Create Category'"
+  [width]="640"
+  [bodyStyle]="{ 'max-height': 'calc(100vh - 220px)', 'overflow-y': 'auto' }"
+  (afterOpen)="triggerCategoryCreateFocus()"
+  (save)="saveCategory()"
+  (cancel)="closeCategoryModal()">
+  <app-category-form
+    [appFocusFirstRequired]="!selectedCategory()"
+    [focusFirstRequiredTrigger]="categoryCreateFocusTrigger()"
+    [model]="categoryForm"
+    [parentOptions]="parentOptions()"
+    [validationErrors]="validationErrors()"
+    [errorMessage]="mutationErrorMessage()"
+    [editing]="!!selectedCategory()"
+    [assignedCode]="selectedCategory()?.categoryCode || ''"
+    (save)="saveCategory($event)"></app-category-form>
+</app-form-dialog>
