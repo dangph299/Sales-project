@@ -23,7 +23,10 @@ public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
             .IsUnique()
             .HasOperators("varchar_pattern_ops")
             .HasDatabaseName("IX_orders_OrderCode");
-        entity.HasIndex(x => x.CustomerName).HasMethod("gin").HasOperators("gin_trgm_ops");
+        entity.HasIndex(x => x.CustomerName)
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops")
+            .HasDatabaseName("IX_orders_CustomerName");
 
         // varchar_pattern_ops so that LIKE 'digits%' can use these indexes: the database is created
         // under a non-C collation, where a default B-tree cannot answer a prefix match. Not unique —

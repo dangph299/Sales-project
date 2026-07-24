@@ -519,7 +519,8 @@ namespace Sales.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasFilter("NOT \"IsDelete\"");
 
-                    b.HasIndex("Name");
+                    b.HasIndex("Name")
+                        .HasDatabaseName("IX_customers_Name");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("Name"), "gin");
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("Name"), new[] { "gin_trgm_ops" });
@@ -606,7 +607,8 @@ namespace Sales.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CreatedAt");
 
-                    b.HasIndex("CustomerName");
+                    b.HasIndex("CustomerName")
+                        .HasDatabaseName("IX_orders_CustomerName");
 
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("CustomerName"), "gin");
                     NpgsqlIndexBuilderExtensions.HasOperators(b.HasIndex("CustomerName"), new[] { "gin_trgm_ops" });

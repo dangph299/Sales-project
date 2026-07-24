@@ -26,7 +26,10 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .IsUnique()
             .HasFilter("\"NormalizedPhone\" IS NOT NULL AND NOT \"IsDelete\"")
             .HasOperators("varchar_pattern_ops");
-        entity.HasIndex(x => x.Name).HasMethod("gin").HasOperators("gin_trgm_ops");
+        entity.HasIndex(x => x.Name)
+            .HasMethod("gin")
+            .HasOperators("gin_trgm_ops")
+            .HasDatabaseName("IX_customers_Name");
         entity.HasIndex(x => x.Phone);
         entity.HasIndex(x => x.ReversedPhone)
             .HasFilter("\"ReversedPhone\" IS NOT NULL AND NOT \"IsDelete\"")
