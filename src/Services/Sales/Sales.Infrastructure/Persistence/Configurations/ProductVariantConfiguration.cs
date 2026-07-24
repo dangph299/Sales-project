@@ -11,15 +11,14 @@ public sealed class ProductVariantConfiguration : IEntityTypeConfiguration<Produ
     {
         var money = new ValueConverter<Money, decimal>(x => x.Amount, x => Money.Vnd(x));
 
+        // Table
         entity.ToTable("product_variants");
+
+        // Primary Key
         entity.HasKey(x => x.Id);
+
+        // Properties
         entity.Property(x => x.Id).ValueGeneratedNever();
-        entity.HasQueryFilter(x => !x.IsDelete);
-        // Exclude soft-deleted rows: without this, removing a variant permanently blocks re-adding
-        // the same colour/size pair to that product, and its SKU can never be issued again.
-        entity.HasIndex(x => x.Sku).IsUnique().HasFilter("NOT \"IsDelete\"");
-        entity.HasIndex(x => new { x.ProductId, x.ColorId, x.SizeId }).IsUnique().HasFilter("NOT \"IsDelete\"");
-        entity.HasIndex(x => x.Status);
         entity.Property(x => x.Sku).HasMaxLength(96);
         entity.Property(x => x.Price).HasConversion(money).HasColumnType("numeric(18,0)");
         entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
@@ -28,6 +27,8 @@ public sealed class ProductVariantConfiguration : IEntityTypeConfiguration<Produ
         entity.Property(x => x.DeleteByUser).HasMaxLength(128);
         entity.Property(x => x.DeletedBy).HasMaxLength(128);
         entity.Property(x => x.Version).IsConcurrencyToken();
+
+        // Relationships
         entity.HasOne<Product>()
             .WithMany(x => x.Variants)
             .HasForeignKey(x => x.ProductId)
@@ -40,5 +41,15 @@ public sealed class ProductVariantConfiguration : IEntityTypeConfiguration<Produ
             .WithMany()
             .HasForeignKey(x => x.SizeId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Indexes
+        // Unique indexes ignore soft-deleted rows so removing a variant does not permanently block
+        // re-adding the same colour/size pair or reissuing its SKU.
+        entity.HasIndex(x => x.Sku).IsUnique().HasFilter("NOT \"IsDelete\"");
+        entity.HasIndex(x => new { x.ProductId, x.ColorId, x.SizeId }).IsUnique().HasFilter("NOT \"IsDelete\"");
+        entity.HasIndex(x => x.Status);
+
+        // Query Filters
+        entity.HasQueryFilter(x => !x.IsDelete);
     }
 }

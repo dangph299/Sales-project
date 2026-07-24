@@ -8,17 +8,13 @@ public sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
 {
     public void Configure(EntityTypeBuilder<Category> entity)
     {
+        // Table
         entity.ToTable("categories");
+
+        // Primary Key
         entity.HasKey(x => x.Id);
-        entity.HasQueryFilter(x => !x.IsDelete);
-        // Unique indexes exclude soft-deleted rows. Without the filter a deleted category keeps
-        // owning its code and name forever, and because the query filter hides the row the conflict
-        // is invisible: creating the same name again fails with a 409 against a record nothing can show.
-        entity.HasIndex(x => x.CategoryCode).IsUnique().HasFilter("NOT \"IsDelete\"");
-        entity.HasIndex(x => x.ParentCategoryId);
-        entity.HasIndex(x => x.Status);
-        entity.HasIndex(x => new { x.Name, x.ParentCategoryId }).IsUnique().HasFilter("NOT \"IsDelete\"");
-        entity.HasIndex(x => x.Name).IsUnique().HasFilter("\"ParentCategoryId\" IS NULL AND NOT \"IsDelete\"");
+
+        // Properties
         entity.Property(x => x.CategoryCode).HasMaxLength(32);
         entity.Property(x => x.Name).HasMaxLength(200);
         entity.Property(x => x.Description).HasMaxLength(1000);
@@ -28,10 +24,26 @@ public sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
         entity.Property(x => x.DeleteByUser).HasMaxLength(128);
         entity.Property(x => x.DeletedBy).HasMaxLength(128);
         entity.Property(x => x.Version).IsConcurrencyToken();
+
+        // Relationships
         entity.HasOne<Category>()
             .WithMany()
             .HasForeignKey(x => x.ParentCategoryId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        // Indexes
+        // Unique indexes ignore soft-deleted rows so deleted categories do not permanently reserve
+        // their business keys behind the global query filter.
+        entity.HasIndex(x => x.CategoryCode).IsUnique().HasFilter("NOT \"IsDelete\"");
+        entity.HasIndex(x => new { x.Name, x.ParentCategoryId }).IsUnique().HasFilter("NOT \"IsDelete\"");
+        entity.HasIndex(x => x.Name).IsUnique().HasFilter("\"ParentCategoryId\" IS NULL AND NOT \"IsDelete\"");
+        entity.HasIndex(x => x.ParentCategoryId);
+        entity.HasIndex(x => x.Status);
+
+        // Query Filters
+        entity.HasQueryFilter(x => !x.IsDelete);
+
+        // Seed Data
         entity.HasData(CategorySeedData.Uncategorized);
     }
 }

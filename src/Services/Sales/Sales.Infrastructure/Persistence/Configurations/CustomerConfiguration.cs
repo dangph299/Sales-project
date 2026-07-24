@@ -12,11 +12,30 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
     /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<Customer> entity)
     {
+        // Table
         entity.ToTable("customers");
+
+        // Primary Key
         entity.HasKey(x => x.Id);
-        entity.HasQueryFilter(x => !x.IsDelete);
-        // Exclude soft-deleted rows: a deleted customer must not keep reserving their code or phone
-        // number, since nothing in the app can surface the row that causes the conflict.
+
+        // Properties
+        entity.Property(x => x.CustomerCode).HasMaxLength(32);
+        entity.Property(x => x.Name).HasMaxLength(200);
+        entity.Property(x => x.Phone).HasMaxLength(32);
+        entity.Property(x => x.NormalizedPhone).HasMaxLength(15);
+        entity.Property(x => x.ReversedPhone).HasMaxLength(15);
+        entity.Property(x => x.Email).HasMaxLength(254);
+        entity.Property(x => x.Address).HasMaxLength(500);
+        entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
+        entity.Property(x => x.CreatedBy).HasMaxLength(128);
+        entity.Property(x => x.UpdatedBy).HasMaxLength(128);
+        entity.Property(x => x.DeleteByUser).HasMaxLength(128);
+        entity.Property(x => x.DeletedBy).HasMaxLength(128);
+        entity.Property(x => x.Version).IsConcurrencyToken();
+
+        // Indexes
+        // Ignore soft-deleted rows so deleted customers do not reserve business keys behind the
+        // global query filter.
         entity.HasIndex(x => x.CustomerCode).IsUnique().HasFilter("NOT \"IsDelete\"");
         // One index per phone column, carrying varchar_pattern_ops so the same index enforces
         // uniqueness, answers equality lookups, and serves the LIKE 'digits%' prefix scan the
@@ -35,18 +54,8 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
             .HasFilter("\"ReversedPhone\" IS NOT NULL AND NOT \"IsDelete\"")
             .HasOperators("varchar_pattern_ops");
         entity.HasIndex(x => x.Status);
-        entity.Property(x => x.CustomerCode).HasMaxLength(32);
-        entity.Property(x => x.Name).HasMaxLength(200);
-        entity.Property(x => x.Phone).HasMaxLength(32);
-        entity.Property(x => x.NormalizedPhone).HasMaxLength(15);
-        entity.Property(x => x.ReversedPhone).HasMaxLength(15);
-        entity.Property(x => x.Email).HasMaxLength(254);
-        entity.Property(x => x.Address).HasMaxLength(500);
-        entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(32);
-        entity.Property(x => x.CreatedBy).HasMaxLength(128);
-        entity.Property(x => x.UpdatedBy).HasMaxLength(128);
-        entity.Property(x => x.DeleteByUser).HasMaxLength(128);
-        entity.Property(x => x.DeletedBy).HasMaxLength(128);
-        entity.Property(x => x.Version).IsConcurrencyToken();
+
+        // Query Filters
+        entity.HasQueryFilter(x => !x.IsDelete);
     }
 }
