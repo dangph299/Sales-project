@@ -17,17 +17,17 @@ public sealed class OutboxPendingMonitorJob(
     ILogger<OutboxPendingMonitorJob> logger) : OutboxPendingMonitorJobBase<InventoryDbContext>(db, logger)
 {
     /// <summary>
-    /// Executes one Inventory outbox pending health snapshot.
+    /// Executes one Inventory outbox pending health snapshot. No distributed lock is used: the job
+    /// is read-only and only emits logs/gauges, so duplicate concurrent execution is harmless.
     /// </summary>
     [AutomaticRetry(Attempts = 3)]
     [DisableConcurrentExecution(timeoutInSeconds: 300)]
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var jobOptions = options.Value.OutboxPendingMonitor;
-        await ExecuteCoreAsync(
+        await ExecuteMonitorBatchAsync(
             jobOptions.BacklogWarningThreshold,
             jobOptions.OldestPendingWarningSeconds,
-            InventoryMessagingJobLockKeys.OutboxPendingMonitor,
             clock.UtcNow,
             cancellationToken);
     }

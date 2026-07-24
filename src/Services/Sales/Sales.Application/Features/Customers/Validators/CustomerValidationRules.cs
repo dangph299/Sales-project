@@ -18,6 +18,6 @@ internal static class CustomerValidationRules
     /// </summary>
     public static IRuleBuilderOptions<T, string> ValidPhone<T>(this IRuleBuilder<T, string> rule) =>
         rule.NotEmpty()
-            .Must(CustomerPhoneNormalizer.HasPersistableDigitCount)
+            .Must(PhoneNumberNormalizer.HasPersistableDigitCount)
             .WithMessage("Phone must contain 9 to 15 digits.");
 }

@@ -8,6 +8,9 @@ Every generated backend feature must satisfy every applicable item. Skip a secti
 - [ ] No new project reference crosses a bounded context.
 - [ ] No EF Core, Kafka, Redis, Hangfire, or ASP.NET Core type appears in Domain or Application.
 - [ ] Every new infrastructure capability used by Application is behind a port declared in Application.
+- [ ] An existing port/abstraction was reused instead of adding a new one, unless no existing one fits.
+- [ ] No wrapper was added that only renames or re-exposes a vendor type without hiding it or adding policy.
+- [ ] No dependency is hidden behind a `GlobalUsings.cs` entry, a type alias, or a fully-qualified name.
 - [ ] New registrations go through the owning layer's single `Add<Layer>` extension.
 - [ ] `Sales.Architecture.Tests` still passes; a new layering rule got a new test.
 
@@ -23,7 +26,7 @@ Every generated backend feature must satisfy every applicable item. Skip a secti
 
 ## CQRS
 
-- [ ] Command/query implements `ICommand`, `ICommand<T>`, or `IQuery<T>` — not `IRequest<T>`.
+- [ ] Command/query implements `ICommand`, `ICommand<T>`, or `IQuery<T>` — not `IRequest<T>`; the handler implements the matching `ICommandHandler`/`IQueryHandler` — not `IRequestHandler<T, R>` directly.
 - [ ] Command and handler are in separate files under `Features/<Aggregate>/`.
 - [ ] Query handler calls only a read service; it never touches a repository or `DbContext`.
 - [ ] Command handler order is: load → version check → domain call → save → side effects → map.

@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Orders.DTOs;
 using Sales.Application.Features.Orders.Interfaces;
@@ -8,7 +7,7 @@ namespace Sales.Application.Features.Orders.Queries;
 /// <summary>
 /// Handles <see cref="GetOrder"/> by delegating to the order read service.
 /// </summary>
-public sealed class GetOrderHandler(IOrderReadService readService) : IRequestHandler<GetOrder, OrderDto>
+public sealed class GetOrderHandler(IOrderReadService readService) : IQueryHandler<GetOrder, OrderDto>
 {
     /// <summary>
     /// Loads the requested order.

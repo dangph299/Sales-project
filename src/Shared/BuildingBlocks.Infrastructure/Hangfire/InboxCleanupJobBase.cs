@@ -32,6 +32,20 @@ public abstract class InboxCleanupJobBase<TDbContext>(
             return;
         }
 
+        await ExecuteCleanupBatchAsync(batchSize, retentionDays, now, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes one cleanup batch without opening a transaction or acquiring any lock. Deletes are
+    /// bounded and idempotent, so concurrent or repeated invocations are safe without coordination.
+    /// </summary>
+    protected async Task ExecuteCleanupBatchAsync(
+        int batchSize,
+        int retentionDays,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
         var cutoff = now.AddDays(-retentionDays);
         var ids = await Inbox(db)
             .Where(row => row.Status == InboxMessageStatus.Processed && row.ProcessedAt < cutoff)
@@ -44,7 +58,6 @@ public abstract class InboxCleanupJobBase<TDbContext>(
             .Where(row => ids.Contains(row.EventId))
             .ExecuteDeleteAsync(cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
         RecordDeleted(deleted);
         logger.LogInformation(
             "{DbContext} inbox cleanup deleted {DeletedCount} processed rows older than {Cutoff}",

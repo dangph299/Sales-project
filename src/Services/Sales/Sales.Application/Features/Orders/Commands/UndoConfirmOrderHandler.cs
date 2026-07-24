@@ -1,5 +1,4 @@
 using MapsterMapper;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using Sales.Application.Features.Orders.DTOs;
 using Sales.Domain;
@@ -13,7 +12,7 @@ public sealed class UndoConfirmOrderHandler(
     IOrderRepository orderRepository,
     IUnitOfWork unitOfWork,
     ILogger<UndoConfirmOrderHandler> logger,
-    IMapper mapper) : IRequestHandler<UndoConfirmOrder, OrderDto>
+    IMapper mapper) : ICommandHandler<UndoConfirmOrder, OrderDto>
 {
     /// <summary>
     /// Loads the order, undoes its confirmation, and commits the unit of work.

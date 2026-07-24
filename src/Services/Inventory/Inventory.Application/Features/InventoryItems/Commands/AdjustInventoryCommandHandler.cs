@@ -2,7 +2,6 @@ using Inventory.Application.Common.Behaviors;
 using Inventory.Application.Common.Interfaces;
 using Inventory.Application.Features.InventoryItems.DTOs;
 using MapsterMapper;
-using MediatR;
 
 namespace Inventory.Application.Features.InventoryItems.Commands;
 
@@ -15,7 +14,7 @@ namespace Inventory.Application.Features.InventoryItems.Commands;
 public sealed class AdjustInventoryCommandHandler(
     IInventoryRepository inventoryRepository,
     IInventoryEventOutbox inventoryEventOutbox,
-    IMapper mapper) : IRequestHandler<AdjustInventoryCommand, InventorySnapshot>
+    IMapper mapper) : ICommandHandler<AdjustInventoryCommand, InventorySnapshot>
 {
     /// <inheritdoc/>
     public async Task<InventorySnapshot> Handle(AdjustInventoryCommand request, CancellationToken cancellationToken)

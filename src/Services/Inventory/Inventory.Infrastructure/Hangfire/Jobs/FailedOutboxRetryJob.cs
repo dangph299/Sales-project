@@ -18,17 +18,18 @@ public sealed class FailedOutboxRetryJob(
     ILogger<FailedOutboxRetryJob> logger) : FailedOutboxRetryJobBase<InventoryDbContext>(db, outboxSignal, logger)
 {
     /// <summary>
-    /// Executes one Inventory terminal failed outbox retry reset batch.
+    /// Executes one Inventory terminal failed outbox retry reset batch. No distributed lock is
+    /// used: rows are claimed with an atomic conditional update whose WHERE clause re-validates
+    /// eligibility (<c>LockedUntil</c>), so concurrent callers cannot both reset the same row.
     /// </summary>
     [AutomaticRetry(Attempts = 3)]
     [DisableConcurrentExecution(timeoutInSeconds: 300)]
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var jobOptions = options.Value.FailedOutboxRetry;
-        await ExecuteCoreAsync(
+        await ExecuteRetryBatchAsync(
             jobOptions.BatchSize,
             jobOptions.RetryDelaySeconds,
-            InventoryMessagingJobLockKeys.FailedOutboxRetry,
             clock.UtcNow,
             cancellationToken);
     }

@@ -11,10 +11,14 @@ public sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLine>
     {
         var money = new ValueConverter<Money, decimal>(x => x.Amount, x => Money.Vnd(x));
 
+        // Table
         entity.ToTable("order_lines");
+
+        // Primary Key
         entity.HasKey(x => x.Id);
+
+        // Properties
         entity.Property(x => x.Id).ValueGeneratedNever();
-        entity.HasIndex(x => new { x.OrderId, x.ProductVariantId }).IsUnique();
         entity.Property(x => x.ProductCode).HasMaxLength(32);
         entity.Property(x => x.Sku).HasMaxLength(96);
         entity.Property(x => x.ProductName).HasMaxLength(200);
@@ -23,5 +27,8 @@ public sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLine>
         entity.Property(x => x.SizeCode).HasMaxLength(16);
         entity.Property(x => x.UnitPrice).HasConversion(money).HasColumnType("numeric(18,0)");
         entity.Ignore(x => x.LineTotal);
+
+        // Indexes
+        entity.HasIndex(x => new { x.OrderId, x.ProductVariantId }).IsUnique();
     }
 }

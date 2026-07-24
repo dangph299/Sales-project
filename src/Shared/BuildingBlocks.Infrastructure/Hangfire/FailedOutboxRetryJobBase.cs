@@ -36,6 +36,21 @@ public abstract class FailedOutboxRetryJobBase<TDbContext>(
             return;
         }
 
+        await ExecuteRetryBatchAsync(batchSize, retryDelaySeconds, now, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes one terminal failed outbox reset batch without opening a transaction or acquiring
+    /// any lock. Rows are claimed with a conditional update (<c>LockId</c>/<c>LockedUntil</c>) whose
+    /// WHERE clause re-validates eligibility, so concurrent callers cannot both reset the same row.
+    /// </summary>
+    protected async Task ExecuteRetryBatchAsync(
+        int batchSize,
+        int retryDelaySeconds,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
         var claimId = Guid.NewGuid();
         var ids = await Outbox(db)
             .Where(row => row.ProcessedAt == null &&
@@ -66,7 +81,6 @@ public abstract class FailedOutboxRetryJobBase<TDbContext>(
                 .SetProperty(row => row.LockId, (Guid?)null)
                 .SetProperty(row => row.LockedUntil, (DateTimeOffset?)null), cancellationToken);
 
-        await transaction.CommitAsync(cancellationToken);
         if (reset > 0)
         {
             outboxSignal.Notify();

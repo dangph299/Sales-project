@@ -32,6 +32,20 @@ public abstract class OutboxPendingMonitorJobBase<TDbContext>(
             return;
         }
 
+        await ExecuteMonitorBatchAsync(backlogWarningThreshold, oldestPendingWarningSeconds, now, cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Executes one outbox pending snapshot without opening a transaction or acquiring any lock.
+    /// Read-only: duplicate concurrent execution only duplicates logs/gauges, never mutates rows.
+    /// </summary>
+    protected async Task ExecuteMonitorBatchAsync(
+        int backlogWarningThreshold,
+        int oldestPendingWarningSeconds,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
         var pendingQuery = Outbox(db)
             .AsNoTracking()
             .Where(row => row.ProcessedAt == null && row.DeadLetteredAt == null);
@@ -65,8 +79,6 @@ public abstract class OutboxPendingMonitorJobBase<TDbContext>(
                 oldestAgeSeconds,
                 failedTerminal);
         }
-
-        await transaction.CommitAsync(cancellationToken);
     }
 
     private async Task<bool> TryAcquireLockAsync(long lockKey, CancellationToken cancellationToken)

@@ -71,7 +71,7 @@ public sealed class Customer : AggregateRoot<Guid>
     /// Creates a new <see cref="Customer"/> aggregate and raises <see cref="CustomerCreatedDomainEvent"/>.
     /// </summary>
     /// <param name="name">Customer's name.</param>
-    /// <param name="phone">Customer's phone number, in any format containing 9 to 15 digits, normalized via <see cref="CustomerPhoneNormalizer"/>.</param>
+    /// <param name="phone">Customer's phone number, in any format containing 9 to 15 digits, normalized via <see cref="PhoneNumberNormalizer"/>.</param>
     /// <returns>Newly created customer.</returns>
     /// <exception cref="DomainException">Thrown when <paramref name="name"/> is empty/whitespace or <paramref name="phone"/> does not contain 9 to 15 digits.</exception>
     public static Customer Create(string customerCode, string name, string phone, string? email = null, string? address = null)
@@ -157,8 +157,8 @@ public sealed class Customer : AggregateRoot<Guid>
     {
         Name = string.IsNullOrWhiteSpace(name) ? throw new DomainException("Customer name is required.") : name.Trim();
         Phone = string.IsNullOrWhiteSpace(phone) ? throw new DomainException("Phone is required.") : phone.Trim();
-        NormalizedPhone = CustomerPhoneNormalizer.Normalize(phone);
-        ReversedPhone = CustomerPhoneNormalizer.Reverse(NormalizedPhone);
+        NormalizedPhone = PhoneNumberNormalizer.Normalize(phone);
+        ReversedPhone = PhoneNumberNormalizer.Reverse(NormalizedPhone);
         Email = string.IsNullOrWhiteSpace(email) ? null : email.Trim();
         Address = string.IsNullOrWhiteSpace(address) ? null : address.Trim();
     }

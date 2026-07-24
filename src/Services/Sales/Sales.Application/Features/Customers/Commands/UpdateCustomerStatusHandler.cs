@@ -1,5 +1,4 @@
 using MapsterMapper;
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Customers.DTOs;
 using Sales.Domain;
@@ -9,7 +8,7 @@ namespace Sales.Application.Features.Customers.Commands;
 public sealed class UpdateCustomerStatusHandler(
     IRepository<Customer> customerRepository,
     IUnitOfWork unitOfWork,
-    IMapper mapper) : IRequestHandler<UpdateCustomerStatusCommand, CustomerDto>
+    IMapper mapper) : ICommandHandler<UpdateCustomerStatusCommand, CustomerDto>
 {
     public async Task<CustomerDto> Handle(UpdateCustomerStatusCommand request, CancellationToken cancellationToken)
     {

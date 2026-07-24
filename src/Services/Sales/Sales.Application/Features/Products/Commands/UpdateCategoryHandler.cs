@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Products.DTOs;
 using Sales.Domain;
@@ -7,7 +6,7 @@ namespace Sales.Application.Features.Products.Commands;
 
 public sealed class UpdateCategoryHandler(
     IRepository<Category> categoryRepository,
-    IUnitOfWork unitOfWork) : IRequestHandler<UpdateCategoryCommand, CategoryDto>
+    IUnitOfWork unitOfWork) : ICommandHandler<UpdateCategoryCommand, CategoryDto>
 {
     public async Task<CategoryDto> Handle(UpdateCategoryCommand request, CancellationToken cancellationToken)
     {

@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
+using BuildingBlocks.Infrastructure.Coordination.Redis;
 using KafkaFlow;
 using KafkaFlow.Serializer;
 using Microsoft.EntityFrameworkCore;
@@ -123,6 +124,7 @@ public static class DependencyInjection
         services.AddScoped<IProductCache, ProductCache>();
         services.AddStackExchangeRedisCache(options => options.Configuration = configuration.GetConnectionString("Redis"));
         services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(configuration.GetConnectionString("Redis")!));
+        services.AddRedisDistributedLeases();
         return services;
     }
 

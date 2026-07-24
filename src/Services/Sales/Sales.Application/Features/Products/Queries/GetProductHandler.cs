@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Products.DTOs;
 using Sales.Application.Features.Products.Interfaces;
@@ -8,7 +7,7 @@ namespace Sales.Application.Features.Products.Queries;
 /// <summary>
 /// Handles <see cref="GetProductQuery"/> by delegating to the product read service.
 /// </summary>
-public sealed class GetProductHandler(IProductReadService readService) : IRequestHandler<GetProductQuery, ProductDto>
+public sealed class GetProductHandler(IProductReadService readService) : IQueryHandler<GetProductQuery, ProductDto>
 {
     /// <summary>
     /// Loads the requested product.

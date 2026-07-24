@@ -33,6 +33,6 @@ public sealed class SearchOrdersValidator : AbstractValidator<SearchOrders>
             return true;
         }
 
-        return CustomerPhoneNormalizer.NormalizeSearchTerm(customerPhoneSearchTerm).Length > 0;
+        return PhoneNumberNormalizer.NormalizeSearchTerm(customerPhoneSearchTerm).Length > 0;
     }
 }

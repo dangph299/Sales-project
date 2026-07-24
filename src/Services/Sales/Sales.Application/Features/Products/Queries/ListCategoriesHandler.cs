@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Features.Products.DTOs;
 using Sales.Application.Features.Products.Interfaces;
 
@@ -8,7 +7,7 @@ namespace Sales.Application.Features.Products.Queries;
 /// Handles <see cref="ListCategoriesQuery"/> by delegating to the category read service.
 /// </summary>
 public sealed class ListCategoriesHandler(ICategoryReadService categoryReadService)
-    : IRequestHandler<ListCategoriesQuery, IReadOnlyList<CategoryLookupDto>>
+    : IQueryHandler<ListCategoriesQuery, IReadOnlyList<CategoryLookupDto>>
 {
     /// <summary>
     /// Lists categories available for catalog assignment.

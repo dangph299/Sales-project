@@ -2,6 +2,7 @@ using System.Diagnostics;
 using BuildingBlocks.Application;
 using BuildingBlocks.Contracts;
 using BuildingBlocks.Infrastructure;
+using BuildingBlocks.Infrastructure.Coordination.Redis;
 using Inventory.Application;
 using Inventory.Application.Common.Interfaces;
 using Inventory.Application.Features.InventoryItems.Interfaces;
@@ -12,6 +13,7 @@ using KafkaFlow.Serializer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace Inventory.Infrastructure;
 
@@ -41,6 +43,8 @@ public static class DependencyInjection
                 sp.GetRequiredService<AuditTimestampSaveChangesInterceptor>(),
                 sp.GetRequiredService<AuditSaveChangesInterceptor>()));
         services.AddSingleton<IClock, SystemClock>();
+        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(configuration.GetConnectionString("Redis")!));
+        services.AddRedisDistributedLeases();
         services.AddScoped<IInventoryRepository, InventoryRepository>();
         services.AddScoped<IReservationRepository, ReservationRepository>();
         services.AddScoped<IInventoryItemReadService, InventoryReadService>();

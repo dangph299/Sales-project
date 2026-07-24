@@ -17,7 +17,12 @@ public sealed class DependencyRulesTests
                 "BuildingBlocks.Infrastructure",
                 "BuildingBlocks.Web",
                 "Microsoft.EntityFrameworkCore",
-                "KafkaFlow").GetResult();
+                "Npgsql",
+                "KafkaFlow",
+                "Confluent.Kafka",
+                "Hangfire",
+                "StackExchange.Redis",
+                "MongoDB.Driver").GetResult();
         Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
     }
 
@@ -30,9 +35,34 @@ public sealed class DependencyRulesTests
                 "Inventory",
                 "AuditLog",
                 "Microsoft.EntityFrameworkCore",
+                "Npgsql",
                 "BuildingBlocks.Infrastructure",
                 "BuildingBlocks.Web",
-                "KafkaFlow").GetResult();
+                "KafkaFlow",
+                "Confluent.Kafka",
+                "Hangfire",
+                "StackExchange.Redis",
+                "MongoDB.Driver").GetResult();
+        Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
+    }
+
+    [Fact]
+    public void Inventory_application_does_not_depend_on_infrastructure_or_other_services()
+    {
+        var result = Types.InAssembly(typeof(Inventory.Application.DependencyInjection).Assembly).ShouldNot()
+            .HaveDependencyOnAny(
+                "Inventory.Infrastructure",
+                "Sales",
+                "AuditLog",
+                "Microsoft.EntityFrameworkCore",
+                "Npgsql",
+                "BuildingBlocks.Infrastructure",
+                "BuildingBlocks.Web",
+                "KafkaFlow",
+                "Confluent.Kafka",
+                "Hangfire",
+                "StackExchange.Redis",
+                "MongoDB.Driver").GetResult();
         Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
     }
 
@@ -64,7 +94,12 @@ public sealed class DependencyRulesTests
                 "BuildingBlocks.Infrastructure",
                 "BuildingBlocks.Web",
                 "Microsoft.EntityFrameworkCore",
-                "KafkaFlow").GetResult();
+                "Npgsql",
+                "KafkaFlow",
+                "Confluent.Kafka",
+                "Hangfire",
+                "StackExchange.Redis",
+                "MongoDB.Driver").GetResult();
         Assert.True(result.IsSuccessful, string.Join(", ", result.FailingTypeNames ?? []));
     }
 

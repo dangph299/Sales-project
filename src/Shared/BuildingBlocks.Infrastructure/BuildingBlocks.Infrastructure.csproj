@@ -14,6 +14,8 @@
   <ItemGroup>
     <!-- Exposes the internal outbox publish-cycle seam to the Sales reliability tests. -->
     <InternalsVisibleTo Include="Sales.Infrastructure.Tests" />
+    <!-- Exposes the internal Redis lease script/implementation to the reliability tests. -->
+    <InternalsVisibleTo Include="BuildingBlocks.Infrastructure.Tests" />
   </ItemGroup>
 
   <ItemGroup>
@@ -22,6 +24,7 @@
     <PackageReference Include="KafkaFlow.Microsoft.DependencyInjection" Version="4.2.0" />
     <PackageReference Include="Cronos" Version="0.11.1" />
     <PackageReference Include="Hangfire.Core" Version="1.8.23" />
+    <PackageReference Include="StackExchange.Redis" Version="2.9.32" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />

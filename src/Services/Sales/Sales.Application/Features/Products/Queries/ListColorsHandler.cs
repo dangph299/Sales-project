@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Features.Products.DTOs;
 using Sales.Application.Features.Products.Interfaces;
 
@@ -8,7 +7,7 @@ namespace Sales.Application.Features.Products.Queries;
 /// Handles <see cref="ListColorsQuery"/> by delegating to the reference-data read service.
 /// </summary>
 public sealed class ListColorsHandler(IReferenceDataReadService referenceDataReadService)
-    : IRequestHandler<ListColorsQuery, IReadOnlyList<ColorLookupDto>>
+    : IQueryHandler<ListColorsQuery, IReadOnlyList<ColorLookupDto>>
 {
     /// <summary>
     /// Lists every color available to product variants.

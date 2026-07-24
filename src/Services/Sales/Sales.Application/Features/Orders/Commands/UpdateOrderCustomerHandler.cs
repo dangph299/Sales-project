@@ -1,5 +1,4 @@
 using MapsterMapper;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Orders.DTOs;
@@ -22,7 +21,7 @@ public sealed class UpdateOrderCustomerHandler(
     IUnitOfWork unitOfWork,
     ILogger<UpdateOrderCustomerHandler> logger,
     IMapper mapper)
-    : IRequestHandler<UpdateOrderCustomer, OrderDto>
+    : ICommandHandler<UpdateOrderCustomer, OrderDto>
 {
     /// <summary>
     /// Loads the order under an optimistic concurrency check, replaces its customer snapshot, and

@@ -25,7 +25,7 @@ public sealed class OrderCustomerSnapshotTests
         var orderCustomerPhone = OrderCustomerPhone.Create("0912-345-678");
 
         Assert.Equal(
-            CustomerPhoneNormalizer.Reverse(orderCustomerPhone.NormalizedValue),
+            PhoneNumberNormalizer.Reverse(orderCustomerPhone.NormalizedValue),
             orderCustomerPhone.ReversedValue);
     }
 

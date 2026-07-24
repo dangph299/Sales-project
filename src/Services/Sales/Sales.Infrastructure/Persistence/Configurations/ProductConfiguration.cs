@@ -12,14 +12,13 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
     /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<Product> entity)
     {
+        // Table
         entity.ToTable("products");
+
+        // Primary Key
         entity.HasKey(x => x.Id);
-        entity.HasQueryFilter(x => !x.IsDelete);
-        // Excludes soft-deleted rows so deleting a product releases its code for reuse.
-        entity.HasIndex(x => x.ProductCode).IsUnique().HasFilter("NOT \"IsDelete\"");
-        entity.HasIndex(x => x.Name).HasMethod("gin").HasOperators("gin_trgm_ops");
-        entity.HasIndex(x => x.CategoryId);
-        entity.HasIndex(x => x.Status);
+
+        // Properties
         entity.Property(x => x.ProductCode).HasMaxLength(32);
         entity.Property(x => x.Name).HasMaxLength(200);
         entity.Property(x => x.Description).HasMaxLength(1000);
@@ -31,6 +30,8 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
         entity.Property(x => x.Version).IsConcurrencyToken();
         entity.Ignore(x => x.Sku);
         entity.Ignore(x => x.IsActive);
+
+        // Relationships
         entity.HasOne<Category>()
             .WithMany()
             .HasForeignKey(x => x.CategoryId)
@@ -40,5 +41,15 @@ public sealed class ProductConfiguration : IEntityTypeConfiguration<Product>
             .HasForeignKey(x => x.ProductId)
             .OnDelete(DeleteBehavior.Cascade);
         entity.Navigation(x => x.Variants).UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        // Indexes
+        // Ignore soft-deleted rows so deleting a product releases its code for reuse.
+        entity.HasIndex(x => x.ProductCode).IsUnique().HasFilter("NOT \"IsDelete\"");
+        entity.HasIndex(x => x.Name).HasMethod("gin").HasOperators("gin_trgm_ops");
+        entity.HasIndex(x => x.CategoryId);
+        entity.HasIndex(x => x.Status);
+
+        // Query Filters
+        entity.HasQueryFilter(x => !x.IsDelete);
     }
 }

@@ -1,5 +1,4 @@
 using MapsterMapper;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Orders.DTOs;
@@ -17,7 +16,7 @@ public sealed class ReplaceOrderLinesHandler(
     IUnitOfWork unitOfWork,
     ILogger<ReplaceOrderLinesHandler> logger,
     IMapper mapper)
-    : IRequestHandler<ReplaceOrderLines, OrderDto>
+    : ICommandHandler<ReplaceOrderLines, OrderDto>
 {
     /// <summary>
     /// Loads the order, resolves the new requested lines, replaces them, and commits the unit of work.

@@ -16,19 +16,20 @@ public sealed class KafkaLagMonitorJob(
     ILogger<KafkaLagMonitorJob> logger) : KafkaLagMonitorJobBase<InventoryDbContext>(db, configuration, logger)
 {
     /// <summary>
-    /// Executes one Inventory Kafka lag snapshot.
+    /// Executes one Inventory Kafka lag snapshot. No distributed lock is used: the job only reads
+    /// Kafka admin APIs and emits metrics, so duplicate concurrent execution only duplicates
+    /// gauge updates.
     /// </summary>
     [AutomaticRetry(Attempts = 3)]
     [DisableConcurrentExecution(timeoutInSeconds: 300)]
     public async Task ExecuteAsync(CancellationToken cancellationToken = default)
     {
         var jobOptions = options.Value.KafkaLagMonitor;
-        await ExecuteCoreAsync(
+        await ExecuteMonitorBatchAsync(
             jobOptions.GroupId,
             jobOptions.Topics,
             jobOptions.WarningThreshold,
             jobOptions.RequestTimeoutSeconds,
-            InventoryMessagingJobLockKeys.KafkaLagMonitor,
             cancellationToken);
     }
 

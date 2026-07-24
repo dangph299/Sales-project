@@ -1,3 +1,4 @@
+using BuildingBlocks.Domain.PhoneNumbers;
 using MapsterMapper;
 using Microsoft.EntityFrameworkCore;
 using Sales.Application.Features.Customers.DTOs;
@@ -39,7 +40,7 @@ public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICu
         {
             // A phone keyword matches customers whose number starts with it (NormalizedPhone prefix)
             // or ends with it (ReversedPhone prefix), so both indexed prefix scans stay usable.
-            var normalizedCustomerPhoneSearchTerm = CustomerPhoneNormalizer.NormalizeSearchTerm(phone);
+            var normalizedCustomerPhoneSearchTerm = PhoneNumberNormalizer.NormalizeSearchTerm(phone);
             if (normalizedCustomerPhoneSearchTerm.Length == 0)
             {
                 // A phone term that holds no digit (e.g. "abc") is a filter that nothing can match,
@@ -49,7 +50,7 @@ public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICu
                 return new([], page, pageSize, 0);
             }
 
-            var reversedCustomerPhoneSearchTerm = CustomerPhoneNormalizer.Reverse(normalizedCustomerPhoneSearchTerm);
+            var reversedCustomerPhoneSearchTerm = PhoneNumberNormalizer.Reverse(normalizedCustomerPhoneSearchTerm);
             query = query.Where(x =>
                 EF.Functions.Like(x.NormalizedPhone, normalizedCustomerPhoneSearchTerm + "%")
                 || EF.Functions.Like(x.ReversedPhone, reversedCustomerPhoneSearchTerm + "%"));
@@ -65,7 +66,7 @@ public sealed class CustomerReadService(SalesDbContext db, IMapper mapper) : ICu
         int limit,
         CancellationToken ct = default)
     {
-        var normalizedCustomerPhoneSearchTerm = CustomerPhoneNormalizer.NormalizeSearchTerm(customerPhoneSearchTerm);
+        var normalizedCustomerPhoneSearchTerm = PhoneNumberNormalizer.NormalizeSearchTerm(customerPhoneSearchTerm);
         if (normalizedCustomerPhoneSearchTerm.Length == 0)
         {
             return [];

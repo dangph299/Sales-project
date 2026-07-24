@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Features.Products.DTOs;
 using Sales.Application.Features.Products.Interfaces;
 
@@ -8,7 +7,7 @@ namespace Sales.Application.Features.Products.Queries;
 /// Handles paged product variant lookup queries.
 /// </summary>
 public sealed class SearchProductVariantsHandler(IProductReadService readService)
-    : IRequestHandler<SearchProductVariantsQuery, PagedResult<ProductVariantLookupDto>>
+    : IQueryHandler<SearchProductVariantsQuery, PagedResult<ProductVariantLookupDto>>
 {
     /// <inheritdoc/>
     public Task<PagedResult<ProductVariantLookupDto>> Handle(

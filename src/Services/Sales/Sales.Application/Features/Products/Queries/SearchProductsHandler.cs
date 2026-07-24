@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Features.Products.DTOs;
 using Sales.Application.Features.Products.Interfaces;
 
@@ -7,7 +6,7 @@ namespace Sales.Application.Features.Products.Queries;
 /// <summary>
 /// Handles <see cref="SearchProductsQuery"/> by delegating to the product read service.
 /// </summary>
-public sealed class SearchProductsHandler(IProductReadService readService) : IRequestHandler<SearchProductsQuery, PagedResult<ProductDto>>
+public sealed class SearchProductsHandler(IProductReadService readService) : IQueryHandler<SearchProductsQuery, PagedResult<ProductDto>>
 {
     /// <summary>
     /// Searches products matching the given criteria.

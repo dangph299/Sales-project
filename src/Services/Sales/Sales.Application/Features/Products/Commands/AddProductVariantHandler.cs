@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Products.DTOs;
 using Sales.Application.Features.Products.Interfaces;
@@ -10,7 +9,7 @@ public sealed class AddProductVariantHandler(
     IProductRepository productRepository,
     IUnitOfWork unitOfWork,
     IProductCache productCache,
-    IProductReadService productReadService) : IRequestHandler<AddProductVariantCommand, ProductDto>
+    IProductReadService productReadService) : ICommandHandler<AddProductVariantCommand, ProductDto>
 {
     public async Task<ProductDto> Handle(AddProductVariantCommand request, CancellationToken cancellationToken)
     {

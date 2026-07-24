@@ -1,6 +1,5 @@
 using Inventory.Application.Features.InventoryItems.DTOs;
 using Inventory.Application.Features.InventoryItems.Interfaces;
-using MediatR;
 
 namespace Inventory.Application.Features.InventoryItems.Queries;
 
@@ -8,7 +7,7 @@ namespace Inventory.Application.Features.InventoryItems.Queries;
 /// Handles inventory summary aggregation lookups.
 /// </summary>
 public sealed class GetInventorySummaryQueryHandler(IInventoryItemReadService readService)
-    : IRequestHandler<GetInventorySummaryQuery, InventorySummary>
+    : IQueryHandler<GetInventorySummaryQuery, InventorySummary>
 {
     /// <inheritdoc/>
     public Task<InventorySummary> Handle(GetInventorySummaryQuery request, CancellationToken cancellationToken)

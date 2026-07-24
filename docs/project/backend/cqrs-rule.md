@@ -6,10 +6,18 @@
 public interface ICommand : IRequest;                  // no response
 public interface ICommand<TResponse> : IRequest<TResponse>;
 public interface IQuery<TResponse> : IRequest<TResponse>;
+
+public interface ICommandHandler<TCommand> : IRequestHandler<TCommand>
+    where TCommand : ICommand;
+public interface ICommandHandler<TCommand, TResponse> : IRequestHandler<TCommand, TResponse>
+    where TCommand : ICommand<TResponse>;
+public interface IQueryHandler<TQuery, TResponse> : IRequestHandler<TQuery, TResponse>
+    where TQuery : IQuery<TResponse>;
 ```
 
 - Every request implements a marker from `BuildingBlocks.Application`. Never implement `IRequest<T>` directly.
-- Handlers implement `IRequestHandler<TRequest, TResponse>` from MediatR.
+- Every handler implements `ICommandHandler`/`ICommandHandler<TCommand, TResponse>`/`IQueryHandler<TQuery, TResponse>` from `BuildingBlocks.Application`. **Never implement MediatR's `IRequestHandler<TRequest, TResponse>` directly** — that mixes the shared request marker with a raw MediatR handler and is the one inconsistency this convention exists to prevent. `tests/Sales.Architecture.Tests/CqrsHandlerConventionTests.cs` enforces this for `Sales.Application` and `Inventory.Application` by reflecting over every concrete type: any class implementing MediatR's `IRequestHandler<>`/`IRequestHandler<,>` must also implement the matching `ICommandHandler`/`IQueryHandler` marker.
+- This does not apply to `INotificationHandler<T>` (MediatR notifications) or Kafka `IMessageHandler<T>` implementations (e.g. `IntegrationEventHandler<THandler>`) — those are not CQRS requests and keep using their own framework interface directly.
 
 ## Commands
 

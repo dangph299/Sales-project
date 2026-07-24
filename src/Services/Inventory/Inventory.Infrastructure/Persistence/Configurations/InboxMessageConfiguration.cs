@@ -12,13 +12,20 @@ public sealed class InboxMessageConfiguration : IEntityTypeConfiguration<InboxMe
     /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<InboxMessage> entity)
     {
+        // Table
         entity.ToTable("inbox_messages");
+
+        // Primary Key
         entity.HasKey(x => x.EventId);
+
+        // Properties
         entity.Property(x => x.Consumer).HasMaxLength(64);
         entity.Property(x => x.LastExceptionType).HasMaxLength(512);
         entity.Property(x => x.LastError).HasMaxLength(2000);
         entity.Property(x => x.OriginalTopic).HasMaxLength(256);
         entity.Property(x => x.OriginalConsumerGroup).HasMaxLength(256);
+
+        // Indexes
         entity.HasIndex(x => new { x.Status, x.DeadLetteredAt });
     }
 }

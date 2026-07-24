@@ -8,12 +8,21 @@ public sealed class SizeConfiguration : IEntityTypeConfiguration<Size>
 {
     public void Configure(EntityTypeBuilder<Size> entity)
     {
+        // Table
         entity.ToTable("sizes");
+
+        // Primary Key
         entity.HasKey(x => x.Id);
-        entity.HasIndex(x => x.Code).IsUnique();
-        entity.HasIndex(x => x.SortOrder).IsUnique();
+
+        // Properties
         entity.Property(x => x.Code).HasMaxLength(16);
         entity.Property(x => x.Name).HasMaxLength(100);
+
+        // Indexes
+        entity.HasIndex(x => x.Code).IsUnique();
+        entity.HasIndex(x => x.SortOrder).IsUnique();
+
+        // Seed Data
         entity.HasData(
             Size.Create(SizeReferenceDataIds.ExtraExtraSmall, "XXS", "Extra Extra Small", 10),
             Size.Create(SizeReferenceDataIds.ExtraSmall, "XS", "Extra Small", 20),

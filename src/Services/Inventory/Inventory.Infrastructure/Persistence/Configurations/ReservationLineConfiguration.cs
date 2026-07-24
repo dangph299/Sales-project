@@ -12,6 +12,10 @@ public sealed class ReservationLineConfiguration : IEntityTypeConfiguration<Rese
     /// <inheritdoc/>
     public void Configure(EntityTypeBuilder<ReservationLine> entity)
     {
-        entity.ToTable("reservation_lines").HasKey(x => x.Id);
+        // Table
+        entity.ToTable("reservation_lines");
+
+        // Primary Key
+        entity.HasKey(x => x.Id);
     }
 }
