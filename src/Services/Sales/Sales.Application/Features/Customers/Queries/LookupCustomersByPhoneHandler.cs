@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Features.Customers.DTOs;
 using Sales.Application.Features.Customers.Interfaces;
 
@@ -8,7 +7,7 @@ namespace Sales.Application.Features.Customers.Queries;
 /// Handles <see cref="LookupCustomersByPhone"/> by delegating to the customer read service.
 /// </summary>
 public sealed class LookupCustomersByPhoneHandler(ICustomerReadService readService)
-    : IRequestHandler<LookupCustomersByPhone, IReadOnlyCollection<CustomerLookupDto>>
+    : IQueryHandler<LookupCustomersByPhone, IReadOnlyCollection<CustomerLookupDto>>
 {
     /// <summary>Smallest number of suggestions a caller can ask for.</summary>
     private const int MinimumLimit = 1;

@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Common.Interfaces;
 using Sales.Application.Features.Products.Interfaces;
@@ -14,7 +13,7 @@ public sealed class DeleteProductHandler(
     IUnitOfWork unitOfWork,
     IProductCache productCache,
     IExecutionContext executionContext)
-    : IRequestHandler<DeleteProductCommand>
+    : ICommandHandler<DeleteProductCommand>
 {
     /// <inheritdoc/>
     public async Task Handle(DeleteProductCommand request, CancellationToken cancellationToken)

@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Products.DTOs;
 using Sales.Application.Features.Products.Interfaces;
@@ -14,7 +13,7 @@ public sealed class CreateProductHandler(
     IRepository<Category> categoryRepository,
     IUnitOfWork unitOfWork,
     IProductCodeGenerator productCodeGenerator,
-    IProductReadService productReadService) : IRequestHandler<CreateProductCommand, ProductDto>
+    IProductReadService productReadService) : ICommandHandler<CreateProductCommand, ProductDto>
 {
     /// <inheritdoc/>
     public async Task<ProductDto> Handle(CreateProductCommand request, CancellationToken cancellationToken)

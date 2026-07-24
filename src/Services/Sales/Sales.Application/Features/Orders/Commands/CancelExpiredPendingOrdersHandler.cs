@@ -1,4 +1,3 @@
-using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sales.Application.Features.Orders.Realtime;
@@ -12,7 +11,7 @@ namespace Sales.Application.Features.Orders.Commands;
 public sealed class CancelExpiredPendingOrdersHandler(
     IOrderRepository orderRepository,
     IServiceScopeFactory serviceScopeFactory,
-    ILogger<CancelExpiredPendingOrdersHandler> logger) : IRequestHandler<CancelExpiredPendingOrders, CancelExpiredPendingOrdersResult>
+    ILogger<CancelExpiredPendingOrdersHandler> logger) : ICommandHandler<CancelExpiredPendingOrders, CancelExpiredPendingOrdersResult>
 {
     private const int MaximumBatchSize = 1_000;
 

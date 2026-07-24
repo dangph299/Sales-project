@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Features.Customers.DTOs;
 using Sales.Application.Features.Customers.Interfaces;
 
@@ -7,7 +6,7 @@ namespace Sales.Application.Features.Customers.Queries;
 /// <summary>
 /// Handles <see cref="SearchCustomers"/> by delegating to the customer read service.
 /// </summary>
-public sealed class SearchCustomersHandler(ICustomerReadService readService) : IRequestHandler<SearchCustomers, PagedResult<CustomerDto>>
+public sealed class SearchCustomersHandler(ICustomerReadService readService) : IQueryHandler<SearchCustomers, PagedResult<CustomerDto>>
 {
     /// <summary>
     /// Searches customers matching the given criteria.

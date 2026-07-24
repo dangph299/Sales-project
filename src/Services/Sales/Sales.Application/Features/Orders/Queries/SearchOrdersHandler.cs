@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Features.Orders.DTOs;
 using Sales.Application.Features.Orders.Interfaces;
 
@@ -7,7 +6,7 @@ namespace Sales.Application.Features.Orders.Queries;
 /// <summary>
 /// Handles <see cref="SearchOrders"/> by delegating to the order read service.
 /// </summary>
-public sealed class SearchOrdersHandler(IOrderReadService readService) : IRequestHandler<SearchOrders, PagedResult<OrderDto>>
+public sealed class SearchOrdersHandler(IOrderReadService readService) : IQueryHandler<SearchOrders, PagedResult<OrderDto>>
 {
     /// <summary>
     /// Searches orders matching the given criteria.

@@ -1,5 +1,4 @@
 using MapsterMapper;
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Customers.DTOs;
 using Sales.Domain;
@@ -12,7 +11,7 @@ namespace Sales.Application.Features.Customers.Commands;
 public sealed class UpdateCustomerHandler(
     IRepository<Customer> customerRepository,
     IUnitOfWork unitOfWork,
-    IMapper mapper) : IRequestHandler<UpdateCustomer, CustomerDto>
+    IMapper mapper) : ICommandHandler<UpdateCustomer, CustomerDto>
 {
     /// <summary>
     /// Loads the customer, applies the update, and commits the unit of work.

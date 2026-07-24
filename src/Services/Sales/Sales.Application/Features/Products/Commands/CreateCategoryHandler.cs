@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Features.Products.DTOs;
 using Sales.Application.Features.Products.Interfaces;
 using Sales.Domain;
@@ -11,7 +10,7 @@ namespace Sales.Application.Features.Products.Commands;
 public sealed class CreateCategoryHandler(
     IRepository<Category> categoryRepository,
     ICategoryCodeGenerator categoryCodeGenerator,
-    IUnitOfWork unitOfWork) : IRequestHandler<CreateCategoryCommand, CategoryDto>
+    IUnitOfWork unitOfWork) : ICommandHandler<CreateCategoryCommand, CategoryDto>
 {
     /// <inheritdoc/>
     public async Task<CategoryDto> Handle(CreateCategoryCommand request, CancellationToken cancellationToken)

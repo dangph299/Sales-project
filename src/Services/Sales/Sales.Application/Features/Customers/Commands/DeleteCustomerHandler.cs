@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Common.Interfaces;
 using Sales.Domain;
@@ -12,7 +11,7 @@ public sealed class DeleteCustomerHandler(
     IRepository<Customer> customerRepository,
     IUnitOfWork unitOfWork,
     IExecutionContext executionContext)
-    : IRequestHandler<DeleteCustomer>
+    : ICommandHandler<DeleteCustomer>
 {
     /// <inheritdoc/>
     public async Task Handle(DeleteCustomer request, CancellationToken cancellationToken)

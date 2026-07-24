@@ -1,5 +1,4 @@
 using MapsterMapper;
-using MediatR;
 using Sales.Application.Features.Customers.DTOs;
 using Sales.Application.Features.Customers.Interfaces;
 using Sales.Domain;
@@ -13,7 +12,7 @@ public sealed class CreateCustomerHandler(
     IRepository<Customer> customerRepository,
     IUnitOfWork unitOfWork,
     ICustomerCodeGenerator customerCodeGenerator,
-    IMapper mapper) : IRequestHandler<CreateCustomer, CustomerDto>
+    IMapper mapper) : ICommandHandler<CreateCustomer, CustomerDto>
 {
     /// <summary>
     /// Creates a new customer and commits the unit of work.

@@ -1,6 +1,5 @@
 using Inventory.Application.Common.Behaviors;
 using Inventory.Application.Common.Interfaces;
-using MediatR;
 
 namespace Inventory.Application.Features.Reservations.Commands;
 
@@ -12,7 +11,7 @@ public sealed class ReserveStockCommandHandler(
     IInventoryRepository inventoryRepository,
     IReservationRepository reservationRepository,
     IInventoryEventOutbox inventoryEventOutbox,
-    IInventoryMetrics metrics) : IRequestHandler<ReserveStockCommand, string>
+    IInventoryMetrics metrics) : ICommandHandler<ReserveStockCommand, string>
 {
     /// <inheritdoc/>
     public async Task<string> Handle(ReserveStockCommand request, CancellationToken cancellationToken)

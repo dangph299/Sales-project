@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Customers.DTOs;
 using Sales.Application.Features.Customers.Interfaces;
@@ -8,7 +7,7 @@ namespace Sales.Application.Features.Customers.Queries;
 /// <summary>
 /// Handles <see cref="GetCustomer"/> by delegating to the customer read service.
 /// </summary>
-public sealed class GetCustomerHandler(ICustomerReadService readService) : IRequestHandler<GetCustomer, CustomerDto>
+public sealed class GetCustomerHandler(ICustomerReadService readService) : IQueryHandler<GetCustomer, CustomerDto>
 {
     /// <summary>
     /// Loads the requested customer.

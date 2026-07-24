@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Common.Interfaces;
 using Sales.Application.Features.Products.DTOs;
@@ -12,7 +11,7 @@ public sealed class DeleteProductVariantHandler(
     IUnitOfWork unitOfWork,
     IProductCache productCache,
     IProductReadService productReadService,
-    IExecutionContext executionContext) : IRequestHandler<DeleteProductVariantCommand, ProductDto>
+    IExecutionContext executionContext) : ICommandHandler<DeleteProductVariantCommand, ProductDto>
 {
     public async Task<ProductDto> Handle(DeleteProductVariantCommand request, CancellationToken cancellationToken)
     {

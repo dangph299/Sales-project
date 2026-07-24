@@ -1,5 +1,4 @@
 using MapsterMapper;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Orders.DTOs;
@@ -14,7 +13,7 @@ public sealed class CancelOrderHandler(
     IOrderRepository orderRepository,
     IUnitOfWork unitOfWork,
     ILogger<CancelOrderHandler> logger,
-    IMapper mapper) : IRequestHandler<CancelOrder, OrderDto>
+    IMapper mapper) : ICommandHandler<CancelOrder, OrderDto>
 {
     /// <summary>
     /// Loads the order, cancels it, and commits the unit of work.

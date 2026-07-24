@@ -1,6 +1,5 @@
 using Inventory.Application.Features.InventoryItems.DTOs;
 using Inventory.Application.Features.InventoryItems.Interfaces;
-using MediatR;
 
 namespace Inventory.Application.Features.InventoryItems.Queries;
 
@@ -8,7 +7,7 @@ namespace Inventory.Application.Features.InventoryItems.Queries;
 /// Handles batch inventory snapshot lookups.
 /// </summary>
 public sealed class GetInventoryByProductVariantsQueryHandler(IInventoryItemReadService readService)
-    : IRequestHandler<GetInventoryByProductVariantsQuery, InventoryBatchSnapshot>
+    : IQueryHandler<GetInventoryByProductVariantsQuery, InventoryBatchSnapshot>
 {
     /// <inheritdoc/>
     public async Task<InventoryBatchSnapshot> Handle(

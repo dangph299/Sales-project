@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using MapsterMapper;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Features.Orders.DTOs;
@@ -17,7 +16,7 @@ public sealed class ConfirmOrderHandler(
     IProductRepository productRepository,
     IUnitOfWork unitOfWork,
     ILogger<ConfirmOrderHandler> logger,
-    IMapper mapper) : IRequestHandler<ConfirmOrder, OrderDto>
+    IMapper mapper) : ICommandHandler<ConfirmOrder, OrderDto>
 {
     /// <summary>
     /// Loads the order, requests confirmation, and commits the unit of work.

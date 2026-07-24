@@ -1,6 +1,5 @@
 using BuildingBlocks.Contracts;
 using MapsterMapper;
-using MediatR;
 using Microsoft.Extensions.Logging;
 using Sales.Application.Common.Interfaces;
 using Sales.Application.Features.Customers.Interfaces;
@@ -30,7 +29,7 @@ public sealed class CreateOrderHandler(
     IPersistenceExceptionClassifier persistenceExceptionClassifier,
     ILogger<CreateOrderHandler> logger,
     IMapper mapper)
-    : IRequestHandler<CreateOrder, OrderDto>
+    : ICommandHandler<CreateOrder, OrderDto>
 {
     /// <summary>
     /// Resolves or creates the customer, resolves the requested product lines, creates the order,

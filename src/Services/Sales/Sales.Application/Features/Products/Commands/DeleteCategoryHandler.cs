@@ -1,4 +1,3 @@
-using MediatR;
 using Sales.Application.Common.Exceptions;
 using Sales.Application.Common.Interfaces;
 using Sales.Application.Features.Products.Interfaces;
@@ -14,7 +13,7 @@ public sealed class DeleteCategoryHandler(
     ICategoryReadService categoryReadService,
     IUnitOfWork unitOfWork,
     IExecutionContext executionContext)
-    : IRequestHandler<DeleteCategoryCommand>
+    : ICommandHandler<DeleteCategoryCommand>
 {
     /// <summary>
     /// Soft-deletes the requested category.
