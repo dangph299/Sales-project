@@ -23,6 +23,23 @@ public sealed class SalesRecurringJobsTests
         Assert.Equal(HangfireQueueNames.Critical, options.CancelExpiredPendingOrders.Schedule.Queue);
         Assert.Equal(45, options.CancelExpiredPendingOrders.ExpirationMinutes);
         Assert.Equal(75, options.CancelExpiredPendingOrders.BatchSize);
+        Assert.Equal("*/15 * * * *", options.ReplayDeadLetter.Schedule.Cron);
+        Assert.Equal(HangfireQueueNames.Maintenance, options.ReplayDeadLetter.Schedule.Queue);
+        Assert.Equal(25, options.ReplayDeadLetter.BatchSize);
+        Assert.Equal(10, options.ReplayDeadLetter.RetryDelaySeconds);
+        Assert.Equal("*/5 * * * *", options.KafkaLagMonitor.Schedule.Cron);
+        Assert.Equal(HangfireQueueNames.Maintenance, options.KafkaLagMonitor.Schedule.Queue);
+        Assert.Equal(250, options.KafkaLagMonitor.WarningThreshold);
+        Assert.Equal(20, options.KafkaLagMonitor.RequestTimeoutSeconds);
+        Assert.Equal("0 1 * * *", options.InboxCleanup.Schedule.Cron);
+        Assert.Equal(300, options.InboxCleanup.BatchSize);
+        Assert.Equal(21, options.InboxCleanup.RetentionDays);
+        Assert.Equal("*/20 * * * *", options.FailedOutboxRetry.Schedule.Cron);
+        Assert.Equal(30, options.FailedOutboxRetry.BatchSize);
+        Assert.Equal(5, options.FailedOutboxRetry.RetryDelaySeconds);
+        Assert.Equal("*/3 * * * *", options.OutboxPendingMonitor.Schedule.Cron);
+        Assert.Equal(500, options.OutboxPendingMonitor.BacklogWarningThreshold);
+        Assert.Equal(600, options.OutboxPendingMonitor.OldestPendingWarningSeconds);
     }
 
     [Theory]
@@ -87,6 +104,30 @@ public sealed class SalesRecurringJobsTests
         Assert.Equal(TimeZoneInfo.Utc, cancelExpiredPendingOrders.Options.TimeZone);
     }
 
+    [Theory]
+    [InlineData(SalesRecurringJobIds.ReplayDeadLetter, typeof(ReplayDeadLetterJob), nameof(ReplayDeadLetterJob.ExecuteAsync), "*/15 * * * *")]
+    [InlineData(SalesRecurringJobIds.KafkaLagMonitor, typeof(KafkaLagMonitorJob), nameof(KafkaLagMonitorJob.ExecuteAsync), "*/5 * * * *")]
+    [InlineData(SalesRecurringJobIds.InboxCleanup, typeof(InboxCleanupJob), nameof(InboxCleanupJob.ExecuteAsync), "0 1 * * *")]
+    [InlineData(SalesRecurringJobIds.FailedOutboxRetry, typeof(FailedOutboxRetryJob), nameof(FailedOutboxRetryJob.ExecuteAsync), "*/20 * * * *")]
+    [InlineData(SalesRecurringJobIds.OutboxPendingMonitor, typeof(OutboxPendingMonitorJob), nameof(OutboxPendingMonitorJob.ExecuteAsync), "*/3 * * * *")]
+    public void Messaging_reliability_jobs_are_scheduled_with_expected_metadata(
+        string jobId,
+        Type jobType,
+        string methodName,
+        string cron)
+    {
+        var recurringJobManager = RegisterJobs(EnabledConfiguration());
+
+        var scheduled = recurringJobManager.Added(jobId);
+
+        Assert.NotNull(scheduled);
+        Assert.Equal(HangfireQueueNames.Maintenance, scheduled.Job.Queue);
+        Assert.Equal(cron, scheduled.CronExpression);
+        Assert.Equal(jobType, scheduled.Job.Type);
+        Assert.Equal(methodName, scheduled.Job.Method.Name);
+        Assert.Equal(TimeZoneInfo.Utc, scheduled.Options.TimeZone);
+    }
+
     [Fact]
     public void Jobs_take_the_queue_from_configuration()
     {
@@ -118,7 +159,15 @@ public sealed class SalesRecurringJobsTests
         var recurringJobManager = RegisterJobs(EnabledConfiguration());
 
         Assert.Equal(
-            [SalesRecurringJobIds.CancelExpiredPendingOrders, SalesRecurringJobIds.MaintenanceCleanup],
+            [
+                SalesRecurringJobIds.FailedOutboxRetry,
+                SalesRecurringJobIds.InboxCleanup,
+                SalesRecurringJobIds.KafkaLagMonitor,
+                SalesRecurringJobIds.OutboxPendingMonitor,
+                SalesRecurringJobIds.ReplayDeadLetter,
+                SalesRecurringJobIds.CancelExpiredPendingOrders,
+                SalesRecurringJobIds.MaintenanceCleanup
+            ],
             recurringJobManager.AddedRecurringJobIds.Order());
     }
 
@@ -127,6 +176,11 @@ public sealed class SalesRecurringJobsTests
     {
         Assert.Equal("sales-cleanup", SalesRecurringJobIds.MaintenanceCleanup);
         Assert.Equal("orders:cancel-expired", SalesRecurringJobIds.CancelExpiredPendingOrders);
+        Assert.Equal("messaging:replay-dead-letter", SalesRecurringJobIds.ReplayDeadLetter);
+        Assert.Equal("messaging:kafka-lag-monitor", SalesRecurringJobIds.KafkaLagMonitor);
+        Assert.Equal("messaging:inbox-cleanup", SalesRecurringJobIds.InboxCleanup);
+        Assert.Equal("messaging:failed-outbox-retry", SalesRecurringJobIds.FailedOutboxRetry);
+        Assert.Equal("messaging:outbox-pending-monitor", SalesRecurringJobIds.OutboxPendingMonitor);
     }
 
     [Fact]
@@ -148,6 +202,17 @@ public sealed class SalesRecurringJobsTests
     [InlineData("SalesRecurringJobs:CancelExpiredPendingOrders:Schedule:Queue", "")]
     [InlineData("SalesRecurringJobs:CancelExpiredPendingOrders:ExpirationMinutes", "0")]
     [InlineData("SalesRecurringJobs:CancelExpiredPendingOrders:BatchSize", "0")]
+    [InlineData("SalesRecurringJobs:ReplayDeadLetter:BatchSize", "0")]
+    [InlineData("SalesRecurringJobs:ReplayDeadLetter:RetryDelaySeconds", "-1")]
+    [InlineData("SalesRecurringJobs:KafkaLagMonitor:GroupId", "")]
+    [InlineData("SalesRecurringJobs:KafkaLagMonitor:Topics:0", "")]
+    [InlineData("SalesRecurringJobs:KafkaLagMonitor:RequestTimeoutSeconds", "0")]
+    [InlineData("SalesRecurringJobs:InboxCleanup:RetentionDays", "0")]
+    [InlineData("SalesRecurringJobs:InboxCleanup:BatchSize", "0")]
+    [InlineData("SalesRecurringJobs:FailedOutboxRetry:BatchSize", "0")]
+    [InlineData("SalesRecurringJobs:FailedOutboxRetry:RetryDelaySeconds", "-1")]
+    [InlineData("SalesRecurringJobs:OutboxPendingMonitor:BacklogWarningThreshold", "-1")]
+    [InlineData("SalesRecurringJobs:OutboxPendingMonitor:OldestPendingWarningSeconds", "-1")]
     public void Invalid_settings_fail_validation_while_the_job_is_enabled(string key, string invalidValue)
     {
         var configurationValues = EnabledConfiguration();
@@ -167,7 +232,17 @@ public sealed class SalesRecurringJobsTests
         {
             ["SalesRecurringJobs:MaintenanceCleanup:Enabled"] = "false",
             ["SalesRecurringJobs:CancelExpiredPendingOrders:Schedule:Enabled"] = "false",
-            ["SalesRecurringJobs:CancelExpiredPendingOrders:ExpirationMinutes"] = "0"
+            ["SalesRecurringJobs:CancelExpiredPendingOrders:ExpirationMinutes"] = "0",
+            ["SalesRecurringJobs:ReplayDeadLetter:Schedule:Enabled"] = "false",
+            ["SalesRecurringJobs:ReplayDeadLetter:BatchSize"] = "0",
+            ["SalesRecurringJobs:KafkaLagMonitor:Schedule:Enabled"] = "false",
+            ["SalesRecurringJobs:KafkaLagMonitor:RequestTimeoutSeconds"] = "0",
+            ["SalesRecurringJobs:InboxCleanup:Schedule:Enabled"] = "false",
+            ["SalesRecurringJobs:InboxCleanup:RetentionDays"] = "0",
+            ["SalesRecurringJobs:FailedOutboxRetry:Schedule:Enabled"] = "false",
+            ["SalesRecurringJobs:FailedOutboxRetry:BatchSize"] = "0",
+            ["SalesRecurringJobs:OutboxPendingMonitor:Schedule:Enabled"] = "false",
+            ["SalesRecurringJobs:OutboxPendingMonitor:BacklogWarningThreshold"] = "-1"
         });
 
         using var serviceProvider = services.BuildServiceProvider();
@@ -175,6 +250,11 @@ public sealed class SalesRecurringJobsTests
 
         Assert.False(options.MaintenanceCleanup.Enabled);
         Assert.False(options.CancelExpiredPendingOrders.Schedule.Enabled);
+        Assert.False(options.ReplayDeadLetter.Schedule.Enabled);
+        Assert.False(options.KafkaLagMonitor.Schedule.Enabled);
+        Assert.False(options.InboxCleanup.Schedule.Enabled);
+        Assert.False(options.FailedOutboxRetry.Schedule.Enabled);
+        Assert.False(options.OutboxPendingMonitor.Schedule.Enabled);
     }
 
     private static RecurringJobSettings EnabledSchedule(string cron, string queue)
@@ -198,7 +278,34 @@ public sealed class SalesRecurringJobsTests
             ["SalesRecurringJobs:CancelExpiredPendingOrders:Schedule:Queue"] = HangfireQueueNames.Critical,
             ["SalesRecurringJobs:CancelExpiredPendingOrders:Schedule:Cron"] = "*/5 * * * *",
             ["SalesRecurringJobs:CancelExpiredPendingOrders:ExpirationMinutes"] = "45",
-            ["SalesRecurringJobs:CancelExpiredPendingOrders:BatchSize"] = "75"
+            ["SalesRecurringJobs:CancelExpiredPendingOrders:BatchSize"] = "75",
+            ["SalesRecurringJobs:ReplayDeadLetter:Schedule:Enabled"] = "true",
+            ["SalesRecurringJobs:ReplayDeadLetter:Schedule:Queue"] = HangfireQueueNames.Maintenance,
+            ["SalesRecurringJobs:ReplayDeadLetter:Schedule:Cron"] = "*/15 * * * *",
+            ["SalesRecurringJobs:ReplayDeadLetter:BatchSize"] = "25",
+            ["SalesRecurringJobs:ReplayDeadLetter:RetryDelaySeconds"] = "10",
+            ["SalesRecurringJobs:KafkaLagMonitor:Schedule:Enabled"] = "true",
+            ["SalesRecurringJobs:KafkaLagMonitor:Schedule:Queue"] = HangfireQueueNames.Maintenance,
+            ["SalesRecurringJobs:KafkaLagMonitor:Schedule:Cron"] = "*/5 * * * *",
+            ["SalesRecurringJobs:KafkaLagMonitor:GroupId"] = "sales-inventory-results-v1",
+            ["SalesRecurringJobs:KafkaLagMonitor:Topics:0"] = "inventory.stock-reserved.v1",
+            ["SalesRecurringJobs:KafkaLagMonitor:WarningThreshold"] = "250",
+            ["SalesRecurringJobs:KafkaLagMonitor:RequestTimeoutSeconds"] = "20",
+            ["SalesRecurringJobs:InboxCleanup:Schedule:Enabled"] = "true",
+            ["SalesRecurringJobs:InboxCleanup:Schedule:Queue"] = HangfireQueueNames.Maintenance,
+            ["SalesRecurringJobs:InboxCleanup:Schedule:Cron"] = "0 1 * * *",
+            ["SalesRecurringJobs:InboxCleanup:BatchSize"] = "300",
+            ["SalesRecurringJobs:InboxCleanup:RetentionDays"] = "21",
+            ["SalesRecurringJobs:FailedOutboxRetry:Schedule:Enabled"] = "true",
+            ["SalesRecurringJobs:FailedOutboxRetry:Schedule:Queue"] = HangfireQueueNames.Maintenance,
+            ["SalesRecurringJobs:FailedOutboxRetry:Schedule:Cron"] = "*/20 * * * *",
+            ["SalesRecurringJobs:FailedOutboxRetry:BatchSize"] = "30",
+            ["SalesRecurringJobs:FailedOutboxRetry:RetryDelaySeconds"] = "5",
+            ["SalesRecurringJobs:OutboxPendingMonitor:Schedule:Enabled"] = "true",
+            ["SalesRecurringJobs:OutboxPendingMonitor:Schedule:Queue"] = HangfireQueueNames.Maintenance,
+            ["SalesRecurringJobs:OutboxPendingMonitor:Schedule:Cron"] = "*/3 * * * *",
+            ["SalesRecurringJobs:OutboxPendingMonitor:BacklogWarningThreshold"] = "500",
+            ["SalesRecurringJobs:OutboxPendingMonitor:OldestPendingWarningSeconds"] = "600"
         };
     }
 

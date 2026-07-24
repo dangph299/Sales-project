@@ -13,6 +13,7 @@
     <ProjectReference Include="..\..\src\Services\Sales\Sales.Api\Sales.Api.csproj" />
     <ProjectReference Include="..\..\src\Services\Sales\Sales.Infrastructure\Sales.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Services\Inventory\Inventory.Api\Inventory.Api.csproj" />
+    <ProjectReference Include="..\..\src\Services\Inventory\Inventory.Infrastructure\Inventory.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Services\Dashboard\Dashboard.Bff\Dashboard.Bff.csproj" />
     <ProjectReference Include="..\..\src\Services\Inventory\Inventory.Domain\Inventory.Domain.csproj" />
     <ProjectReference Include="..\..\src\Services\AuditLog\AuditLog.Infrastructure\AuditLog.Infrastructure.csproj" />

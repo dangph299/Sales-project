@@ -22,6 +22,16 @@ Standard ASP.NET Core precedence: `appsettings.json` → `appsettings.{Environme
 | `SalesRecurringJobs:CancelExpiredPendingOrders:Schedule:{Enabled,Queue,Cron}` | `true` / `critical` / `*/5 * * * *` | expiry scan |
 | `SalesRecurringJobs:CancelExpiredPendingOrders:ExpirationMinutes` | `30` | idle window before cancellation |
 | `SalesRecurringJobs:CancelExpiredPendingOrders:BatchSize` | `100` | clamped to 1000 by the handler |
+| `SalesRecurringJobs:ReplayDeadLetter:Schedule:{Enabled,Queue,Cron}` | `true` / `maintenance` / `*/15 * * * *` | inbound dead-letter replay reset |
+| `SalesRecurringJobs:ReplayDeadLetter:{BatchSize,RetryDelaySeconds}` | `100` / `0` | replay reset batch and next-attempt delay |
+| `SalesRecurringJobs:KafkaLagMonitor:Schedule:{Enabled,Queue,Cron}` | `true` / `maintenance` / `*/5 * * * *` | Kafka lag snapshot |
+| `SalesRecurringJobs:KafkaLagMonitor:{GroupId,Topics,WarningThreshold,RequestTimeoutSeconds}` | Sales inventory group/topics / `100` / `10` | lag monitor inputs and warning threshold |
+| `SalesRecurringJobs:InboxCleanup:Schedule:{Enabled,Queue,Cron}` | `true` / `maintenance` / `0 1 * * *` | processed inbox cleanup |
+| `SalesRecurringJobs:InboxCleanup:{BatchSize,RetentionDays}` | `500` / `14` | cleanup batch and retention |
+| `SalesRecurringJobs:FailedOutboxRetry:Schedule:{Enabled,Queue,Cron}` | `true` / `maintenance` / `*/15 * * * *` | terminal failed outbox retry reset |
+| `SalesRecurringJobs:FailedOutboxRetry:{BatchSize,RetryDelaySeconds}` | `100` / `0` | retry reset batch and next-attempt delay |
+| `SalesRecurringJobs:OutboxPendingMonitor:Schedule:{Enabled,Queue,Cron}` | `true` / `maintenance` / `*/5 * * * *` | outbox backlog snapshot |
+| `SalesRecurringJobs:OutboxPendingMonitor:{BacklogWarningThreshold,OldestPendingWarningSeconds}` | `100` / `300` | warning thresholds |
 | `SalesWeb:AllowedOrigins` | `["http://localhost:4200","http://127.0.0.1:4200"]` | CORS for the Angular client |
 | `Swagger:InventoryApiUrl` | Development only | external document listed in the aggregated Swagger UI |
 | `HttpLogging:LogRequestBody` | `true` | Debug-level only |
@@ -31,17 +41,30 @@ Standard ASP.NET Core precedence: `appsettings.json` → `appsettings.{Environme
 | `HttpLogging:SensitiveJsonFields` | `password, token, accessToken, refreshToken, secret, currentPassword, newPassword` | masked to `***` |
 | `Serilog:MinimumLevel:*` | Information, Microsoft Warning, EF SQL Warning | log levels |
 
-`SalesRecurringJobsOptions` is validated on start by `SalesRecurringJobsOptionsValidator`: an enabled job must name a queue and a parsable cron expression (5 or 6 fields, Cronos), and `ExpirationMinutes`/`BatchSize` must be positive. A misconfigured job fails startup with a message naming the job.
+`SalesRecurringJobsOptions` is validated on start by `SalesRecurringJobsOptionsValidator`: an enabled job must name a queue and a parsable cron expression (5 or 6 fields, Cronos), and each job's own batch/retention/threshold settings must be valid. A misconfigured job fails startup with a message naming the job.
 
 ## Inventory.Api
 
-| Key | Default |
-|---|---|
-| `ConnectionStrings:Inventory` | `Host=postgres;Database=inventory;Username=postgres;Password=postgres` |
-| `Inventory:Summary:LowStockThreshold` | `5` |
-| `Kafka:Brokers` | `["kafka:9092"]` |
-| `Jwt:*` | same issuer/audience/key as Sales — both validate tokens Sales issues |
-| `Seq:Url`, `HttpLogging:*`, `Serilog:*`, `Outbox:*`, `InboxConsumer:*` | as above |
+| Key | Default | Meaning |
+|---|---|---|
+| `ConnectionStrings:Inventory` | `Host=postgres;Database=inventory;Username=postgres;Password=postgres` | business database |
+| `ConnectionStrings:InventoryHangfire` | `Host=postgres;Database=inventory_hangfire;…` | Inventory job storage |
+| `Inventory:Summary:LowStockThreshold` | `5` | dashboard/read-model low-stock threshold |
+| `Kafka:Brokers` | `["kafka:9092"]` | falls back to `kafka:9092` when empty |
+| `InventoryRecurringJobs:ReplayDeadLetter:Schedule:{Enabled,Queue,Cron}` | `true` / `maintenance` / `*/15 * * * *` | inbound dead-letter replay reset |
+| `InventoryRecurringJobs:ReplayDeadLetter:{BatchSize,RetryDelaySeconds}` | `100` / `0` | replay reset batch and next-attempt delay |
+| `InventoryRecurringJobs:KafkaLagMonitor:Schedule:{Enabled,Queue,Cron}` | `true` / `maintenance` / `*/5 * * * *` | Kafka lag snapshot |
+| `InventoryRecurringJobs:KafkaLagMonitor:{GroupId,Topics,WarningThreshold,RequestTimeoutSeconds}` | Inventory orders group/topics / `100` / `10` | lag monitor inputs and warning threshold |
+| `InventoryRecurringJobs:InboxCleanup:Schedule:{Enabled,Queue,Cron}` | `true` / `maintenance` / `0 1 * * *` | processed inbox cleanup |
+| `InventoryRecurringJobs:InboxCleanup:{BatchSize,RetentionDays}` | `500` / `14` | cleanup batch and retention |
+| `InventoryRecurringJobs:FailedOutboxRetry:Schedule:{Enabled,Queue,Cron}` | `true` / `maintenance` / `*/15 * * * *` | terminal failed outbox retry reset |
+| `InventoryRecurringJobs:FailedOutboxRetry:{BatchSize,RetryDelaySeconds}` | `100` / `0` | retry reset batch and next-attempt delay |
+| `InventoryRecurringJobs:OutboxPendingMonitor:Schedule:{Enabled,Queue,Cron}` | `true` / `maintenance` / `*/5 * * * *` | outbox backlog snapshot |
+| `InventoryRecurringJobs:OutboxPendingMonitor:{BacklogWarningThreshold,OldestPendingWarningSeconds}` | `100` / `300` | warning thresholds |
+| `Jwt:*` | same issuer/audience/key as Sales | both APIs validate tokens Sales issues |
+| `Seq:Url`, `HttpLogging:*`, `Serilog:*`, `Outbox:*`, `InboxConsumer:*` | as above | shared host/messaging options |
+
+`InventoryRecurringJobsOptions` is validated on start by `InventoryRecurringJobsOptionsValidator` with the same `RecurringJobSettings` rules as Sales, plus each job's own batch/retention/threshold settings.
 
 ## Dashboard.Bff
 

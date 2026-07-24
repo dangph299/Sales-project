@@ -68,9 +68,9 @@ Resilience is entirely the outbox/inbox state machine plus Kafka client retries.
 
 "Dead letter" means a row parked in the service's own table. Recovery is a manual `*MaintenanceService` call; there is no endpoint, dashboard, or CLI for it.
 
-### Inventory has no outbox replay
+### No operator endpoint for outbox replay
 
-`SalesMaintenanceService` can replay dead-lettered outbox rows; `InventoryMaintenanceService` exposes only the inbox equivalents plus cleanup.
+Sales and Inventory recurring jobs can reset terminal failed outbox rows for publisher retry, but there is still no HTTP endpoint, dashboard action, or CLI for an operator to trigger a specific outbox replay by id.
 
 ### Sales cleanup ignores its cancellation token
 

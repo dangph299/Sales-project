@@ -23,6 +23,8 @@ public sealed class InboxMetrics
         Processed = meter.CreateCounter<long>($"{prefix}.inbox.processed");
         Retried = meter.CreateCounter<long>($"{prefix}.inbox.retried");
         DeadLettered = meter.CreateCounter<long>($"{prefix}.inbox.dead_lettered");
+        CleanupDeleted = meter.CreateCounter<long>($"{prefix}.inbox.cleanup_deleted");
+        DeadLetterReplayRequested = meter.CreateCounter<long>($"{prefix}.inbox.dead_letter_replay_requested");
     }
 
     /// <summary>Counts inbound Kafka messages skipped because they were already recorded in the Inbox.</summary>
@@ -36,4 +38,10 @@ public sealed class InboxMetrics
 
     /// <summary>Counts inbound messages moved to dead-letter state after exhausting re-drive attempts.</summary>
     public Counter<long> DeadLettered { get; }
+
+    /// <summary>Counts processed inbox rows deleted by retention cleanup.</summary>
+    public Counter<long> CleanupDeleted { get; }
+
+    /// <summary>Counts dead-lettered inbox rows reset for re-drive by maintenance jobs.</summary>
+    public Counter<long> DeadLetterReplayRequested { get; }
 }

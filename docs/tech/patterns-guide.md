@@ -267,11 +267,12 @@ Cách đang dùng:
 - Nếu lock thành công thì cleanup.
 - Cuối cùng xóa lock bằng Lua script để chỉ owner mới xóa được lock.
 
-Inventory cleanup dùng lock theo transaction của Postgres thay vì Redis:
+Inventory processed-outbox cleanup dùng lock theo transaction của Postgres thay vì Redis:
 
 - `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceService.cs`
 - `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceWorker.cs`
 - Worker chạy định kỳ và dùng `pg_try_advisory_xact_lock` để chỉ một instance cleanup.
+- Inventory processed-inbox cleanup chạy bằng Hangfire job `inventory-inbox-cleanup`.
 
 Quy tắc:
 
@@ -286,33 +287,32 @@ Hangfire dùng để chạy background job và recurring job.
 Code nằm ở:
 
 - Registration: `src/Services/Sales/Sales.Api/Extensions/ServiceCollectionExtensions.cs`
+- Inventory registration: `src/Services/Inventory/Inventory.Api/Extensions/ServiceCollectionExtensions.cs`
 - Dashboard: `src/Services/Sales/Sales.Api/Extensions/ApplicationBuilderExtensions.cs`
-- Job class: `src/Services/Sales/Sales.Infrastructure/Hangfire/Jobs/MaintenanceCleanupJob.cs`
-- Register recurring job: `src/Services/Sales/Sales.Api/Extensions/StartupTaskExtensions.cs`
+- Job classes: `src/Services/Sales/Sales.Infrastructure/Hangfire/Jobs/`, `src/Services/Inventory/Inventory.Infrastructure/Hangfire/Jobs/`
+- Register recurring job: `src/Services/Sales/Sales.Api/Extensions/StartupTaskExtensions.cs`, `src/Services/Inventory/Inventory.Api/Extensions/StartupTaskExtensions.cs`
 
-Mỗi recurring job tách thành ba phần, mỗi phần một file:
+Mỗi recurring job tách theo service-owned infrastructure:
 
 ```text
-Sales.Infrastructure/Hangfire/
+<Service>.Infrastructure/Hangfire/
 ├── Jobs/           # chỉ logic thực thi job, không biết cron/queue/job ID
-├── Definitions/    # đăng ký job: job ID, queue, cron, job type, method, time zone
-├── Options/        # SalesRecurringJobsOptions (root) + options riêng từng job
-├── SalesRecurringJobIds.cs        # job ID cố định của Sales
-└── SalesRecurringJobsExtensions.cs # DI cho Sales recurring jobs
+├── Options/        # recurring jobs root options + options riêng từng job
+├── <Service>RecurringJobIds.cs        # job ID cố định của service
+└── <Service>RecurringJobsExtensions.cs # DI + recurring registration
 ```
 
 Phần kỹ thuật dùng chung nằm ở `src/Shared/BuildingBlocks.Infrastructure/Hangfire/`:
 
-- `IRecurringJobDefinition`: contract một method `Register()`.
-- `RecurringJobDefinitionBase`: job `Enabled` thì `AddOrUpdate`, job disabled thì
-  `RemoveIfExists` khỏi storage.
+- `RecurringJobManagerExtensions.ScheduleRecurringJob`: job `Enabled` thì `AddOrUpdate`,
+  job disabled thì `RemoveIfExists` khỏi storage.
 - `RecurringJobSettings`: `Enabled`/`Cron`/`Queue` + validate cron/queue. Không chứa
   `JobId` — ID là hằng số của từng service.
-- `RecurringJobRegistrarExtensions`: `serviceProvider.RegisterRecurringJobs()` gọi tất cả
-  definitions; không biết gì về Sales hay Inventory.
+- Shared messaging job base classes hold common reset/monitor/cleanup logic, while Sales and
+  Inventory wrappers own their `DbContext`, metrics, options, job ids, and lock keys.
 
-Inventory không dùng Hangfire cho cleanup. Inventory dùng hosted worker riêng để dọn
-processed Inbox/Outbox bằng Postgres advisory lock.
+Inventory dùng Hangfire cho messaging recovery/monitoring và processed inbox cleanup. Hosted
+worker cũ chỉ còn dọn processed Outbox bằng Postgres advisory lock.
 
 Quy tắc:
 
@@ -322,8 +322,8 @@ Quy tắc:
 - Job implementation không được biết cron, queue, job ID hay cách gọi `AddOrUpdate`.
 - Options nghiệp vụ **compose** `RecurringJobSettings` (property `Schedule`), không kế thừa,
   để shared settings không bị mở rộng bởi thuộc tính nghiệp vụ.
-- Thao tác recovery thủ công (replay/reset dead-letter) **không phải** recurring job — đặt ở
-  `Sales.Infrastructure/Maintenance/SalesMaintenanceService.cs`, không đặt trong `Hangfire/`.
+- Thao tác recovery thủ công theo id vẫn đặt trong `*MaintenanceService`; recurring jobs chỉ
+  làm batch reset/monitoring theo cấu hình.
 - Queue name phải rõ nghĩa, ví dụ `maintenance`.
 
 ## 14. Kafka

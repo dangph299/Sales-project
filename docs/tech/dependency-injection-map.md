@@ -83,7 +83,7 @@ AddSalesRealtime(configuration)         // SignalR + CORS + JWT-from-query-strin
 | KafkaFlow cluster | producer `sales-outbox`; consumer group `sales-inventory-results-v1` | — |
 | `SalesOutboxPublisher`, `SalesInboxRedriveService` | hosted services | — |
 | `SalesMaintenanceService` | operator recovery | scoped |
-| `MaintenanceCleanupJob`, `CancelExpiredPendingOrdersJob` | Hangfire jobs | scoped |
+| `MaintenanceCleanupJob`, `CancelExpiredPendingOrdersJob`, messaging reliability jobs | Hangfire jobs | scoped |
 | `SalesRecurringJobsOptions` + validator | bound from `SalesRecurringJobs`, validated on start | options |
 
 Startup tasks: start the Kafka bus, seed identity (which also migrates), register recurring jobs.
@@ -97,12 +97,13 @@ IErrorMessageProvider -> InventoryErrorMessageProvider      singleton
 AddSwaggerCors(environment)  // Development only
 AddInventoryApplication()    // + InventoryTransactionBehavior AFTER the shared behaviors
 AddInventoryInfrastructure(configuration)
+AddInventoryBackgroundJobs(configuration) // Hangfire + PostgreSQL storage, queues default/maintenance
 ```
 
 ### `AddInventoryInfrastructure`
-`InventoryDbContext` (Npgsql + audit timestamp + audit outbox interceptors) · `IClock` → `SystemClock` (singleton) · `IInventoryRepository`, `IReservationRepository` · `IInventoryItemReadService` and `IReservationReadService` both → `InventoryReadService` · `IUnitOfWork` → `InventoryUnitOfWork` · `IInventoryTransactionManager` → `InventoryTransactionManager` · `IInventoryInbox` → `InventoryInbox` · `IInventoryEventOutbox` → `InventoryEventOutbox` · `InventoryMaintenanceService` (scoped) + `InventoryMaintenanceWorker` (hosted) · `IInventoryMetrics` → `InventoryMetricsAdapter` (singleton) · `IAuditAggregateResolver` / `IAuditEnricher` → Inventory versions · `IIntegrationEventProcessor` → `InventoryIntegrationEventProcessor` · `IInboxFailureRecorder` → `InventoryInboxFailureRecorder` · `ActivitySource` (singleton) · `IOutboxPublisher` → `KafkaOutboxPublisher("inventory-outbox")` · `InventoryOutboxPublisher`, `InventoryInboxRedriveService` (hosted) · KafkaFlow cluster with consumer group `inventory-orders-v1`.
+`InventoryDbContext` (Npgsql + audit timestamp + audit outbox interceptors) · `IClock` → `SystemClock` (singleton) · `IInventoryRepository`, `IReservationRepository` · `IInventoryItemReadService` and `IReservationReadService` both → `InventoryReadService` · `IUnitOfWork` → `InventoryUnitOfWork` · `IInventoryTransactionManager` → `InventoryTransactionManager` · `IInventoryInbox` → `InventoryInbox` · `IInventoryEventOutbox` → `InventoryEventOutbox` · `InventoryMaintenanceService` (scoped) + `InventoryMaintenanceWorker` (hosted, processed-outbox cleanup only) · `IInventoryMetrics` → `InventoryMetricsAdapter` (singleton) · `IAuditAggregateResolver` / `IAuditEnricher` → Inventory versions · `IIntegrationEventProcessor` → `InventoryIntegrationEventProcessor` · `IInboxFailureRecorder` → `InventoryInboxFailureRecorder` · `ActivitySource` (singleton) · `IOutboxPublisher` → `KafkaOutboxPublisher("inventory-outbox")` · `InventoryOutboxPublisher`, `InventoryInboxRedriveService` (hosted) · KafkaFlow cluster with consumer group `inventory-orders-v1` · Inventory messaging reliability Hangfire jobs (scoped) · `InventoryRecurringJobsOptions` + validator.
 
-Startup tasks: migrate, start the Kafka bus.
+Startup tasks: migrate, start the Kafka bus, register recurring jobs.
 
 ## AuditLog.Worker
 
