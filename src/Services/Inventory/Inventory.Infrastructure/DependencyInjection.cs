@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IInventoryEventOutbox, InventoryEventOutbox>();
         services.AddScoped<InventoryMaintenanceService>();
         services.AddHostedService<InventoryMaintenanceWorker>();
+        services.AddInventoryRecurringJobs(configuration);
         services.AddSingleton<IInventoryMetrics, InventoryMetricsAdapter>();
         services.AddScoped<IAuditAggregateResolver, InventoryAuditAggregateResolver>();
         services.AddScoped<IAuditEnricher, ReservationAuditEnricher>();

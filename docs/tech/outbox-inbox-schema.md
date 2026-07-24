@@ -86,11 +86,13 @@ Kafka commits the offset even when a handler fails, so Kafka will never redelive
 
 ## Retention
 
-Processed rows older than 14 days are deleted: Sales by the `sales-cleanup` Hangfire job (daily, Redis-locked), Inventory by `InventoryMaintenanceWorker` (daily, Postgres advisory lock). Dead-lettered rows are never auto-deleted.
+Processed rows older than 14 days are deleted: Sales outbox by the `sales-cleanup` Hangfire job (daily, Redis-locked), Sales inbox by `messaging:inbox-cleanup` (daily, Postgres advisory lock), Inventory inbox by `inventory-inbox-cleanup` (daily, Postgres advisory lock), and Inventory processed outbox by `InventoryMaintenanceWorker` (daily, Postgres advisory lock). Dead-lettered rows are never auto-deleted.
 
 ## Metrics
 
 `<service>.outbox.{published,failed,deadlettered}` counters, `<service>.outbox.{backlog,deadletters}` gauges, `<service>.inbox.{duplicate,processed,retried,dead_lettered}` counters.
+
+Messaging maintenance adds `<service>.outbox.retry_requested`, `<service>.outbox.oldest_pending_age_seconds`, `<service>.outbox.failed_terminal`, `<service>.inbox.cleanup_deleted`, `<service>.inbox.dead_letter_replay_requested`, `<service>.kafka.consumer_lag`, and `<service>.kafka.consumer_lag_partitions` for Sales and Inventory.
 
 ## Related
 

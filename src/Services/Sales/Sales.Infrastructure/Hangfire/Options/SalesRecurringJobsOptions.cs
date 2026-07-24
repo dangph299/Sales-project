@@ -14,4 +14,14 @@ public sealed class SalesRecurringJobsOptions
     public RecurringJobSettings MaintenanceCleanup { get; init; } = new();
 
     public CancelExpiredPendingOrdersJobOptions CancelExpiredPendingOrders { get; init; } = new();
+
+    public ReplayDeadLetterJobOptions ReplayDeadLetter { get; init; } = new();
+
+    public KafkaLagMonitorJobOptions KafkaLagMonitor { get; init; } = new();
+
+    public InboxCleanupJobOptions InboxCleanup { get; init; } = new();
+
+    public FailedOutboxRetryJobOptions FailedOutboxRetry { get; init; } = new();
+
+    public OutboxPendingMonitorJobOptions OutboxPendingMonitor { get; init; } = new();
 }

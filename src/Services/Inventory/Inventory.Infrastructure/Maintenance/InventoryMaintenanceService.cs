@@ -17,13 +17,13 @@ public sealed class InventoryMaintenanceService(
     private static readonly TimeSpan Retention = TimeSpan.FromDays(14);
 
     /// <summary>
-    /// Deletes processed Inbox rows and processed Outbox rows older than the retention window.
+    /// Deletes processed Outbox rows older than the retention window.
     /// </summary>
     public async Task CleanupAsync(CancellationToken cancellationToken = default)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(cancellationToken);
         var acquired = await db.Database
-            .SqlQueryRaw<bool>($"select pg_try_advisory_xact_lock({CleanupLockKey}) as \"Value\"")
+            .SqlQueryRaw<bool>("select pg_try_advisory_xact_lock({0}) as \"Value\"", CleanupLockKey)
             .SingleAsync(cancellationToken);
 
         if (!acquired)
@@ -33,17 +33,13 @@ public sealed class InventoryMaintenanceService(
         }
 
         var cutoff = clock.UtcNow.Subtract(Retention);
-        var inboxDeleted = await db.Inbox
-            .Where(x => x.Status == InboxMessageStatus.Processed && x.ProcessedAt < cutoff)
-            .ExecuteDeleteAsync(cancellationToken);
         var outboxDeleted = await db.Outbox
             .Where(x => x.ProcessedAt != null && x.ProcessedAt < cutoff)
             .ExecuteDeleteAsync(cancellationToken);
 
         await transaction.CommitAsync(cancellationToken);
         logger.LogInformation(
-            "Inventory cleanup deleted {InboxDeleted} inbox rows and {OutboxDeleted} outbox rows older than {Cutoff}",
-            inboxDeleted,
+            "Inventory cleanup deleted {OutboxDeleted} processed outbox rows older than {Cutoff}",
             outboxDeleted,
             cutoff);
     }

@@ -22,5 +22,7 @@ public static class StartupTaskExtensions
 
         var bus = await KafkaBusLifecycle.StartAsync(app.Services);
         app.Lifetime.ApplicationStopping.Register(() => KafkaBusLifecycle.StopAsync(bus).GetAwaiter().GetResult());
+
+        app.Services.RegisterInventoryRecurringJobs();
     }
 }

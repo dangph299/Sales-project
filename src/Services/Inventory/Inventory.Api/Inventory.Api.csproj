@@ -9,6 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Hangfire server + Postgres storage are configured directly in this host. -->
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.23" />
+    <PackageReference Include="Hangfire.PostgreSql" Version="1.21.1" />
     <!-- EF Relational: this host calls Database.MigrateAsync() at startup. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.9" />
     <!-- Design-time only, for `dotnet ef` with this startup project. -->

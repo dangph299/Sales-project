@@ -16,6 +16,8 @@ Attempts 1…8 give 2, 4, 8, 16, 32, 64, 128, 256 seconds; anything beyond is ca
 |---|---|---|---|
 | Outbox publish | `OutboxPublisherService` cycle | `OutboxMessage.MaxAttempts = 10` | `DeadLetteredAt` stamped; automatic retry stops |
 | Inbox re-drive | `InboxRedriveService` cycle | `InboxConsumerOptions.MaxAttempts = 5` | `Status = DeadLettered`, `NextAttemptAt = null` |
+| Failed outbox retry | `FailedOutboxRetryJob` recurring job | configured `BatchSize` | resets terminal failed outbox rows for the publisher |
+| Dead-letter replay | `ReplayDeadLetterJob` recurring job | configured `BatchSize` | resets inbound dead-letter rows for inbox re-drive |
 | Mongo startup | `MongoStartupService` | 20 attempts, fixed 2 s | last attempt rethrows and the worker fails to start |
 | Hangfire jobs | Hangfire defaults | Hangfire default retry policy | job moves to Failed in the dashboard |
 
@@ -47,9 +49,22 @@ Dead-lettered rows are never auto-deleted by the cleanup jobs, which only remove
 | `ResetInboxDeadLetterAsync(eventId)` | sets `Status = Failed`, clears attempts/error/dead-letter so re-drive picks it up |
 | `ResetInboxDeadLettersAsync(max)` | same, batched to 100 |
 
-`Inventory.Infrastructure/Maintenance/InventoryMaintenanceService.cs` offers the inbox equivalents plus `CleanupAsync`. Inventory has no outbox replay method — see [discrepancies.md](discrepancies.md).
+`Inventory.Infrastructure/Maintenance/InventoryMaintenanceService.cs` offers the inbox equivalents plus legacy processed-outbox `CleanupAsync`.
 
 There is no HTTP endpoint or dashboard for these operations today; they are invoked from code or a scripted host.
+
+## Scheduled maintenance recovery
+
+Sales and Inventory also register recurring Hangfire adapters for ongoing operational recovery:
+
+| Job | Effect |
+|---|---|
+| `ReplayDeadLetterJob` | sets dead-lettered inbox rows with retained payload back to `Failed`, clears attempt/dead-letter state, and sets `NextAttemptAt` from `RetryDelaySeconds` |
+| `FailedOutboxRetryJob` | clears `DeadLetteredAt`, lease fields, and attempts for terminal failed outbox rows; signals the existing publisher |
+| `OutboxPendingMonitorJob` | reads backlog, oldest pending age, and terminal failed count only |
+| `KafkaLagMonitorJob` | uses Kafka admin APIs to compare committed group offsets with latest topic offsets; it does not create a consumer |
+
+The reset jobs are idempotent under repeated runs because they filter terminal rows at update time. Every run is protected by a service/job-specific Postgres advisory transaction lock in addition to Hangfire's own concurrency filter. Failed outbox retry also claims rows with `LockId`/`LockedUntil` before resetting them so it does not race the publisher.
 
 ## Observability
 
@@ -58,8 +73,15 @@ There is no HTTP endpoint or dashboard for these operations today; they are invo
 | `<service>.outbox.backlog` | rows neither published nor dead-lettered — should trend to 0 |
 | `<service>.outbox.deadletters` | needs an operator |
 | `<service>.outbox.failed` | publish attempts that failed |
+| `<service>.outbox.retry_requested` | terminal failed outbox rows reset for publisher retry |
+| `<service>.outbox.oldest_pending_age_seconds` | age of the oldest pending outbox row |
+| `<service>.outbox.failed_terminal` | terminal failed outbox rows |
 | `<service>.inbox.retried` | re-drive successes |
 | `<service>.inbox.dead_lettered` | needs an operator |
+| `<service>.inbox.cleanup_deleted` | processed inbox rows deleted by retention cleanup |
+| `<service>.inbox.dead_letter_replay_requested` | inbox dead-letter rows reset for re-drive |
+| `<service>.kafka.consumer_lag` | total lag for the configured consumer group/topics |
+| `<service>.kafka.consumer_lag_partitions` | partitions with non-zero lag |
 | Log `Inbound message dead-lettered …` | Error level, carries topic/partition/offset/EventId |
 | Log `Inbox re-drive failed …` | Warning level, carries attempts and dead-letter flag |
 

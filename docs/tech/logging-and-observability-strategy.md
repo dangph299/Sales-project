@@ -65,8 +65,9 @@ Shared instrument groups (`BuildingBlocks.Infrastructure/Observability/Metrics/`
 | Instrument | Type |
 |---|---|
 | `<svc>.outbox.published` / `.failed` / `.deadlettered` | counter |
-| `<svc>.outbox.backlog` / `.deadletters` | observable gauge |
-| `<svc>.inbox.duplicate` / `.processed` / `.retried` / `.dead_lettered` | counter |
+| `<svc>.outbox.retry_requested` | counter |
+| `<svc>.outbox.backlog` / `.deadletters` / `.oldest_pending_age_seconds` / `.failed_terminal` | observable gauge |
+| `<svc>.inbox.duplicate` / `.processed` / `.retried` / `.dead_lettered` / `.cleanup_deleted` / `.dead_letter_replay_requested` | counter |
 
 Service-specific:
 
@@ -74,7 +75,9 @@ Service-specific:
 |---|---|
 | `sales.orders.expiration.scanned` / `.cancelled` / `.skipped` / `.failed` | counter |
 | `sales.orders.expiration.duration` | histogram (ms) |
+| `sales.kafka.consumer_lag` / `.consumer_lag_partitions` | observable gauge |
 | `inventory.reservation.reserved` / `.rejected` | counter |
+| `inventory.kafka.consumer_lag` / `.consumer_lag_partitions` | observable gauge |
 
 Plus ASP.NET Core, HttpClient, and .NET runtime instrumentation.
 

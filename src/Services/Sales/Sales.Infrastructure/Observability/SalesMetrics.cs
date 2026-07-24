@@ -22,6 +22,14 @@ internal static class SalesMetrics
         Meter.CreateCounter<long>("sales.orders.expiration.failed");
     private static readonly Histogram<double> ExpiredOrdersDuration =
         Meter.CreateHistogram<double>("sales.orders.expiration.duration", unit: "ms");
+    private static long _kafkaConsumerLag;
+    private static long _kafkaConsumerLagPartitions;
+
+    static SalesMetrics()
+    {
+        Meter.CreateObservableGauge("sales.kafka.consumer_lag", () => Interlocked.Read(ref _kafkaConsumerLag));
+        Meter.CreateObservableGauge("sales.kafka.consumer_lag_partitions", () => Interlocked.Read(ref _kafkaConsumerLagPartitions));
+    }
 
     /// <summary>Counts outbox rows successfully published to Kafka.</summary>
     public static Counter<long> OutboxPublished => Outbox.Published;
@@ -31,6 +39,9 @@ internal static class SalesMetrics
 
     /// <summary>Counts outbox rows that exceeded their maximum publish attempts and were dead-lettered.</summary>
     public static Counter<long> OutboxDeadLettered => Outbox.DeadLettered;
+
+    /// <summary>Counts terminal failed outbox rows reset so the publisher can retry them.</summary>
+    public static Counter<long> OutboxRetryRequested => Outbox.RetryRequested;
 
     /// <summary>Counts inbound Kafka messages skipped because they were already recorded in the Inbox.</summary>
     public static Counter<long> InboxDuplicate => Inbox.Duplicate;
@@ -44,6 +55,12 @@ internal static class SalesMetrics
     /// <summary>Counts inbound messages dead-lettered after exhausting re-drive attempts.</summary>
     public static Counter<long> InboxDeadLettered => Inbox.DeadLettered;
 
+    /// <summary>Counts processed inbox rows deleted by retention cleanup.</summary>
+    public static Counter<long> InboxCleanupDeleted => Inbox.CleanupDeleted;
+
+    /// <summary>Counts inbox dead-letter rows reset so the re-drive service can replay them.</summary>
+    public static Counter<long> InboxDeadLetterReplayRequested => Inbox.DeadLetterReplayRequested;
+
     /// <summary>
     /// Updates the observable gauges reporting the current outbox backlog and dead-letter counts.
     /// </summary>
@@ -52,6 +69,19 @@ internal static class SalesMetrics
     public static void SetOutboxSnapshot(long backlog, long deadLetters)
     {
         Outbox.SetSnapshot(backlog, deadLetters);
+    }
+
+    /// <summary>Updates outbox monitor gauges.</summary>
+    public static void SetOutboxPendingSnapshot(long backlog, long oldestPendingAgeSeconds, long failedTerminal)
+    {
+        Outbox.SetPendingSnapshot(backlog, oldestPendingAgeSeconds, failedTerminal);
+    }
+
+    /// <summary>Updates Kafka consumer lag gauges.</summary>
+    public static void SetKafkaConsumerLag(long lag, long partitions)
+    {
+        Interlocked.Exchange(ref _kafkaConsumerLag, lag);
+        Interlocked.Exchange(ref _kafkaConsumerLagPartitions, partitions);
     }
 
     /// <summary>

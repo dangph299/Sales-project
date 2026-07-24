@@ -484,14 +484,16 @@ Code chính:
 - Hangfire registration: `src/Services/Sales/Sales.Api/Extensions/ServiceCollectionExtensions.cs`
 - Dashboard: `src/Services/Sales/Sales.Api/Extensions/ApplicationBuilderExtensions.cs`
 - Job: `src/Services/Sales/Sales.Infrastructure/Hangfire/Jobs/MaintenanceCleanupJob.cs`
-- Definition: `src/Services/Sales/Sales.Infrastructure/Hangfire/Definitions/MaintenanceCleanupJobDefinition.cs`
+- Recurring registration: `src/Services/Sales/Sales.Infrastructure/Hangfire/SalesRecurringJobsExtensions.cs`
 - Options: `src/Services/Sales/Sales.Infrastructure/Hangfire/Options/SalesRecurringJobsOptions.cs`
 - Job ID: `src/Services/Sales/Sales.Infrastructure/Hangfire/SalesRecurringJobIds.cs`
 - DI: `src/Services/Sales/Sales.Infrastructure/Hangfire/SalesRecurringJobsExtensions.cs`
 - Startup recurring job: `src/Services/Sales/Sales.Api/Extensions/StartupTaskExtensions.cs`
 - Operator recovery (không phải recurring job): `src/Services/Sales/Sales.Infrastructure/Maintenance/SalesMaintenanceService.cs`
-- Inventory cleanup worker: `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceWorker.cs`
-- Inventory cleanup service: `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceService.cs`
+- Inventory Hangfire registration: `src/Services/Inventory/Inventory.Api/Extensions/ServiceCollectionExtensions.cs`
+- Inventory recurring jobs: `src/Services/Inventory/Inventory.Infrastructure/Hangfire/`
+- Inventory processed-outbox cleanup worker: `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceWorker.cs`
+- Inventory processed-outbox cleanup service: `src/Services/Inventory/Inventory.Infrastructure/Maintenance/InventoryMaintenanceService.cs`
 
 Cách hoạt động:
 
@@ -507,7 +509,8 @@ flowchart TD
 - Server có queues: `critical`, `default`, `maintenance`.
 - Sales cleanup chạy queue `maintenance`.
 - Redis lock ngăn nhiều Sales instance cleanup cùng lúc.
-- Inventory cleanup không dùng Hangfire; hosted worker dùng Postgres advisory transaction lock.
+- Inventory messaging recovery/monitoring và processed inbox cleanup dùng Hangfire; hosted worker
+  chỉ còn processed-outbox cleanup bằng Postgres advisory transaction lock.
 
 ### Cấu hình recurring jobs
 

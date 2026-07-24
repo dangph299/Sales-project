@@ -26,6 +26,17 @@ internal static class SalesMaintenanceSeedData
         };
     }
 
+    public static OutboxMessage PendingOutboxMessage(DateTimeOffset occurredAt)
+    {
+        return new OutboxMessage
+        {
+            Id = Guid.NewGuid(),
+            Topic = "sales.audit.v1",
+            Payload = "{}",
+            OccurredAt = occurredAt
+        };
+    }
+
     public static InboxMessage InboxMessage(
         DateTimeOffset currentUtc,
         InboxMessageStatus status,

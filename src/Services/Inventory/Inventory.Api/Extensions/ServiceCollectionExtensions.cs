@@ -1,6 +1,9 @@
 using BuildingBlocks.Contracts;
+using BuildingBlocks.Infrastructure;
 using BuildingBlocks.Observability;
 using BuildingBlocks.Web;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Inventory.Api.Middleware;
 using Inventory.Application;
 using Inventory.Infrastructure;
@@ -36,6 +39,7 @@ public static class ServiceCollectionExtensions
         builder.Services.AddSwaggerCors(builder.Environment);
         builder.Services.AddInventoryApplication();
         builder.Services.AddInventoryInfrastructure(builder.Configuration);
+        builder.Services.AddInventoryBackgroundJobs(builder.Configuration);
 
         builder.Services.AddOptions<InventorySummaryOptions>()
             .Bind(builder.Configuration.GetSection(InventorySummaryOptions.SectionName))
@@ -43,5 +47,22 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
 
         return builder;
+    }
+
+    private static IServiceCollection AddInventoryBackgroundJobs(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddHangfire(config => config.UsePostgreSqlStorage(options =>
+            options.UseNpgsqlConnection(configuration.GetConnectionString("InventoryHangfire"))));
+        services.AddHangfireServer(options =>
+        {
+            options.Queues =
+            [
+                HangfireQueueNames.Default,
+                HangfireQueueNames.Maintenance
+            ];
+        });
+        return services;
     }
 }

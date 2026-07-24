@@ -143,6 +143,7 @@ services:
       ASPNETCORE_URLS: http://+:8080
       ASPNETCORE_ENVIRONMENT: Development
       Outbox__PollIntervalMilliseconds: 1000
+      ConnectionStrings__InventoryHangfire: Host=postgres;Database=inventory_hangfire;Username=postgres;Password=postgres
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: sales-api
     ports: ["5000:8080"]

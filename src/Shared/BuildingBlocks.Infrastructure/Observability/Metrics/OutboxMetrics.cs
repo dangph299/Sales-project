@@ -11,6 +11,8 @@ public sealed class OutboxMetrics
 {
     private long _backlog;
     private long _deadLetters;
+    private long _oldestPendingAgeSeconds;
+    private long _failedTerminal;
 
     /// <summary>
     /// Creates the outbox counters and gauges for a service, scoped to the given meter and
@@ -25,9 +27,12 @@ public sealed class OutboxMetrics
         Published = meter.CreateCounter<long>($"{prefix}.outbox.published");
         Failed = meter.CreateCounter<long>($"{prefix}.outbox.failed");
         DeadLettered = meter.CreateCounter<long>($"{prefix}.outbox.deadlettered");
+        RetryRequested = meter.CreateCounter<long>($"{prefix}.outbox.retry_requested");
 
         meter.CreateObservableGauge($"{prefix}.outbox.backlog", () => Interlocked.Read(ref _backlog));
         meter.CreateObservableGauge($"{prefix}.outbox.deadletters", () => Interlocked.Read(ref _deadLetters));
+        meter.CreateObservableGauge($"{prefix}.outbox.oldest_pending_age_seconds", () => Interlocked.Read(ref _oldestPendingAgeSeconds));
+        meter.CreateObservableGauge($"{prefix}.outbox.failed_terminal", () => Interlocked.Read(ref _failedTerminal));
     }
 
     /// <summary>Counts outbox rows successfully published to Kafka.</summary>
@@ -39,6 +44,9 @@ public sealed class OutboxMetrics
     /// <summary>Counts outbox rows that exceeded their maximum publish attempts and were dead-lettered.</summary>
     public Counter<long> DeadLettered { get; }
 
+    /// <summary>Counts terminal failed outbox rows reset for publisher retry by maintenance jobs.</summary>
+    public Counter<long> RetryRequested { get; }
+
     /// <summary>
     /// Updates the observable gauges reporting the current outbox backlog and dead-letter counts.
     /// </summary>
@@ -48,5 +56,16 @@ public sealed class OutboxMetrics
     {
         Interlocked.Exchange(ref _backlog, backlog);
         Interlocked.Exchange(ref _deadLetters, deadLetters);
+    }
+
+    /// <summary>
+    /// Updates observable gauges reported by the outbox pending monitor.
+    /// </summary>
+    public void SetPendingSnapshot(long backlog, long oldestPendingAgeSeconds, long failedTerminal)
+    {
+        Interlocked.Exchange(ref _backlog, backlog);
+        Interlocked.Exchange(ref _oldestPendingAgeSeconds, oldestPendingAgeSeconds);
+        Interlocked.Exchange(ref _failedTerminal, failedTerminal);
+        Interlocked.Exchange(ref _deadLetters, failedTerminal);
     }
 }
